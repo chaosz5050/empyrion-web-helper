@@ -1,0 +1,93 @@
+# Empyrion Server Helper Configuration Template
+# Copy this file to 'empyrion_helper.conf' and fill in your server details
+
+[server]
+# Your Empyrion server IP address
+host = 192.168.1.100
+
+# RCON/Telnet port (default: 30004)
+telnet_port = 30004
+
+# RCON password (set in your server's adminconfig.yaml)
+telnet_password = your_rcon_password_here
+
+[monitoring]
+# How often to refresh player list (seconds)
+update_interval = 30
+
+# Log file for application events
+log_file = empyrion_helper.log
+
+[ftp]
+# FTP server address with optional port (default: 21)
+# Examples:
+#   192.168.1.100        (uses default port 21)
+#   192.168.1.100:2121   (uses custom port 2121)
+host = 192.168.1.100:21
+
+# FTP username
+user = your_ftp_username
+
+# FTP password
+password = your_ftp_password
+
+# Path to your scenario's Configuration directory
+# This path varies depending on your server setup and scenario
+# Examples:
+#   /home/empyrion/ServerData/Scenarios/Default Multiplayer/Content/Configuration
+#   /Empyrion/Content/Scenarios/Reforged Eden/Content/Configuration
+#   C:\EmpyrionServer\Content\Scenarios\YourScenario\Content\Configuration
+remote_log_path = /path/to/your/scenario/Content/Configuration
+
+# Custom Player Status Messages
+[messages]
+# Message sent when players join the server
+# Use <playername> where you want the player's name to appear
+welcome_message = Welcome to Space Cowboys, <playername>!
+
+# Message sent when players leave the server
+# Use <playername> where you want the player's name to appear
+goodbye_message = Player <playername> has left our galaxy
+
+# General App Settings
+[general]
+# Automatically connect to server when app starts
+autoconnect = false
+
+# ============================================================================
+# SETUP INSTRUCTIONS:
+# ============================================================================
+# 
+# 1. SERVER SETUP:
+#    - Enable RCON in your server's adminconfig.yaml
+#    - Set a strong RCON password
+#    - Note your server's IP address and RCON port
+#
+# 2. FTP SETUP (Optional):
+#    - Ensure FTP access to your server
+#    - User needs read/write permissions to configuration files
+#    - Test FTP connection before using this tool
+#
+# 3. FIND YOUR CONFIGURATION PATH:
+#    Common paths:
+#    - Default scenarios: .../Scenarios/Default Multiplayer/Content/Configuration
+#    - Reforged Eden: .../Scenarios/Reforged Eden/Content/Configuration
+#    - Custom scenarios: .../Scenarios/YourScenarioName/Content/Configuration
+#
+# 4. CUSTOMIZE PLAYER MESSAGES:
+#    - Edit welcome_message and goodbye_message to fit your server's theme
+#    - Use <playername> as a placeholder for the actual player name
+#
+# 5. UPDATE FREQUENCY:
+#    - Default is 30 seconds
+#    - For busy servers (50+ players), consider 45-60 seconds
+#    - For quiet servers (<20 players), you can try 20 seconds
+#    - Monitor your server performance when adjusting
+#
+# 6. SECURITY NOTES:
+#    - Keep this file secure (contains passwords)
+#    - Use strong passwords for RCON and FTP
+#    - Consider using dedicated FTP user with limited permissions
+#    - Add empyrion_helper.conf to your .gitignore if using version control
+#
+# ============================================================================
