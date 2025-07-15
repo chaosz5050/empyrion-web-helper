@@ -11,7 +11,7 @@
 
 Empyrion Web Helper is a comprehensive server management solution that provides real-time player monitoring, automated messaging, and professional logging through an intuitive web interface. Built with modularity and scalability in mind, it's the perfect tool for hobby server administrators who want professional-grade functionality.
 
-![Empyrion Web Helper Interface](https://via.placeholder.com/800x400/1a1a1a/ffffff?text=Empyrion+Web+Helper+Interface)
+![Empyrion Web Helper Interface]
 
 ## ✨ Features
 
