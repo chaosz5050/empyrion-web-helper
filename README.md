@@ -1,6 +1,12 @@
 # 🚀 Empyrion Web Helper
 
-A modern web-based administration tool for Empyrion Galactic Survival dedicated servers.
+A modern web-based administration tool for Empyrion Galactic Survival dedicated servers. It's still in alpha.
+It's based on my other tool: https://github.com/chaosz5050/Empyrion-Server-Tool
+A web version seemed to make more sense. That way you can run it on a server annd open it from anywhere.
+
+![Empyrion Server Helper](https://img.shields.io/badge/Platform-Linux-blue)
+![Python](https://img.shields.io/badge/Python-3.8%2B-green)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange)
 
 ## ✨ Features
 
