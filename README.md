@@ -53,7 +53,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 ## 🛠️ Installation
 
 ### Prerequisites
-- **Linux Server** (Ubuntu 20.04+ recommended)
+- **Linux** (tested on CachyOS, but should work on any Linux distro)
 - **Python 3.8 or higher**
 - **Empyrion Galactic Survival Dedicated Server** with RCON enabled
 
