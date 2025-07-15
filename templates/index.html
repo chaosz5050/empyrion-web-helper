@@ -1,12 +1,21 @@
+        <!-- Tab Navigation -->
+        <div class="tab-navigation"><!-- FILE LOCATION: /templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Empyrion Web Helper v0.3.0</title>
+    
+    <!-- Favicon - Multiple formats for better browser support -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/ewh_icon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/ewh_icon.png">
+    <link rel="shortcut icon" href="/static/ewh_icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/ewh_icon.png">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
-        /* Dark theme CSS */
+        /* Dark theme CSS - Enhanced with messaging styles */
         :root {
             --bg-primary: #1a1a1a;
             --bg-secondary: #2d2d2d;
@@ -36,7 +45,8 @@
         }
 
         .container {
-            max-width: 1400px;
+            width: 70%;
+            max-width: none;
             margin: 0 auto;
             padding: 20px;
         }
@@ -53,6 +63,16 @@
             color: var(--accent-blue);
             margin-bottom: 10px;
             font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-icon {
+            width: 1.2em;
+            height: 1.2em;
+            vertical-align: middle;
+            filter: brightness(1.1);
         }
 
         .subtitle {
@@ -97,6 +117,36 @@
             font-size: 0.9em;
         }
 
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .tab-button.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+
         button {
             background-color: var(--accent-blue);
             color: white;
@@ -138,6 +188,7 @@
             font-size: 1.3em;
         }
 
+        /* Player table styles (existing) */
         .filters-panel {
             background-color: var(--bg-tertiary);
             padding: 15px;
@@ -450,6 +501,438 @@
             background-color: var(--accent-blue);
         }
 
+        /* MESSAGING STYLES */
+        .message-section {
+            background-color: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .message-section h3 {
+            color: var(--accent-blue);
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .message-help {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .message-help code {
+            background-color: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: var(--accent-blue);
+        }
+
+        .global-message-panel,
+        .custom-messages-panel,
+        .scheduled-messages-panel,
+        .message-history-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .message-input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .custom-message-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .custom-message-row label {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .custom-message-controls,
+        .scheduled-message-controls,
+        .history-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .scheduled-message-item {
+            background-color: var(--bg-primary);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+
+        .scheduled-message-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .scheduled-message-header input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .scheduled-message-header label {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .scheduled-message-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .schedule-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .schedule-select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .schedule-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-primary,
+        .btn-secondary,
+        .btn-test,
+        .btn-add {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .btn-test {
+            background-color: var(--accent-orange);
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-test:hover {
+            background-color: #e68900;
+        }
+
+        .btn-add {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        .btn-add:hover {
+            background-color: #00b359;
+        }
+
+        .history-stats {
+            display: flex;
+            gap: 20px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .history-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .message-history-container {
+            background-color: var(--bg-primary);
+            border-radius: 6px;
+            overflow: hidden;
+            overflow-x: auto;
+        }
+
+        .message-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        .message-history-table th {
+            background-color: var(--bg-secondary);
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+            color: var(--accent-blue);
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .message-history-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .message-history-table tr:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .message-history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .message-type {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+
+        .message-type.manual {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        .message-type.welcome {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        .message-type.goodbye {
+            background-color: var(--accent-orange);
+            color: white;
+        }
+
+        .message-type.scheduled {
+            background-color: #9966cc;
+            color: white;
+        }
+
+        .message-status {
+            font-weight: bold;
+        }
+
+        .message-status.success {
+            color: var(--accent-green);
+        }
+
+        .message-status.failed {
+            color: var(--accent-red);
+        }
+
+        .message-text {
+            max-width: 300px;
+            word-wrap: break-word;
+            color: var(--text-primary);
+        }
+
+        .message-timestamp {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        /* LOGGING PANEL STYLES */
+        .log-stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .log-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-primary);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: var(--text-primary);
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .log-actions-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .log-action-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .log-settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .setting-item label {
+            color: var(--text-primary);
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .setting-input {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .recent-logs-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .logs-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .log-lines-select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .logs-container {
+            background-color: var(--bg-primary);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .logs-content {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 15px;
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .logs-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .logs-content::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .logs-content::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .logs-content::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue);
+        }
+
         @media (max-width: 768px) {
             .connection-panel {
                 flex-direction: column;
@@ -464,14 +947,40 @@
                 flex-direction: column;
                 gap: 5px;
             }
+
+            .tab-navigation {
+                flex-wrap: wrap;
+            }
+
+            .message-input-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .custom-message-controls,
+            .scheduled-message-controls,
+            .history-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .schedule-input-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .history-stats {
+                flex-direction: column;
+                gap: 5px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🚀 Empyrion Web Helper</h1>
-            <p class="subtitle">v0.3.0 - Player Database & Tracking</p>
+            <h1><img src="/static/ewh_icon.png" alt="Empyrion Web Helper" class="header-icon"> Empyrion Web Helper</h1>
+            <p class="subtitle">v0.3.0 - Enhanced with Messaging System</p>
             
             <div class="connection-panel">
                 <div class="status-indicator" id="statusIndicator"></div>
@@ -482,7 +991,15 @@
             </div>
         </header>
 
-        <div class="panel">
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="showTab('players')">👥 Players</button>
+            <button class="tab-button" onclick="showTab('messaging')">📢 Messaging</button>
+            <button class="tab-button" onclick="showTab('logs')">📋 Logs</button>
+        </div>
+
+        <!-- Players Panel (Default) -->
+        <div class="panel" id="playersPanel">
             <h2>👥 Players (All Known Players)</h2>
             
             <div class="player-stats" id="playerStats">
@@ -538,6 +1055,204 @@
                 <p>Loading players...</p>
             </div>
         </div>
+
+        <!-- Messaging Panel -->
+        <div class="panel" id="messagingPanel" style="display: none;">
+            <h2>📢 Messaging System</h2>
+            
+            <!-- Global Message Section -->
+            <div class="message-section">
+                <h3>Send Global Message</h3>
+                <div class="global-message-panel">
+                    <div class="message-input-container">
+                        <input type="text" id="globalMessageInput" class="message-input" 
+                               placeholder="Type your message to all players..." maxlength="200">
+                        <button id="sendGlobalBtn" onclick="sendGlobalMessage()" class="btn-primary">
+                            Send Message
+                        </button>
+                    </div>
+                    <div class="message-help">
+                        <small>Send an immediate message to all online players</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Player Status Messages Section -->
+            <div class="message-section">
+                <h3>Player Status Messages</h3>
+                <div class="custom-messages-panel">
+                    <div class="message-help">
+                        <p>Automatic messages sent when players join or leave the server. 
+                           Use <code>&lt;playername&gt;</code> where you want the player's name to appear.</p>
+                    </div>
+                    
+                    <div class="custom-message-row">
+                        <label for="welcomeMessageInput">Welcome Message:</label>
+                        <div class="message-input-container">
+                            <input type="text" id="welcomeMessageInput" class="message-input" 
+                                   placeholder="Welcome to Space Cowboys, <playername>!" maxlength="200">
+                            <button onclick="testMessage('welcome')" class="btn-test">Test</button>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-message-row">
+                        <label for="goodbyeMessageInput">Goodbye Message:</label>
+                        <div class="message-input-container">
+                            <input type="text" id="goodbyeMessageInput" class="message-input" 
+                                   placeholder="Player <playername> has left our galaxy" maxlength="200">
+                            <button onclick="testMessage('goodbye')" class="btn-test">Test</button>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-message-controls">
+                        <button onclick="saveCustomMessages()" class="btn-primary">Save Custom Messages</button>
+                        <button onclick="loadCustomMessages()" class="btn-secondary">Load Saved Messages</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheduled Messages Section -->
+            <div class="message-section">
+                <h3>Scheduled Messages</h3>
+                <div class="scheduled-messages-panel">
+                    <div class="message-help">
+                        <p>Send recurring messages at specified intervals. Messages are sent automatically when enabled.</p>
+                    </div>
+                    
+                    <div class="scheduled-messages-list" id="scheduledMessagesList">
+                        <!-- Scheduled messages will be dynamically generated here -->
+                    </div>
+                    
+                    <div class="scheduled-message-controls">
+                        <button onclick="saveScheduledMessages()" class="btn-primary">Save Schedule</button>
+                        <button onclick="loadScheduledMessages()" class="btn-secondary">Load Schedule</button>
+                        <button onclick="addScheduledMessage()" class="btn-add">Add New Message</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message History Section -->
+            <div class="message-section">
+                <h3>Message History</h3>
+                <div class="message-history-panel">
+                    <div class="history-controls">
+                        <button onclick="loadMessageHistory()" class="btn-secondary">Refresh History</button>
+                        <button onclick="clearMessageHistory()" class="btn-danger">Clear History</button>
+                        <div class="history-stats" id="messageStats">
+                            <span>Total: <span id="totalMessages">0</span></span>
+                            <span>Successful: <span id="successfulMessages">0</span></span>
+                            <span>Failed: <span id="failedMessages">0</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="message-history-container">
+                        <table class="message-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Message</th>
+                                    <th>Player</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messageHistoryBody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">Click "Refresh History" to load message history</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="panel" id="logsPanel" style="display: none;">
+            <h2>📋 Log Management</h2>
+            
+            <!-- Log Statistics Section -->
+            <div class="message-section">
+                <h3>Log Statistics</h3>
+                <div class="log-stats-panel">
+                    <div class="log-stats-grid" id="logStatsGrid">
+                        <div class="stat-card">
+                            <div class="stat-label">Current Log</div>
+                            <div class="stat-value" id="currentLogSize">0 MB</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Files</div>
+                            <div class="stat-value" id="totalLogFiles">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Size</div>
+                            <div class="stat-value" id="totalLogSize">0 MB</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Max Size</div>
+                            <div class="stat-value" id="maxLogSize">1 MB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Actions Section -->
+            <div class="message-section">
+                <h3>Log Actions</h3>
+                <div class="log-actions-panel">
+                    <div class="log-action-row">
+                        <button onclick="refreshLogStats()" class="btn-secondary">📊 Refresh Stats</button>
+                        <button onclick="cleanupOldLogs()" class="btn-primary">🧹 Cleanup Old Logs</button>
+                        <button onclick="clearAllLogs()" class="btn-danger">🗑️ Clear All Logs</button>
+                        <button onclick="downloadCurrentLog()" class="btn-secondary">⬇️ Download Current Log</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Settings Section -->
+            <div class="message-section">
+                <h3>Log Settings</h3>
+                <div class="log-settings-panel">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label for="maxSizeInput">Max Size per File (MB):</label>
+                            <input type="number" id="maxSizeInput" min="1" max="50" value="1" class="setting-input">
+                        </div>
+                        <div class="setting-item">
+                            <label for="backupCountInput">Backup Files to Keep:</label>
+                            <input type="number" id="backupCountInput" min="1" max="10" value="3" class="setting-input">
+                        </div>
+                        <div class="setting-item">
+                            <label for="maxAgeInput">Max Age (days):</label>
+                            <input type="number" id="maxAgeInput" min="1" max="30" value="7" class="setting-input">
+                        </div>
+                        <div class="setting-item">
+                            <button onclick="saveLogSettings()" class="btn-primary">💾 Save Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Logs Section -->
+            <div class="message-section">
+                <h3>Recent Log Entries</h3>
+                <div class="recent-logs-panel">
+                    <div class="logs-controls">
+                        <button onclick="loadRecentLogs()" class="btn-secondary">🔄 Refresh Logs</button>
+                        <select id="logLinesSelect" class="log-lines-select">
+                            <option value="50">Last 50 lines</option>
+                            <option value="100" selected>Last 100 lines</option>
+                            <option value="200">Last 200 lines</option>
+                            <option value="500">Last 500 lines</option>
+                        </select>
+                    </div>
+                    
+                    <div class="logs-container">
+                        <pre id="recentLogsContent" class="logs-content">Click "Refresh Logs" to load recent log entries...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Kick Player Modal -->
@@ -568,6 +1283,10 @@
         let allPlayers = [];
         let refreshInterval;
 
+        // Messaging system variables
+        let scheduledMessagesData = [];
+        let messageHistoryData = [];
+
         // DOM elements
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
@@ -589,6 +1308,721 @@
             playfield: document.getElementById('filterPlayfield'),
             last_seen: document.getElementById('filterLastSeen')
         };
+
+        // ============================================================================
+        // TAB NAVIGATION
+        // ============================================================================
+
+        function showTab(tabName) {
+            // Hide all panels
+            const panels = ['playersPanel', 'messagingPanel', 'logsPanel'];
+            panels.forEach(panelId => {
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // Show selected panel
+            const selectedPanel = document.getElementById(tabName + 'Panel');
+            if (selectedPanel) {
+                selectedPanel.style.display = 'block';
+            }
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeBtn = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+            
+            // Special initialization for different tabs
+            if (tabName === 'messaging') {
+                loadMessageHistory();
+            } else if (tabName === 'logs') {
+                refreshLogStats();
+                loadLogSettings();
+                loadRecentLogs();
+            }
+        }
+
+        // ============================================================================
+        // MESSAGING SYSTEM FUNCTIONS
+        // ============================================================================
+
+        function initializeMessaging() {
+            console.log('Initializing messaging system...');
+            
+            // Load custom messages on page load
+            loadCustomMessages();
+            
+            // Load scheduled messages on page load
+            loadScheduledMessages();
+            
+            // Load message history
+            loadMessageHistory();
+            
+            // Set up Enter key for global message input
+            const globalInput = document.getElementById('globalMessageInput');
+            if (globalInput) {
+                globalInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendGlobalMessage();
+                    }
+                });
+            }
+            
+            console.log('Messaging system initialized');
+        }
+
+        // Global Messages
+        function sendGlobalMessage() {
+            const messageInput = document.getElementById('globalMessageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                showToast('Please enter a message', 'error');
+                return;
+            }
+            
+            if (!isConnected) {
+                showToast('Not connected to server', 'error');
+                return;
+            }
+            
+            // Disable button to prevent spam
+            const sendBtn = document.getElementById('sendGlobalBtn');
+            const originalText = sendBtn.textContent;
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            fetch('/messaging/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Global message sent successfully', 'success');
+                    messageInput.value = '';
+                    loadMessageHistory(); // Refresh history
+                } else {
+                    showToast(data.message || 'Failed to send message', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error sending global message:', error);
+                showToast('Error sending message: ' + error, 'error');
+            })
+            .finally(() => {
+                sendBtn.disabled = false;
+                sendBtn.textContent = originalText;
+            });
+        }
+
+        // Custom Player Status Messages
+        function loadCustomMessages() {
+            fetch('/messaging/custom', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.messages) {
+                    const welcomeInput = document.getElementById('welcomeMessageInput');
+                    const goodbyeInput = document.getElementById('goodbyeMessageInput');
+                    
+                    if (welcomeInput) {
+                        welcomeInput.value = data.messages.welcome_message || 'Welcome to Space Cowboys, <playername>!';
+                    }
+                    if (goodbyeInput) {
+                        goodbyeInput.value = data.messages.goodbye_message || 'Player <playername> has left our galaxy';
+                    }
+                    
+                    console.log('Custom messages loaded');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading custom messages:', error);
+            });
+        }
+
+        function saveCustomMessages() {
+            const welcomeInput = document.getElementById('welcomeMessageInput');
+            const goodbyeInput = document.getElementById('goodbyeMessageInput');
+            
+            const welcomeMessage = welcomeInput ? welcomeInput.value.trim() : '';
+            const goodbyeMessage = goodbyeInput ? goodbyeInput.value.trim() : '';
+            
+            if (!welcomeMessage || !goodbyeMessage) {
+                showToast('Both welcome and goodbye messages are required', 'error');
+                return;
+            }
+            
+            fetch('/messaging/custom', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    welcome_message: welcomeMessage,
+                    goodbye_message: goodbyeMessage
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Custom messages saved successfully', 'success');
+                } else {
+                    showToast(data.message || 'Failed to save custom messages', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving custom messages:', error);
+                showToast('Error saving custom messages: ' + error, 'error');
+            });
+        }
+
+        function testMessage(type) {
+            if (!isConnected) {
+                showToast('Not connected to server', 'error');
+                return;
+            }
+            
+            const testPlayerName = 'TestPlayer';
+            
+            fetch('/messaging/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: type,
+                    player_name: testPlayerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`Test ${type} message sent`, 'success');
+                    loadMessageHistory(); // Refresh history
+                } else {
+                    showToast(data.message || `Failed to send test ${type} message`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error(`Error sending test ${type} message:`, error);
+                showToast(`Error sending test ${type} message: ` + error, 'error');
+            });
+        }
+
+        // Scheduled Messages
+        function loadScheduledMessages() {
+            fetch('/messaging/scheduled', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.messages) {
+                    scheduledMessagesData = data.messages;
+                    renderScheduledMessages();
+                    console.log('Scheduled messages loaded:', scheduledMessagesData.length);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading scheduled messages:', error);
+                // Initialize with empty data
+                scheduledMessagesData = [];
+                for (let i = 0; i < 5; i++) {
+                    scheduledMessagesData.push({
+                        id: i + 1,
+                        enabled: false,
+                        text: '',
+                        schedule: 'Every 5 minutes'
+                    });
+                }
+                renderScheduledMessages();
+            });
+        }
+
+        function saveScheduledMessages() {
+            // Collect data from UI
+            const messages = [];
+            const messageItems = document.querySelectorAll('.scheduled-message-item');
+            
+            messageItems.forEach((item, index) => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                const textInput = item.querySelector('.scheduled-message-text');
+                const scheduleSelect = item.querySelector('.schedule-select');
+                
+                messages.push({
+                    id: index + 1,
+                    enabled: checkbox ? checkbox.checked : false,
+                    text: textInput ? textInput.value.trim() : '',
+                    schedule: scheduleSelect ? scheduleSelect.value : 'Every 5 minutes'
+                });
+            });
+            
+            fetch('/messaging/scheduled', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    messages: messages
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Scheduled messages saved successfully', 'success');
+                    scheduledMessagesData = messages;
+                } else {
+                    showToast(data.message || 'Failed to save scheduled messages', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving scheduled messages:', error);
+                showToast('Error saving scheduled messages: ' + error, 'error');
+            });
+        }
+
+        function renderScheduledMessages() {
+            const container = document.getElementById('scheduledMessagesList');
+            if (!container) return;
+            
+            // Ensure we have at least 5 message slots
+            while (scheduledMessagesData.length < 5) {
+                scheduledMessagesData.push({
+                    id: scheduledMessagesData.length + 1,
+                    enabled: false,
+                    text: '',
+                    schedule: 'Every 5 minutes'
+                });
+            }
+            
+            container.innerHTML = '';
+            
+            scheduledMessagesData.forEach((message, index) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'scheduled-message-item';
+                
+                messageDiv.innerHTML = `
+                    <div class="scheduled-message-header">
+                        <input type="checkbox" id="scheduleEnabled${index}" ${message.enabled ? 'checked' : ''}>
+                        <label for="scheduleEnabled${index}">Message ${index + 1}</label>
+                        <button onclick="removeScheduledMessage(${index})" class="btn-danger" style="padding: 4px 8px; font-size: 12px;">Remove</button>
+                    </div>
+                    <div class="scheduled-message-body">
+                        <div class="message-input-container">
+                            <input type="text" class="scheduled-message-text message-input" 
+                                   value="${escapeHtml(message.text)}" 
+                                   placeholder="Enter scheduled message..." maxlength="200">
+                        </div>
+                        <div class="schedule-input-row">
+                            <label>Send:</label>
+                            <select class="schedule-select">
+                                <option value="Every 5 minutes" ${message.schedule === 'Every 5 minutes' ? 'selected' : ''}>Every 5 minutes</option>
+                                <option value="Every 10 minutes" ${message.schedule === 'Every 10 minutes' ? 'selected' : ''}>Every 10 minutes</option>
+                                <option value="Every 15 minutes" ${message.schedule === 'Every 15 minutes' ? 'selected' : ''}>Every 15 minutes</option>
+                                <option value="Every 30 minutes" ${message.schedule === 'Every 30 minutes' ? 'selected' : ''}>Every 30 minutes</option>
+                                <option value="Every 1 hour" ${message.schedule === 'Every 1 hour' ? 'selected' : ''}>Every 1 hour</option>
+                                <option value="Every 2 hours" ${message.schedule === 'Every 2 hours' ? 'selected' : ''}>Every 2 hours</option>
+                                <option value="Every 3 hours" ${message.schedule === 'Every 3 hours' ? 'selected' : ''}>Every 3 hours</option>
+                                <option value="Every 6 hours" ${message.schedule === 'Every 6 hours' ? 'selected' : ''}>Every 6 hours</option>
+                                <option value="Every 12 hours" ${message.schedule === 'Every 12 hours' ? 'selected' : ''}>Every 12 hours</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(messageDiv);
+            });
+        }
+
+        function addScheduledMessage() {
+            scheduledMessagesData.push({
+                id: scheduledMessagesData.length + 1,
+                enabled: false,
+                text: '',
+                schedule: 'Every 5 minutes'
+            });
+            renderScheduledMessages();
+        }
+
+        function removeScheduledMessage(index) {
+            if (index >= 0 && index < scheduledMessagesData.length) {
+                scheduledMessagesData.splice(index, 1);
+                // Reassign IDs
+                scheduledMessagesData.forEach((msg, i) => {
+                    msg.id = i + 1;
+                });
+                renderScheduledMessages();
+            }
+        }
+
+        // Message History
+        function loadMessageHistory() {
+            fetch('/messaging/history?limit=50')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageHistoryData = data.history || [];
+                    updateMessageHistoryTable();
+                    updateMessageStats(data.stats || {});
+                    console.log('Message history loaded:', messageHistoryData.length, 'messages');
+                } else {
+                    console.error('Failed to load message history:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading message history:', error);
+                messageHistoryData = [];
+                updateMessageHistoryTable();
+            });
+        }
+
+        function updateMessageHistoryTable() {
+            const tbody = document.getElementById('messageHistoryBody');
+            if (!tbody) return;
+            
+            if (messageHistoryData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="empty-state">No message history available</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            messageHistoryData.forEach(message => {
+                const row = document.createElement('tr');
+                
+                // Format timestamp
+                const timestamp = formatMessageTimestamp(message.timestamp);
+                
+                // Format message type with styling
+                const typeClass = message.type.toLowerCase();
+                const typeDisplay = message.type.charAt(0).toUpperCase() + message.type.slice(1);
+                
+                // Truncate long messages
+                const messageText = message.message.length > 100 
+                    ? message.message.substring(0, 100) + '...' 
+                    : message.message;
+                
+                // Player name or empty
+                const playerName = message.player || '';
+                
+                // Success status
+                const statusClass = message.success ? 'success' : 'failed';
+                const statusText = message.success ? 'Success' : 'Failed';
+                
+                row.innerHTML = `
+                    <td class="message-timestamp">${timestamp}</td>
+                    <td><span class="message-type ${typeClass}">${typeDisplay}</span></td>
+                    <td class="message-text">${escapeHtml(messageText)}</td>
+                    <td>${escapeHtml(playerName)}</td>
+                    <td class="message-status ${statusClass}">${statusText}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateMessageStats(stats) {
+            document.getElementById('totalMessages').textContent = stats.total || 0;
+            document.getElementById('successfulMessages').textContent = stats.successful || 0;
+            document.getElementById('failedMessages').textContent = stats.failed || 0;
+        }
+
+        function formatMessageTimestamp(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString();
+            } catch (e) {
+                return timestamp;
+            }
+        }
+
+        function clearMessageHistory() {
+            if (!confirm('Are you sure you want to clear all message history? This action cannot be undone.')) {
+                return;
+            }
+            
+            fetch('/messaging/history/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Message history cleared successfully', 'success');
+                    messageHistoryData = [];
+                    updateMessageHistoryTable();
+                    updateMessageStats({ total: 0, successful: 0, failed: 0 });
+                } else {
+                    showToast(data.message || 'Failed to clear message history', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing message history:', error);
+                showToast('Error clearing message history: ' + error, 'error');
+            });
+        }
+
+        // ============================================================================
+        // LOGS MANAGEMENT FUNCTIONS  
+        // ============================================================================
+
+        function refreshLogStats() {
+            console.log('DEBUG: refreshLogStats() called');
+            
+            fetch('/logging/stats')
+            .then(response => {
+                console.log('DEBUG: Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('DEBUG: Response data:', data);
+                
+                if (data.success && data.stats) {
+                    console.log('DEBUG: Stats received:', data.stats);
+                    updateLogStatsDisplay(data.stats);
+                } else {
+                    console.error('DEBUG: No stats in response or success=false');
+                    showToast(data.message || 'Failed to load log statistics', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading log stats:', error);
+                showToast('Error loading log statistics: ' + error, 'error');
+            });
+        }
+
+        function updateLogStatsDisplay(stats) {
+            // Current log size - show KiB for small files, MB for larger ones
+            let currentSizeText = '0 MB';
+            if (stats.current_log && stats.current_log.exists) {
+                const sizeBytes = stats.current_log.size;
+                if (sizeBytes < 1024 * 1024) {
+                    // Less than 1MB, show in KiB
+                    currentSizeText = `${(sizeBytes / 1024).toFixed(1)} KiB`;
+                } else {
+                    // 1MB or larger, show in MB
+                    currentSizeText = `${stats.current_log.size_mb.toFixed(2)} MB`;
+                }
+            }
+            
+            document.getElementById('currentLogSize').textContent = currentSizeText;
+            document.getElementById('totalLogFiles').textContent = stats.total_files || 0;
+            
+            // Total size - show KiB for small totals, MB for larger ones
+            let totalSizeText = '0 MB';
+            if (stats.total_size_mb) {
+                if (stats.total_size_mb < 1) {
+                    // Less than 1MB total, show in KiB
+                    const totalKiB = (stats.total_size_mb * 1024);
+                    totalSizeText = `${totalKiB.toFixed(1)} KiB`;
+                } else {
+                    // 1MB or larger total, show in MB
+                    totalSizeText = `${stats.total_size_mb.toFixed(2)} MB`;
+                }
+            }
+            
+            document.getElementById('totalLogSize').textContent = totalSizeText;
+            
+            console.log('DEBUG: Updated log stats display:', {
+                currentSize: currentSizeText,
+                totalFiles: stats.total_files,
+                totalSize: totalSizeText,
+                rawStats: stats
+            });
+        }
+
+        function loadLogSettings() {
+            fetch('/logging/settings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.settings) {
+                    document.getElementById('maxSizeInput').value = data.settings.max_size_mb;
+                    document.getElementById('backupCountInput').value = data.settings.backup_count;
+                    document.getElementById('maxAgeInput').value = data.settings.max_age_days;
+                    document.getElementById('maxLogSize').textContent = `${data.settings.max_size_mb} MB`;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading log settings:', error);
+            });
+        }
+
+        function saveLogSettings() {
+            const maxSizeMb = parseInt(document.getElementById('maxSizeInput').value);
+            const backupCount = parseInt(document.getElementById('backupCountInput').value);
+            const maxAgeDays = parseInt(document.getElementById('maxAgeInput').value);
+
+            if (maxSizeMb < 1 || maxSizeMb > 50) {
+                showToast('Max size must be between 1-50 MB', 'error');
+                return;
+            }
+
+            if (backupCount < 1 || backupCount > 10) {
+                showToast('Backup count must be between 1-10 files', 'error');
+                return;
+            }
+
+            if (maxAgeDays < 1 || maxAgeDays > 30) {
+                showToast('Max age must be between 1-30 days', 'error');
+                return;
+            }
+
+            fetch('/logging/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    max_size_mb: maxSizeMb,
+                    backup_count: backupCount,
+                    max_age_days: maxAgeDays
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Log settings saved successfully', 'success');
+                    document.getElementById('maxLogSize').textContent = `${maxSizeMb} MB`;
+                    refreshLogStats();
+                } else {
+                    showToast(data.message || 'Failed to save log settings', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving log settings:', error);
+                showToast('Error saving log settings: ' + error, 'error');
+            });
+        }
+
+        function loadRecentLogs() {
+            console.log('DEBUG: loadRecentLogs() called');
+            
+            const lines = document.getElementById('logLinesSelect').value;
+            console.log('DEBUG: Requesting', lines, 'lines');
+            
+            fetch(`/logging/recent?lines=${lines}`)
+            .then(response => {
+                console.log('DEBUG: Recent logs response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('DEBUG: Recent logs response data:', data);
+                
+                if (data.success && data.logs) {
+                    console.log('DEBUG: Received', data.logs.length, 'log lines');
+                    
+                    const logsContent = document.getElementById('recentLogsContent');
+                    if (data.logs.length > 0) {
+                        logsContent.textContent = data.logs.join('\n');
+                        // Scroll to bottom
+                        logsContent.scrollTop = logsContent.scrollHeight;
+                        console.log('DEBUG: Updated logs content');
+                    } else {
+                        logsContent.textContent = 'No log entries found.';
+                        console.log('DEBUG: No log entries found');
+                    }
+                } else {
+                    console.error('DEBUG: Failed to load recent logs:', data.message);
+                    showToast(data.message || 'Failed to load recent logs', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recent logs:', error);
+                showToast('Error loading recent logs: ' + error, 'error');
+            });
+        }
+
+        function cleanupOldLogs() {
+            if (!confirm('Are you sure you want to clean up old log files? This will delete logs older than the configured age.')) {
+                return;
+            }
+
+            fetch('/logging/cleanup', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    refreshLogStats();
+                } else {
+                    showToast(data.message || 'Failed to cleanup old logs', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error cleaning up logs:', error);
+                showToast('Error cleaning up logs: ' + error, 'error');
+            });
+        }
+
+        function clearAllLogs() {
+            if (!confirm('Are you sure you want to clear ALL log files? This action cannot be undone and will delete all logging history.')) {
+                return;
+            }
+
+            fetch('/logging/clear', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    refreshLogStats();
+                    // Clear the logs display
+                    document.getElementById('recentLogsContent').textContent = 'Logs cleared. Click "Refresh Logs" to load new entries.';
+                } else {
+                    showToast(data.message || 'Failed to clear logs', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing logs:', error);
+                showToast('Error clearing logs: ' + error, 'error');
+            });
+        }
+
+        function downloadCurrentLog() {
+            // Simple download by opening the log file
+            const link = document.createElement('a');
+            link.href = '/logging/recent?lines=10000'; // Get a lot of lines
+            link.download = 'empyrion_helper.log';
+            
+            // For a better download experience, we could add a dedicated download endpoint
+            showToast('Log download feature - use "Refresh Logs" and copy the content for now', 'info');
+        }
+
+        // ============================================================================
+        // EXISTING UTILITY FUNCTIONS  
+        // ============================================================================
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================================================
+        // EXISTING PLAYER FUNCTIONALITY (keeping all existing functions)
+        // ============================================================================
 
         // Socket event handlers
         socket.on('connection_status', function(data) {
@@ -667,6 +2101,20 @@
                 connectBtn.textContent = 'Disconnect';
                 connectBtn.className = 'btn-danger';
                 refreshBtn.disabled = false;
+                
+                // Enable messaging features
+                const messagingInputs = document.querySelectorAll('#globalMessageInput, .scheduled-message-text');
+                const messagingButtons = document.querySelectorAll('#sendGlobalBtn, .btn-test');
+                
+                messagingInputs.forEach(input => {
+                    input.disabled = false;
+                });
+                
+                messagingButtons.forEach(button => {
+                    button.disabled = false;
+                });
+                
+                loadMessageHistory();
             } else {
                 statusIndicator.classList.remove('connected');
                 statusText.classList.remove('connected');
@@ -676,6 +2124,18 @@
                 refreshBtn.disabled = true;
                 allPlayers = [];
                 updatePlayersTable();
+                
+                // Disable messaging features
+                const messagingInputs = document.querySelectorAll('#globalMessageInput, .scheduled-message-text');
+                const messagingButtons = document.querySelectorAll('#sendGlobalBtn, .btn-test');
+                
+                messagingInputs.forEach(input => {
+                    input.disabled = true;
+                });
+                
+                messagingButtons.forEach(button => {
+                    button.disabled = true;
+                });
             }
         }
 
@@ -720,6 +2180,11 @@
             } else {
                 // Not connected - load from database only
                 loadPlayersFromDatabase();
+            }
+            
+            // Also refresh message history when players are refreshed
+            if (document.getElementById('messagingPanel').style.display !== 'none') {
+                loadMessageHistory();
             }
         }
 
@@ -1055,18 +2520,39 @@
             }, 3000);
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // WebSocket integration for messaging
+        socket.on('message_history_update', function(data) {
+            if (data.history) {
+                messageHistoryData = data.history;
+                updateMessageHistoryTable();
+                console.log('Received message history update via WebSocket');
+            }
+        });
+
+        // Request message history updates when connected
+        socket.on('connection_status', function(data) {
+            if (data.connected) {
+                // Request message history update when connected
+                setTimeout(() => {
+                    socket.emit('request_message_history');
+                }, 1000);
+            }
+        });
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Empyrion Web Helper v0.3.0 - Player Database loaded');
+            console.log('Empyrion Web Helper v0.3.0 - Enhanced with messaging system');
             
-            // Always load database first (for offline capability)
+            // Initialize existing functionality
             loadPlayersFromDatabase();
+            
+            // Initialize messaging system
+            initializeMessaging();
+            
+            // Set up filter event listeners
+            for (const element of Object.values(filterElements)) {
+                element.addEventListener('input', applyFilters);
+            }
             
             // Auto-connect if enabled in config
             {% if config.autoconnect %}
