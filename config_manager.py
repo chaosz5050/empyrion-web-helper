@@ -1,7 +1,8 @@
+# FILE LOCATION: /config_manager.py (root directory)
 #!/usr/bin/env python3
 """
 Configuration Manager for Empyrion Web Helper
-Handles loading and managing configuration from empyrion_helper.conf
+Enhanced to use database for secure credential storage
 """
 
 import configparser
@@ -11,32 +12,34 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ConfigManager:
-    """Manages application configuration from empyrion_helper.conf"""
+    """Manages application configuration with database-based credential storage"""
     
-    def __init__(self, config_file: str = 'empyrion_helper.conf'):
+    def __init__(self, config_file: str = 'empyrion_helper.conf', player_db=None):
         self.config_file = config_file
         self.config = {}
+        self.player_db = player_db  # Reference to PlayerDatabase for credentials
         self._set_defaults()
     
+    def set_database(self, player_db):
+        """Set the database reference after initialization"""
+        self.player_db = player_db
+    
     def _set_defaults(self):
-        """Set default configuration values"""
+        """Set default configuration values (no sensitive data)"""
         self.config = {
-            # Server settings
+            # Server settings (no password here anymore)
             'host': '192.168.1.100',
             'telnet_port': 30004,
-            'telnet_password': 'your_rcon_password_here',
             
             # Monitoring settings
             'update_interval': 20,
             'log_file': 'empyrion_helper.log',
             
-            # FTP settings (for future use)
+            # FTP settings (no sensitive data here)
             'ftp_host': '192.168.1.100:21',
-            'ftp_user': 'your_ftp_username',
-            'ftp_password': 'your_ftp_password',
             'remote_log_path': '/path/to/your/scenario/Content/Configuration',
             
-            # Message settings (for future use)
+            # Message settings
             'welcome_message': 'Welcome to Space Cowboys, <playername>!',
             'goodbye_message': 'Player <playername> has left our galaxy',
             
@@ -45,10 +48,7 @@ class ConfigManager:
         }
     
     def load_config(self) -> bool:
-        """
-        Load configuration from file
-        Returns True if file was loaded, False if using defaults
-        """
+        """Load configuration from file (credentials come from database)"""
         if not os.path.exists(self.config_file):
             logger.warning(f"Config file {self.config_file} not found, using defaults")
             return False
@@ -57,13 +57,25 @@ class ConfigManager:
             parser = configparser.ConfigParser()
             parser.read(self.config_file)
             
-            # Load server settings
+            # Load server settings (no password)
             if parser.has_section('server'):
                 self.config.update({
                     'host': parser.get('server', 'host', fallback=self.config['host']),
-                    'telnet_port': parser.getint('server', 'telnet_port', fallback=self.config['telnet_port']),
-                    'telnet_password': parser.get('server', 'telnet_password', fallback=self.config['telnet_password'])
+                    'telnet_port': parser.getint('server', 'telnet_port', fallback=self.config['telnet_port'])
                 })
+                
+                # Handle legacy password in config (migrate to database)
+                legacy_password = parser.get('server', 'telnet_password', fallback=None)
+                if (legacy_password and 
+                    legacy_password != 'your_rcon_password_here' and 
+                    self.player_db):
+                    
+                    # Check if we already have credentials in database
+                    existing_creds = self.player_db.get_credential('rcon')
+                    if not existing_creds:
+                        logger.info("Migrating RCON password from config to database")
+                        self.player_db.store_credential('rcon', password=legacy_password)
+                        logger.info("✅ RCON password migrated to secure database storage")
             
             # Load monitoring settings
             if parser.has_section('monitoring'):
@@ -72,16 +84,33 @@ class ConfigManager:
                     'log_file': parser.get('monitoring', 'log_file', fallback=self.config['log_file'])
                 })
             
-            # Load FTP settings (for future phases)
+            # Load FTP settings (migrate credentials if present)
             if parser.has_section('ftp'):
                 self.config.update({
                     'ftp_host': parser.get('ftp', 'host', fallback=self.config['ftp_host']),
-                    'ftp_user': parser.get('ftp', 'user', fallback=self.config['ftp_user']),
-                    'ftp_password': parser.get('ftp', 'password', fallback=self.config['ftp_password']),
                     'remote_log_path': parser.get('ftp', 'remote_log_path', fallback=self.config['remote_log_path'])
                 })
+                
+                # Handle legacy FTP credentials
+                legacy_ftp_user = parser.get('ftp', 'user', fallback=None)
+                legacy_ftp_password = parser.get('ftp', 'password', fallback=None)
+                
+                if (legacy_ftp_password and 
+                    legacy_ftp_password != 'your_ftp_password' and 
+                    self.player_db):
+                    
+                    existing_ftp_creds = self.player_db.get_credential('ftp')
+                    if not existing_ftp_creds:
+                        logger.info("Migrating FTP credentials from config to database")
+                        self.player_db.store_credential(
+                            'ftp', 
+                            username=legacy_ftp_user or '',
+                            password=legacy_ftp_password,
+                            host=self.config['ftp_host']
+                        )
+                        logger.info("✅ FTP credentials migrated to secure database storage")
             
-            # Load message settings (for future phases)
+            # Load message settings
             if parser.has_section('messages'):
                 self.config.update({
                     'welcome_message': parser.get('messages', 'welcome_message', fallback=self.config['welcome_message']),
@@ -102,30 +131,90 @@ class ConfigManager:
             return False
     
     def get(self, key: str, default=None):
-        """Get a configuration value"""
+        """Get a configuration value with database credential lookup"""
+        # Handle credential requests
+        if key == 'telnet_password':
+            if self.player_db:
+                creds = self.player_db.get_rcon_credentials()
+                if creds:
+                    return creds['password']
+                else:
+                    logger.error("No RCON credentials available")
+                    return None
+            else:
+                logger.error("Database not available for credential lookup")
+                return None
+        
+        elif key == 'ftp_password':
+            if self.player_db:
+                creds = self.player_db.get_ftp_credentials()
+                if creds:
+                    return creds['password']
+                else:
+                    logger.warning("No FTP credentials available")
+                    return ''
+            else:
+                logger.error("Database not available for credential lookup")
+                return ''
+        
+        elif key == 'ftp_user':
+            if self.player_db:
+                creds = self.player_db.get_ftp_credentials()
+                if creds:
+                    return creds['username']
+                else:
+                    return ''
+            else:
+                return ''
+        
+        # Regular config values
         return self.config.get(key, default)
     
     def get_all(self) -> dict:
-        """Get all configuration values"""
-        return self.config.copy()
+        """Get all configuration values (credentials marked as stored securely)"""
+        config_copy = self.config.copy()
+        
+        # Add credential status indicators
+        if self.player_db:
+            stored_creds = self.player_db.list_stored_credentials()
+            
+            if 'rcon' in stored_creds:
+                config_copy['telnet_password'] = '[STORED SECURELY]'
+            else:
+                config_copy['telnet_password'] = '[NOT CONFIGURED]'
+            
+            if 'ftp' in stored_creds:
+                config_copy['ftp_password'] = '[STORED SECURELY]'
+                config_copy['ftp_user'] = '[STORED SECURELY]'
+            else:
+                config_copy['ftp_password'] = '[NOT CONFIGURED]'
+                config_copy['ftp_user'] = '[NOT CONFIGURED]'
+        else:
+            config_copy['telnet_password'] = '[DATABASE NOT AVAILABLE]'
+            config_copy['ftp_password'] = '[DATABASE NOT AVAILABLE]'
+            config_copy['ftp_user'] = '[DATABASE NOT AVAILABLE]'
+        
+        return config_copy
     
     def set(self, key: str, value):
-        """Set a configuration value (runtime only)"""
+        """Set a configuration value (runtime only, credentials go to database)"""
+        if key in ['telnet_password', 'ftp_password', 'ftp_user']:
+            logger.warning(f"Cannot set {key} via config - use database credential methods")
+            return False
+        
         self.config[key] = value
+        return True
     
     def save_config(self) -> bool:
-        """
-        Save current configuration to file
-        Returns True if successful, False otherwise
-        """
+        """Save current configuration to file (no sensitive data)"""
         try:
             parser = configparser.ConfigParser()
             
-            # Create sections and populate them
+            # Create sections and populate them (no sensitive data)
             parser.add_section('server')
             parser.set('server', 'host', str(self.config['host']))
             parser.set('server', 'telnet_port', str(self.config['telnet_port']))
-            parser.set('server', 'telnet_password', str(self.config['telnet_password']))
+            # NOTE: No password saved to config file anymore
             
             parser.add_section('monitoring')
             parser.set('monitoring', 'update_interval', str(self.config['update_interval']))
@@ -133,8 +222,7 @@ class ConfigManager:
             
             parser.add_section('ftp')
             parser.set('ftp', 'host', str(self.config['ftp_host']))
-            parser.set('ftp', 'user', str(self.config['ftp_user']))
-            parser.set('ftp', 'password', str(self.config['ftp_password']))
+            # NOTE: No FTP credentials saved to config file anymore
             parser.set('ftp', 'remote_log_path', str(self.config['remote_log_path']))
             
             parser.add_section('messages')
@@ -156,10 +244,7 @@ class ConfigManager:
             return False
     
     def validate_config(self) -> dict:
-        """
-        Validate current configuration
-        Returns dict with validation results
-        """
+        """Validate current configuration"""
         issues = []
         warnings = []
         
@@ -167,8 +252,17 @@ class ConfigManager:
         if not self.config['host'] or self.config['host'] == '192.168.1.100':
             warnings.append("Server host is set to default value")
         
-        if not self.config['telnet_password'] or self.config['telnet_password'] == 'your_rcon_password_here':
-            issues.append("RCON password is not configured")
+        # Check credential availability (but don't validate actual credentials)
+        if self.player_db:
+            stored_creds = self.player_db.list_stored_credentials()
+            
+            if 'rcon' not in stored_creds:
+                # Check environment variable as fallback
+                if not os.environ.get('EMPYRION_RCON_PASSWORD'):
+                    issues.append("RCON credentials are not configured (database or environment)")
+                    
+        else:
+            issues.append("Database not available for credential validation")
         
         if self.config['telnet_port'] < 1 or self.config['telnet_port'] > 65535:
             issues.append("Invalid telnet port number")
@@ -189,3 +283,43 @@ class ConfigManager:
             'port': self.config['telnet_port'],
             'update_interval': self.config['update_interval']
         }
+    
+    def setup_credentials_interactive(self):
+        """Interactive setup for all credentials"""
+        if not self.player_db:
+            logger.error("Database not available for credential setup")
+            return False
+        
+        print("\n🔐 Empyrion Web Helper - Credential Setup")
+        print("=" * 50)
+        
+        # Check current status
+        stored_creds = self.player_db.list_stored_credentials()
+        
+        # RCON Setup
+        if 'rcon' not in stored_creds and not os.environ.get('EMPYRION_RCON_PASSWORD'):
+            print("\n1️⃣ RCON Server Connection Required")
+            rcon_creds = self.player_db.get_rcon_credentials()  # This will prompt if needed
+            if not rcon_creds:
+                print("❌ RCON setup failed - application cannot connect to server")
+                return False
+        else:
+            print("\n✅ RCON credentials are configured")
+        
+        # FTP Setup (optional)
+        setup_ftp = input("\n2️⃣ Set up FTP credentials for future features? (y/N): ").lower().strip()
+        if setup_ftp == 'y':
+            if 'ftp' not in stored_creds:
+                ftp_creds = self.player_db.get_ftp_credentials()  # This will prompt if needed
+                if ftp_creds:
+                    print("✅ FTP credentials configured")
+                else:
+                    print("⚠️ FTP setup skipped")
+            else:
+                print("✅ FTP credentials already configured")
+        
+        print("\n🎉 Credential setup complete!")
+        print("💡 Credentials are stored encrypted in the database")
+        print("💡 You can also use environment variables: EMPYRION_RCON_PASSWORD, EMPYRION_FTP_PASSWORD")
+        
+        return True

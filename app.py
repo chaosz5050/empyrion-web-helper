@@ -44,12 +44,13 @@ def initialize_app():
     """Initialize the application"""
     global config_manager, player_db, messaging_manager
     
-    # Initialize configuration
-    config_manager = ConfigManager()
-    config_manager.load_config()
-    
-    # Initialize player database
+    # Initialize player database first (needed for credentials)
     player_db = PlayerDatabase()
+    
+    # Initialize configuration with database reference
+    config_manager = ConfigManager()
+    config_manager.set_database(player_db)  # Link config to database for credentials
+    config_manager.load_config()
     
     # Initialize messaging manager with explicit config file path
     config_file_path = 'empyrion_helper.conf'
@@ -64,13 +65,22 @@ def initialize_app():
     if cleanup_result['deleted_files'] > 0:
         logger.info(f"Startup cleanup: removed {cleanup_result['deleted_files']} old log files ({cleanup_result['deleted_bytes']} bytes)")
     
-    logger.info("Empyrion Web Helper v0.3.0 initialized with messaging support and log rotation")
+    logger.info("Empyrion Web Helper v0.3.0 initialized with secure credential storage")
     logger.info(f"Target server: {config_manager.get('host')}:{config_manager.get('telnet_port')}")
     logger.info(f"Messaging manager initialized with config file: {config_file_path}")
     
     # Log current log settings
     log_stats = logging_manager.get_log_stats()
     logger.info(f"Log rotation: {log_stats['total_files']} files, {log_stats['total_size_mb']:.1f}MB total")
+    
+    # Check credential status
+    stored_creds = player_db.list_stored_credentials()
+    if 'rcon' in stored_creds:
+        logger.info("✅ RCON credentials available in database")
+    elif os.environ.get('EMPYRION_RCON_PASSWORD'):
+        logger.info("✅ RCON password available via environment variable")
+    else:
+        logger.warning("⚠️ No RCON credentials found - will prompt when needed")
 
 @app.route('/')
 def index():
@@ -592,12 +602,76 @@ if __name__ == '__main__':
     # Initialize the application
     initialize_app()
     
+    # Get local IP for network access
+    import socket
+    
+    def get_local_ip():
+        """Get the local network IP address - reliable method"""
+        try:
+            # Method 1: Connect to external address to determine local interface
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))  # This doesn't actually send data
+                local_ip = s.getsockname()[0]
+            
+            # Validate it's not localhost
+            if local_ip.startswith('127.'):
+                raise Exception("Got localhost IP, trying alternative method")
+                
+            return local_ip
+            
+        except Exception as e:
+            logger.warning(f"Primary IP detection failed: {e}, trying alternative method")
+            
+            # Method 2: Look for common private network ranges
+            try:
+                import netifaces
+                for interface in netifaces.interfaces():
+                    addresses = netifaces.ifaddresses(interface)
+                    if netifaces.AF_INET in addresses:
+                        for addr_info in addresses[netifaces.AF_INET]:
+                            ip = addr_info['addr']
+                            # Look for private network IPs (not localhost)
+                            if (ip.startswith('192.168.') or 
+                                ip.startswith('10.') or 
+                                ip.startswith('172.')):
+                                return ip
+            except ImportError:
+                logger.warning("netifaces not available, using basic method")
+            except Exception as e2:
+                logger.warning(f"Alternative IP detection failed: {e2}")
+            
+            # Method 3: Manual parsing of network interfaces (Linux)
+            try:
+                import subprocess
+                result = subprocess.run(['ip', 'route', 'get', '8.8.8.8'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    # Parse output like: "8.8.8.8 via 192.168.178.1 dev wlan0 src 192.168.178.164"
+                    for line in result.stdout.split('\n'):
+                        if 'src' in line:
+                            parts = line.split()
+                            src_index = parts.index('src')
+                            if src_index + 1 < len(parts):
+                                ip = parts[src_index + 1]
+                                if not ip.startswith('127.'):
+                                    return ip
+            except Exception as e3:
+                logger.warning(f"Linux route detection failed: {e3}")
+            
+            # Fallback: Use all interfaces if detection fails
+            logger.warning("All IP detection methods failed, falling back to all interfaces (0.0.0.0)")
+            return '0.0.0.0'
+    
+    local_ip = get_local_ip()
+    
     logger.info("Starting Empyrion Web Helper v0.3.0 with messaging support")
+    logger.info(f"Server accessible at: http://{local_ip}:5001")
+    logger.info(f"From other devices on your network: http://{local_ip}:5001")
     
     # Debug: Log all registered routes
     logger.info("Registered routes:")
     for rule in app.url_map.iter_rules():
         logger.info(f"  {rule.rule} -> {rule.endpoint}")
     
-    # Start the Flask app
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001)
+    # Start the Flask app with local IP binding
+    socketio.run(app, debug=False, host=local_ip, port=5001)
