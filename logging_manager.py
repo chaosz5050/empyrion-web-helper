@@ -209,10 +209,16 @@ class LoggingManager:
                 
                 stats['total_size'] += size
                 stats['total_files'] += 1
+                
+                self.logger.info(f"DEBUG: Current log file {self.log_file} - size: {size} bytes ({size/(1024*1024):.3f} MB)")
+            else:
+                self.logger.warning(f"DEBUG: Current log file {self.log_file} does not exist")
             
             # Check backup log files
             log_pattern = f"{self.log_file}.*"
             backup_files = glob.glob(log_pattern)
+            
+            self.logger.info(f"DEBUG: Found backup files with pattern '{log_pattern}': {backup_files}")
             
             for backup_file in sorted(backup_files):
                 if os.path.exists(backup_file):
@@ -228,13 +234,19 @@ class LoggingManager:
                     
                     stats['total_size'] += size
                     stats['total_files'] += 1
+                    
+                    self.logger.info(f"DEBUG: Backup log {backup_file} - size: {size} bytes")
             
             stats['total_size_mb'] = stats['total_size'] / (1024 * 1024)
+            
+            self.logger.info(f"DEBUG: Final stats - total files: {stats['total_files']}, total size: {stats['total_size']} bytes ({stats['total_size_mb']:.3f} MB)")
             
             return stats
             
         except Exception as e:
             self.logger.error(f"Error getting log stats: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             return {}
     
     def clear_all_logs(self) -> bool:
@@ -272,16 +284,29 @@ class LoggingManager:
     def get_recent_logs(self, lines: int = 100) -> List[str]:
         """Get recent log entries from the current log file"""
         try:
+            self.logger.info(f"DEBUG: Getting recent logs from {self.log_file}, requesting {lines} lines")
+            
             if not os.path.exists(self.log_file):
+                self.logger.warning(f"DEBUG: Log file {self.log_file} does not exist")
                 return []
+            
+            file_size = os.path.getsize(self.log_file)
+            self.logger.info(f"DEBUG: Log file size: {file_size} bytes")
             
             with open(self.log_file, 'r', encoding='utf-8') as f:
                 # Read all lines and return the last N lines
                 all_lines = f.readlines()
-                return [line.strip() for line in all_lines[-lines:]]
+                self.logger.info(f"DEBUG: Read {len(all_lines)} total lines from log file")
+                
+                recent_lines = [line.strip() for line in all_lines[-lines:]]
+                self.logger.info(f"DEBUG: Returning {len(recent_lines)} recent lines")
+                
+                return recent_lines
                 
         except Exception as e:
             self.logger.error(f"Error reading recent logs: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def update_settings(self, max_size_mb: int = None, backup_count: int = None, max_age_days: int = None) -> bool:

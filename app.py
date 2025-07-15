@@ -6,7 +6,7 @@ A web-based admin tool for Empyrion Galactic Survival servers
 Enhanced with modular messaging system and professional log rotation
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import logging
 import os
@@ -34,6 +34,11 @@ connection_handler = None
 config_manager = None
 player_db = None
 messaging_manager = None
+
+# DEBUG: Log that logging manager was initialized
+logger.info(f"DEBUG: Logging manager initialized: {logging_manager}")
+logger.info(f"DEBUG: Log file path: {logging_manager.log_file}")
+logger.info(f"DEBUG: Log file exists: {os.path.exists(logging_manager.log_file)}")
 
 def initialize_app():
     """Initialize the application"""
@@ -80,6 +85,11 @@ def index():
                          players=db_players,
                          config=config_manager.get_all())
 
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files (like favicon)"""
+    return send_from_directory('.', filename)
+
 @app.route('/connect', methods=['POST'])
 def connect():
     """Connect to the Empyrion server"""
@@ -120,24 +130,45 @@ def connect():
 @app.route('/logging/stats')
 def get_log_stats():
     """Get logging statistics"""
+    logger.info("DEBUG: /logging/stats route called")
     try:
+        if not logging_manager:
+            logger.error("DEBUG: logging_manager is None!")
+            return jsonify({'success': False, 'message': 'Logging manager not initialized'})
+        
+        logger.info("DEBUG: Calling logging_manager.get_log_stats()")
         stats = logging_manager.get_log_stats()
+        logger.info(f"DEBUG: Got stats from logging_manager: {stats}")
+        
         return jsonify({'success': True, 'stats': stats})
         
     except Exception as e:
         logger.error(f"Error getting log stats: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/logging/recent')
 def get_recent_logs():
     """Get recent log entries"""
+    logger.info("DEBUG: /logging/recent route called")
     try:
+        if not logging_manager:
+            logger.error("DEBUG: logging_manager is None!")
+            return jsonify({'success': False, 'message': 'Logging manager not initialized'})
+        
         lines = request.args.get('lines', 100, type=int)
+        logger.info(f"DEBUG: Getting recent logs, lines={lines}")
+        
         recent_logs = logging_manager.get_recent_logs(lines)
+        logger.info(f"DEBUG: Got {len(recent_logs)} log lines")
+        
         return jsonify({'success': True, 'logs': recent_logs})
         
     except Exception as e:
         logger.error(f"Error getting recent logs: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/logging/clear', methods=['POST'])
