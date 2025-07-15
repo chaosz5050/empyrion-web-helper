@@ -1,5 +1,9 @@
-# Empyrion Web Helper v0.3.0 - Phase 1 Requirements
-# Dependencies for connection, player list, and database functionality
+# Empyrion Web Helper v0.3.0 - Enhanced with Security & Messaging
+# Dependencies for connection, player management, secure credentials, and messaging
+
+# ============================================================================
+# CORE WEB FRAMEWORK
+# ============================================================================
 
 # Web framework
 Flask==3.0.0
@@ -11,4 +15,91 @@ Flask-SocketIO==5.3.6
 python-engineio==4.7.1
 python-socketio==5.9.0
 
-# Note: sqlite3 is included with Python standard library
+# ============================================================================
+# SECURITY & ENCRYPTION
+# ============================================================================
+
+# Encryption for secure credential storage (REQUIRED for password security)
+# This enables AES-256 encryption of RCON/FTP passwords in the database
+cryptography==41.0.8
+
+# ============================================================================
+# BUILT-IN PYTHON MODULES (No installation required)
+# ============================================================================
+
+# The following are included with Python standard library:
+# - sqlite3          (Database operations)
+# - socket           (Network connections) 
+# - configparser     (Configuration file handling)
+# - logging          (Application logging)
+# - datetime         (Date/time operations)
+# - os               (Operating system interface)
+# - base64           (Encoding/decoding)
+# - getpass          (Secure password input)
+# - re               (Regular expressions)
+# - json             (JSON data handling)
+# - threading        (Multi-threading support)
+
+# ============================================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================================
+
+# 1. Create virtual environment (recommended):
+#    python3 -m venv venv
+#    source venv/bin/activate  # Linux/Mac
+#    # or
+#    venv\Scripts\activate     # Windows
+
+# 2. Install dependencies:
+#    pip install -r requirements.txt
+
+# 3. Verify cryptography installation:
+#    python3 -c "from cryptography.fernet import Fernet; print('✅ Cryptography OK')"
+
+# 4. If cryptography installation fails, try:
+#    # On Ubuntu/Debian:
+#    sudo apt-get install build-essential libssl-dev libffi-dev python3-dev
+#    pip install --upgrade pip setuptools wheel
+#    pip install cryptography
+#    
+#    # On CentOS/RHEL:
+#    sudo yum install gcc openssl-devel libffi-devel python3-devel
+#    pip install cryptography
+#    
+#    # On Arch Linux:
+#    sudo pacman -S base-devel openssl libffi
+#    pip install cryptography
+
+# ============================================================================
+# VERSION COMPATIBILITY
+# ============================================================================
+
+# Python Version Requirements:
+# - Minimum: Python 3.8
+# - Recommended: Python 3.9+
+# - Tested on: Python 3.8, 3.9, 3.10, 3.11, 3.12, 3.13
+
+# Operating System Compatibility:
+# - ✅ Linux (Primary target - CachyOS, Ubuntu, Debian, CentOS, Arch)
+# - ✅ macOS (Should work but not primarily tested)
+# - ✅ Windows (Should work but not primarily tested)
+
+# ============================================================================
+# SECURITY NOTES
+# ============================================================================
+
+# The cryptography package is REQUIRED for secure password storage.
+# Without it, the application will:
+# - Issue warnings about plaintext storage
+# - Store credentials without encryption (NOT RECOMMENDED)
+# - Still function but with reduced security
+
+# For maximum security, ensure cryptography is installed and working.
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+
+# If you encounter installation issues:
+
+# Issue: "Failed build

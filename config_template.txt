@@ -9,14 +9,14 @@ host = 192.168.1.100
 # RCON/Telnet port (default: 30004)
 telnet_port = 30004
 
-# RCON password (set in your server's adminconfig.yaml)
-telnet_password = your_rcon_password_here
+# NOTE: RCON password is now stored securely in the database
+# The app will prompt for credentials on first run or you can use environment variables:
+# export EMPYRION_RCON_PASSWORD="your_password"
 
 [monitoring]
 # How often to refresh player list (seconds)
 update_interval = 30
 
-# NEW: Logging Configuration
 [logging]
 # Log file name
 log_file = empyrion_helper.log
@@ -37,12 +37,6 @@ max_age_days = 7
 #   192.168.1.100:2121   (uses custom port 2121)
 host = 192.168.1.100:21
 
-# FTP username
-user = your_ftp_username
-
-# FTP password
-password = your_ftp_password
-
 # Path to your scenario's Configuration directory
 # This path varies depending on your server setup and scenario
 # Examples:
@@ -51,17 +45,12 @@ password = your_ftp_password
 #   C:\EmpyrionServer\Content\Scenarios\YourScenario\Content\Configuration
 remote_log_path = /path/to/your/scenario/Content/Configuration
 
-# Custom Player Status Messages
-[messages]
-# Message sent when players join the server
-# Use <playername> where you want the player's name to appear
-welcome_message = Welcome to Space Cowboys, <playername>!
+# NOTE: FTP credentials are now stored securely in the database
+# The app will prompt for credentials when needed or you can use environment variables:
+# export EMPYRION_FTP_USER="your_username"
+# export EMPYRION_FTP_PASSWORD="your_password"
+# export EMPYRION_FTP_HOST="192.168.1.100"
 
-# Message sent when players leave the server
-# Use <playername> where you want the player's name to appear
-goodbye_message = Player <playername> has left our galaxy
-
-# NEW: Messaging System Configuration
 [messaging]
 # Welcome message template (use <playername> as placeholder)
 welcome_message = Welcome to Space Cowboys, <playername>!
@@ -112,38 +101,112 @@ autoconnect = false
 # SETUP INSTRUCTIONS:
 # ============================================================================
 # 
+# 🔐 SECURITY NOTICE:
+# This version uses SECURE CREDENTIAL STORAGE in an encrypted database.
+# Passwords are NO LONGER stored in this config file for security reasons.
+#
 # 1. SERVER SETUP:
 #    - Enable RCON in your server's adminconfig.yaml
 #    - Set a strong RCON password
 #    - Note your server's IP address and RCON port
 #
-# 2. FTP SETUP (Optional):
+# 2. CREDENTIAL SETUP (Choose one method):
+#    
+#    METHOD A - Interactive Setup (Recommended):
+#    - Run the app: python3 app.py
+#    - When you click "Connect", you'll be prompted for credentials
+#    - Enter your RCON password when asked
+#    - Choose 'Y' to save securely to database
+#    - Credentials are encrypted and stored safely
+#    
+#    METHOD B - Environment Variables (For automation):
+#    - Set environment variables before running:
+#      export EMPYRION_RCON_PASSWORD="your_rcon_password"
+#      export EMPYRION_FTP_USER="your_ftp_username"       # Optional
+#      export EMPYRION_FTP_PASSWORD="your_ftp_password"   # Optional
+#    - App will use these automatically without prompting
+#    
+#    METHOD C - Manual Database Entry (Advanced):
+#    - Use the Python console to store credentials programmatically
+#
+# 3. FTP SETUP (Optional - for future features):
 #    - Ensure FTP access to your server
 #    - User needs read/write permissions to configuration files
-#    - Test FTP connection before using this tool
+#    - FTP credentials will be prompted when first needed
+#    - Or set environment variables as shown above
 #
-# 3. MESSAGING SETUP:
-#    - Edit welcome_message and goodbye_message templates
+# 4. MESSAGING SETUP:
+#    - Edit welcome_message and goodbye_message templates above
 #    - Use <playername> where you want the player's name to appear
 #    - Configure scheduled messages through the web interface
 #    - Messages are automatically sent when players join/leave
 #
-# 4. FIND YOUR CONFIGURATION PATH:
+# 5. FIND YOUR CONFIGURATION PATH:
 #    Common paths:
 #    - Default scenarios: .../Scenarios/Default Multiplayer/Content/Configuration
 #    - Reforged Eden: .../Scenarios/Reforged Eden/Content/Configuration
 #    - Custom scenarios: .../Scenarios/YourScenarioName/Content/Configuration
 #
-# 5. UPDATE FREQUENCY:
+# 6. UPDATE FREQUENCY:
 #    - Default is 30 seconds
 #    - For busy servers (50+ players), consider 45-60 seconds
 #    - For quiet servers (<20 players), you can try 20 seconds
 #    - Monitor your server performance when adjusting
 #
-# 6. SECURITY NOTES:
-#    - Keep this file secure (contains passwords)
-#    - Use strong passwords for RCON and FTP
-#    - Consider using dedicated FTP user with limited permissions
-#    - Add empyrion_helper.conf to your .gitignore if using version control
+# 7. SECURITY FEATURES:
+#    - ✅ Passwords encrypted in database (AES-256)
+#    - ✅ Secure file permissions (600 - owner only)
+#    - ✅ Environment variable support
+#    - ✅ Interactive credential prompting
+#    - ✅ Clean config files (no sensitive data)
+#    - ✅ Automatic credential migration from old configs
+#
+# 8. NETWORK ACCESS:
+#    - App auto-detects your local IP for network access
+#    - Access from same computer: http://localhost:5001
+#    - Access from phone/tablet: http://YOUR_LOCAL_IP:5001
+#    - Example: http://192.168.1.100:5001
+#
+# 9. CREDENTIAL MANAGEMENT:
+#    - View stored credentials: Check web interface status
+#    - Delete credentials: Use database management tools
+#    - Change passwords: Run interactive setup again
+#    - Backup: Include instance/players.db in your backups
+#
+# 10. TROUBLESHOOTING:
+#     - Missing cryptography: pip install cryptography
+#     - Permission errors: Check file permissions on instance/ directory
+#     - Connection issues: Verify RCON is enabled in adminconfig.yaml
+#     - Credential issues: Delete instance/players.db to reset (loses player data)
+#
+# 11. MIGRATION FROM OLD VERSIONS:
+#     - App automatically migrates passwords from old config files
+#     - Old passwords are moved to secure database storage
+#     - Config file is cleaned of sensitive data automatically
+#     - No manual migration needed
+#
+# ============================================================================
+# ENVIRONMENT VARIABLES REFERENCE:
+# ============================================================================
+#
+# EMPYRION_RCON_PASSWORD    - RCON server password (highest priority)
+# EMPYRION_FTP_USER         - FTP username for file access
+# EMPYRION_FTP_PASSWORD     - FTP password for file access  
+# EMPYRION_FTP_HOST         - FTP server address
+#
+# Set these in your shell profile (~/.bashrc, ~/.zshrc) for persistence:
+# echo 'export EMPYRION_RCON_PASSWORD="your_password"' >> ~/.bashrc
+#
+# ============================================================================
+# SECURITY BEST PRACTICES:
+# ============================================================================
+#
+# 1. Use strong, unique passwords for RCON and FTP
+# 2. Regularly backup your instance/players.db file (contains encrypted credentials)
+# 3. Keep instance/.db_key file secure (this encrypts your passwords)
+# 4. Don't share your config directory with others
+# 5. Use environment variables for automated deployments
+# 6. Monitor access logs for suspicious activity
+# 7. Keep the application updated for security patches
 #
 # ============================================================================
