@@ -1,7 +1,9 @@
+# FILE LOCATION: /app.py (root directory)
 #!/usr/bin/env python3
 """
 Empyrion Web Helper v0.3.0
 A web-based admin tool for Empyrion Galactic Survival servers
+Enhanced with modular messaging system and professional log rotation
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -13,17 +15,12 @@ import os
 from config_manager import ConfigManager
 from connection import EmpyrionConnection
 from database import PlayerDatabase
+from messaging import MessagingManager
+from logging_manager import LoggingManager  # NEW: Import logging manager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('empyrion_helper.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Initialize logging manager first (before other logging)
+logging_manager = LoggingManager()
+logger = logging_manager.setup_rotating_logger()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -36,10 +33,11 @@ is_connected = False
 connection_handler = None
 config_manager = None
 player_db = None
+messaging_manager = None
 
 def initialize_app():
     """Initialize the application"""
-    global config_manager, player_db
+    global config_manager, player_db, messaging_manager
     
     # Initialize configuration
     config_manager = ConfigManager()
@@ -48,12 +46,26 @@ def initialize_app():
     # Initialize player database
     player_db = PlayerDatabase()
     
+    # Initialize messaging manager with explicit config file path
+    config_file_path = 'empyrion_helper.conf'
+    messaging_manager = MessagingManager(config_file=config_file_path)
+    
     # Create instance directory if it doesn't exist
     if not os.path.exists('instance'):
         os.makedirs('instance')
     
-    logger.info("Empyrion Web Helper v0.3.0 initialized")
+    # Clean up old logs on startup
+    cleanup_result = logging_manager.cleanup_old_logs()
+    if cleanup_result['deleted_files'] > 0:
+        logger.info(f"Startup cleanup: removed {cleanup_result['deleted_files']} old log files ({cleanup_result['deleted_bytes']} bytes)")
+    
+    logger.info("Empyrion Web Helper v0.3.0 initialized with messaging support and log rotation")
     logger.info(f"Target server: {config_manager.get('host')}:{config_manager.get('telnet_port')}")
+    logger.info(f"Messaging manager initialized with config file: {config_file_path}")
+    
+    # Log current log settings
+    log_stats = logging_manager.get_log_stats()
+    logger.info(f"Log rotation: {log_stats['total_files']} files, {log_stats['total_size_mb']:.1f}MB total")
 
 @app.route('/')
 def index():
@@ -84,6 +96,12 @@ def connect():
         
         if connection_handler.connect():
             is_connected = True
+            
+            # NEW: Set connection handler for messaging
+            if messaging_manager:
+                messaging_manager.set_connection_handler(connection_handler)
+                messaging_manager.start_message_scheduler()
+            
             logger.info(f"Successfully connected to server")
             socketio.emit('connection_status', {'connected': True})
             return jsonify({'success': True, 'message': 'Connected to server'})
@@ -95,12 +113,107 @@ def connect():
         logger.error(f"Connection error: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
+# ============================================================================
+# NEW LOGGING ROUTES
+# ============================================================================
+
+@app.route('/logging/stats')
+def get_log_stats():
+    """Get logging statistics"""
+    try:
+        stats = logging_manager.get_log_stats()
+        return jsonify({'success': True, 'stats': stats})
+        
+    except Exception as e:
+        logger.error(f"Error getting log stats: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/logging/recent')
+def get_recent_logs():
+    """Get recent log entries"""
+    try:
+        lines = request.args.get('lines', 100, type=int)
+        recent_logs = logging_manager.get_recent_logs(lines)
+        return jsonify({'success': True, 'logs': recent_logs})
+        
+    except Exception as e:
+        logger.error(f"Error getting recent logs: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/logging/clear', methods=['POST'])
+def clear_logs():
+    """Clear all log files"""
+    try:
+        success = logging_manager.clear_all_logs()
+        
+        if success:
+            return jsonify({'success': True, 'message': 'All log files cleared successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'No log files to clear'})
+            
+    except Exception as e:
+        logger.error(f"Error clearing logs: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/logging/cleanup', methods=['POST'])
+def cleanup_old_logs():
+    """Clean up old log files"""
+    try:
+        result = logging_manager.cleanup_old_logs()
+        
+        if result['deleted_files'] > 0:
+            message = f"Cleaned up {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
+            return jsonify({'success': True, 'message': message, 'result': result})
+        else:
+            return jsonify({'success': True, 'message': 'No old log files to clean up', 'result': result})
+            
+    except Exception as e:
+        logger.error(f"Error cleaning up logs: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/logging/settings', methods=['GET', 'POST'])
+def log_settings():
+    """Get or update logging settings"""
+    try:
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'settings': {
+                    'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
+                    'backup_count': logging_manager.backup_count,
+                    'max_age_days': logging_manager.max_age_days,
+                    'log_file': logging_manager.log_file
+                }
+            })
+        
+        elif request.method == 'POST':
+            data = request.json
+            
+            max_size_mb = data.get('max_size_mb')
+            backup_count = data.get('backup_count')
+            max_age_days = data.get('max_age_days')
+            
+            success = logging_manager.update_settings(max_size_mb, backup_count, max_age_days)
+            
+            if success:
+                return jsonify({'success': True, 'message': 'Logging settings updated successfully'})
+            else:
+                return jsonify({'success': False, 'message': 'Failed to update logging settings'})
+                
+    except Exception as e:
+        logger.error(f"Error handling log settings: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
 @app.route('/disconnect', methods=['POST'])
 def disconnect():
     """Disconnect from the server"""
     global is_connected, connection_handler
     
     try:
+        # NEW: Stop message scheduler
+        if messaging_manager:
+            messaging_manager.stop_message_scheduler()
+        
         if connection_handler:
             connection_handler.disconnect()
         is_connected = False
@@ -129,10 +242,44 @@ def get_players():
         logger.info(f"Got {len(players)} players from connection")
         
         if player_db and players:
+            # Store previous state for status change detection
+            previous_players = {p['steam_id']: p for p in player_db.get_all_players()}
+            
             updated_count = player_db.update_multiple_players(players)
             logger.info(f"DATABASE UPDATE COMPLETE: Updated {updated_count} players")
-        else:
-            logger.info("No database or no players - skipping database update")
+            
+            # NEW: Check for status changes and send welcome/goodbye messages
+            if messaging_manager:
+                current_players_dict = {p['steam_id']: p for p in players}
+                
+                for player in players:
+                    steam_id = player['steam_id']
+                    player_name = player['name']
+                    current_status = player['status']
+                    
+                    if steam_id in previous_players:
+                        previous_status = previous_players[steam_id]['status']
+                        
+                        # Player went from offline to online
+                        if previous_status == 'Offline' and current_status == 'Online':
+                            messaging_manager.send_welcome_message(player_name)
+                            logger.info(f"Sent welcome message for {player_name}")
+                        
+                        # Player went from online to offline
+                        elif previous_status == 'Online' and current_status == 'Offline':
+                            messaging_manager.send_goodbye_message(player_name)
+                            logger.info(f"Sent goodbye message for {player_name}")
+                    else:
+                        # New player joining
+                        if current_status == 'Online':
+                            messaging_manager.send_welcome_message(player_name)
+                            logger.info(f"Sent welcome message for new player {player_name}")
+                
+                # Check for players who disconnected (in previous but not in current)
+                for steam_id, prev_player in previous_players.items():
+                    if steam_id not in current_players_dict and prev_player['status'] == 'Online':
+                        messaging_manager.send_goodbye_message(prev_player['name'])
+                        logger.info(f"Sent goodbye message for disconnected player {prev_player['name']}")
         
         logger.info("=== ENDING /players route ===")
         return jsonify({'success': True, 'players': players})
@@ -158,12 +305,6 @@ def get_all_players():
         player_stats = player_db.get_player_count()
         
         logger.info(f"=== /players/all returning {len(players)} players ===")
-        
-        # Log specific player data to debug IP issue
-        for player in players:
-            if player['name'] == 'ChaoszMind':
-                logger.info(f"DEBUG ChaoszMind: status={player['status']}, ip={player['ip_address']}, last_seen={player['last_seen']}")
-                break
         
         return jsonify({
             'success': True, 
@@ -217,6 +358,184 @@ def player_action():
         logger.error(f"Player action error: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
+# ============================================================================
+# NEW MESSAGING ROUTES
+# ============================================================================
+
+@app.route('/messaging/send', methods=['POST'])
+def send_global_message():
+    """Send a global message to all players"""
+    if not is_connected or not messaging_manager:
+        return jsonify({'success': False, 'message': 'Not connected to server or messaging not available'})
+    
+    try:
+        data = request.json
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'success': False, 'message': 'Message cannot be empty'})
+        
+        success = messaging_manager.send_global_message(message, message_type='manual')
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Global message sent successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send global message'})
+            
+    except Exception as e:
+        logger.error(f"Error sending global message: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/messaging/custom', methods=['GET', 'POST'])
+def custom_messages():
+    """Get or save custom welcome/goodbye messages"""
+    logger.info(f"Custom messages route called with method: {request.method}")
+    
+    if not messaging_manager:
+        logger.error("Messaging manager not available!")
+        return jsonify({'success': False, 'message': 'Messaging not available'})
+    
+    try:
+        if request.method == 'GET':
+            logger.info("Loading custom messages...")
+            messages = messaging_manager.load_custom_messages()
+            logger.info(f"Custom messages loaded: {messages}")
+            return jsonify({'success': True, 'messages': messages})
+        
+        elif request.method == 'POST':
+            data = request.json
+            logger.info(f"Saving custom messages with data: {data}")
+            
+            welcome_msg = data.get('welcome_message', '').strip()
+            goodbye_msg = data.get('goodbye_message', '').strip()
+            
+            logger.info(f"Extracted messages - Welcome: '{welcome_msg}', Goodbye: '{goodbye_msg}'")
+            
+            success = messaging_manager.save_custom_messages(welcome_msg, goodbye_msg)
+            
+            if success:
+                logger.info("Custom messages saved successfully via route")
+                return jsonify({'success': True, 'message': 'Custom messages saved successfully'})
+            else:
+                logger.error("Failed to save custom messages via route")
+                return jsonify({'success': False, 'message': 'Failed to save custom messages'})
+                
+    except Exception as e:
+        logger.error(f"Error handling custom messages: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/messaging/test', methods=['POST'])
+def test_message():
+    """Send a test welcome or goodbye message"""
+    if not is_connected or not messaging_manager:
+        return jsonify({'success': False, 'message': 'Not connected to server or messaging not available'})
+    
+    try:
+        data = request.json
+        message_type = data.get('type', '')
+        test_player = data.get('player_name', 'TestPlayer')
+        
+        if message_type == 'welcome':
+            success = messaging_manager.test_welcome_message(test_player)
+            msg = f"Test welcome message sent for {test_player}"
+        elif message_type == 'goodbye':
+            success = messaging_manager.test_goodbye_message(test_player)
+            msg = f"Test goodbye message sent for {test_player}"
+        else:
+            return jsonify({'success': False, 'message': 'Invalid test message type'})
+        
+        if success:
+            return jsonify({'success': True, 'message': msg})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send test message'})
+            
+    except Exception as e:
+        logger.error(f"Error sending test message: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/messaging/scheduled', methods=['GET', 'POST'])
+def scheduled_messages():
+    """Get or save scheduled messages"""
+    logger.info(f"Scheduled messages route called with method: {request.method}")
+    
+    if not messaging_manager:
+        logger.error("Messaging manager not available!")
+        return jsonify({'success': False, 'message': 'Messaging not available'})
+    
+    try:
+        if request.method == 'GET':
+            logger.info("Loading scheduled messages...")
+            messages = messaging_manager.load_scheduled_messages()
+            logger.info(f"Loaded {len(messages)} scheduled messages")
+            return jsonify({'success': True, 'messages': messages})
+        
+        elif request.method == 'POST':
+            data = request.json
+            logger.info(f"Saving scheduled messages with data: {data}")
+            
+            messages_data = data.get('messages', [])
+            logger.info(f"Extracted {len(messages_data)} messages to save")
+            
+            success = messaging_manager.save_scheduled_messages(messages_data)
+            
+            if success:
+                logger.info("Scheduled messages saved successfully via route")
+                return jsonify({'success': True, 'message': 'Scheduled messages saved successfully'})
+            else:
+                logger.error("Failed to save scheduled messages via route")
+                return jsonify({'success': False, 'message': 'Failed to save scheduled messages'})
+                
+    except Exception as e:
+        logger.error(f"Error handling scheduled messages: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/messaging/history')
+def message_history():
+    """Get message history"""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging not available'})
+    
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        history = messaging_manager.get_message_history(limit)
+        stats = messaging_manager.get_message_stats()
+        
+        return jsonify({
+            'success': True, 
+            'history': history,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting message history: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/messaging/history/clear', methods=['POST'])
+def clear_message_history():
+    """Clear message history"""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging not available'})
+    
+    try:
+        success = messaging_manager.clear_message_history()
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Message history cleared successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to clear message history'})
+            
+    except Exception as e:
+        logger.error(f"Error clearing message history: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+# ============================================================================
+# WEBSOCKET HANDLERS
+# ============================================================================
+
 @socketio.on('connect')
 def handle_connect():
     """Handle WebSocket client connection"""
@@ -228,11 +547,21 @@ def handle_disconnect():
     """Handle WebSocket client disconnection"""
     logger.info('Web client disconnected')
 
+@socketio.on('request_message_history')
+def handle_message_history_request():
+    """Handle request for message history updates"""
+    if messaging_manager:
+        try:
+            history = messaging_manager.get_message_history(20)  # Last 20 messages
+            emit('message_history_update', {'history': history})
+        except Exception as e:
+            logger.error(f"Error sending message history update: {e}")
+
 if __name__ == '__main__':
     # Initialize the application
     initialize_app()
     
-    logger.info("Starting Empyrion Web Helper v0.3.0")
+    logger.info("Starting Empyrion Web Helper v0.3.0 with messaging support")
     
     # Debug: Log all registered routes
     logger.info("Registered routes:")
