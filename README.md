@@ -11,8 +11,6 @@
 
 Empyrion Web Helper is a comprehensive server management solution that provides real-time player monitoring, automated messaging, and professional logging through an intuitive web interface. Built with modularity and scalability in mind, it's the perfect tool for hobby server administrators who want professional-grade functionality.
 
-![Empyrion Web Helper Interface](https://via.placeholder.com/800x400/1a1a1a/ffffff?text=Empyrion+Web+Helper+Interface)
-
 ## ✨ Features
 
 ### 🎮 **Player Management**
@@ -22,6 +20,14 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **IP Address Preservation** - Maintains player IP history even when offline
 - **Advanced Filtering** - Search and filter players by name, status, faction, IP, and more
 - **Player Actions** - Kick, ban, and unban players directly from the web interface
+
+### 🌌 **Entity Management**
+- **Galaxy-wide Entity Tracking** - Browse all objects in your galaxy (asteroids, ships, bases, wrecks)
+- **Smart Categorization** - Automatically categorizes entities for easy filtering
+- **Advanced Search & Filtering** - Find specific entities by ID, type, faction, name, or playfield
+- **Entity ID Display** - Prominently shows entity IDs needed for admin destroy/teleport commands
+- **Raw Data Export** - Export complete gents output for detailed analysis in Excel
+- **Color-coded Interface** - Visual distinction between asteroids, structures, ships, and wrecks
 
 ### 📢 **Messaging System**
 - **Custom Welcome/Goodbye Messages** - Personalized messages with `<playername>` placeholders
@@ -55,7 +61,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 ## 🛠️ Installation
 
 ### Prerequisites
-- **Linux Server** (Ubuntu 20.04+ recommended)
+- **Linux** (tested on CachyOS, but should work on any Linux distro)
 - **Python 3.8 or higher**
 - **Empyrion Galactic Survival Dedicated Server** with RCON enabled
 
@@ -131,6 +137,14 @@ The application supports extensive customization through the config file:
 3. **Filter and search** using the built-in filter system
 4. **Take actions** on players (kick, ban, unban) with right-click context menu
 5. **Monitor in real-time** with automatic status updates
+
+### Entity Management
+1. **Connect to your server** and navigate to the Entities tab
+2. **Click "Refresh Entities"** to load all galaxy objects (may take 10-30 seconds)
+3. **Browse and filter** through asteroids, ships, bases, and wrecks
+4. **Find specific entities** using the advanced search filters
+5. **Export raw data** for detailed analysis in spreadsheet applications
+6. **Copy Entity IDs** for use in admin destroy or teleport commands
 
 ### Messaging System
 1. **Configure custom messages** in the Messaging tab
