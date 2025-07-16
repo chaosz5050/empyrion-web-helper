@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import logging
 import os
+import re
 
 # Import our modules
 from config_manager import ConfigManager
@@ -131,118 +132,6 @@ def connect():
             
     except Exception as e:
         logger.error(f"Connection error: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-# ============================================================================
-# NEW LOGGING ROUTES
-# ============================================================================
-
-@app.route('/logging/stats')
-def get_log_stats():
-    """Get logging statistics"""
-    logger.info("DEBUG: /logging/stats route called")
-    try:
-        if not logging_manager:
-            logger.error("DEBUG: logging_manager is None!")
-            return jsonify({'success': False, 'message': 'Logging manager not initialized'})
-        
-        logger.info("DEBUG: Calling logging_manager.get_log_stats()")
-        stats = logging_manager.get_log_stats()
-        logger.info(f"DEBUG: Got stats from logging_manager: {stats}")
-        
-        return jsonify({'success': True, 'stats': stats})
-        
-    except Exception as e:
-        logger.error(f"Error getting log stats: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/logging/recent')
-def get_recent_logs():
-    """Get recent log entries"""
-    logger.info("DEBUG: /logging/recent route called")
-    try:
-        if not logging_manager:
-            logger.error("DEBUG: logging_manager is None!")
-            return jsonify({'success': False, 'message': 'Logging manager not initialized'})
-        
-        lines = request.args.get('lines', 100, type=int)
-        logger.info(f"DEBUG: Getting recent logs, lines={lines}")
-        
-        recent_logs = logging_manager.get_recent_logs(lines)
-        logger.info(f"DEBUG: Got {len(recent_logs)} log lines")
-        
-        return jsonify({'success': True, 'logs': recent_logs})
-        
-    except Exception as e:
-        logger.error(f"Error getting recent logs: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/logging/clear', methods=['POST'])
-def clear_logs():
-    """Clear all log files"""
-    try:
-        success = logging_manager.clear_all_logs()
-        
-        if success:
-            return jsonify({'success': True, 'message': 'All log files cleared successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'No log files to clear'})
-            
-    except Exception as e:
-        logger.error(f"Error clearing logs: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/logging/cleanup', methods=['POST'])
-def cleanup_old_logs():
-    """Clean up old log files"""
-    try:
-        result = logging_manager.cleanup_old_logs()
-        
-        if result['deleted_files'] > 0:
-            message = f"Cleaned up {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
-            return jsonify({'success': True, 'message': message, 'result': result})
-        else:
-            return jsonify({'success': True, 'message': 'No old log files to clean up', 'result': result})
-            
-    except Exception as e:
-        logger.error(f"Error cleaning up logs: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/logging/settings', methods=['GET', 'POST'])
-def log_settings():
-    """Get or update logging settings"""
-    try:
-        if request.method == 'GET':
-            return jsonify({
-                'success': True,
-                'settings': {
-                    'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
-                    'backup_count': logging_manager.backup_count,
-                    'max_age_days': logging_manager.max_age_days,
-                    'log_file': logging_manager.log_file
-                }
-            })
-        
-        elif request.method == 'POST':
-            data = request.json
-            
-            max_size_mb = data.get('max_size_mb')
-            backup_count = data.get('backup_count')
-            max_age_days = data.get('max_age_days')
-            
-            success = logging_manager.update_settings(max_size_mb, backup_count, max_age_days)
-            
-            if success:
-                return jsonify({'success': True, 'message': 'Logging settings updated successfully'})
-            else:
-                return jsonify({'success': False, 'message': 'Failed to update logging settings'})
-                
-    except Exception as e:
-        logger.error(f"Error handling log settings: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/disconnect', methods=['POST'])
@@ -398,6 +287,140 @@ def player_action():
     except Exception as e:
         logger.error(f"Player action error: {e}")
         return jsonify({'success': False, 'message': str(e)})
+
+# ============================================================================
+# ENTITIES ROUTES - ADDED HERE
+# ============================================================================
+
+@app.route('/entities')
+def get_entities():
+    """Get entities list using gents command"""
+    if not is_connected or not connection_handler:
+        return jsonify({'success': False, 'message': 'Not connected to server'})
+    
+    try:
+        logger.info("=== STARTING /entities route ===")
+        
+        # Send gents command - this can take several seconds
+        logger.info("Sending 'gents' command to server...")
+        raw_data = connection_handler.send_command("gents", timeout=30.0)
+        
+        if not raw_data:
+            logger.error("No response from 'gents' command")
+            return jsonify({'success': False, 'message': 'No response from gents command'})
+        
+        logger.info(f"Received gents data: {len(raw_data)} characters")
+        
+        # Parse the gents output
+        entities = parse_gents_data(raw_data)
+        
+        logger.info(f"Parsed {len(entities)} entities from gents output")
+        logger.info("=== ENDING /entities route ===")
+        
+        return jsonify({
+            'success': True, 
+            'entities': entities,
+            'raw_data': raw_data,
+            'total_count': len(entities)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting entities: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+def parse_gents_data(raw_data):
+    """Parse the output from gents command"""
+    entities = []
+    lines = raw_data.split('\n')
+    current_playfield = ''
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check if this is a playfield header (doesn't start with number.)
+        # Playfield headers don't have the pattern "01. 123456 ..."
+        if not re.match(r'^\s*\d+\.\s*\d+', line):
+            # This is likely a playfield name
+            current_playfield = line
+            logger.debug(f"Found playfield: {current_playfield}")
+            continue
+        
+        # Parse entity line
+        entity = parse_entity_line(line, current_playfield)
+        if entity:
+            entities.append(entity)
+        else:
+            logger.debug(f"Skipped unparseable line: {line}")
+    
+    logger.info(f"Parsed {len(entities)} entities from {len(lines)} total lines")
+    return entities
+
+def parse_entity_line(line, playfield):
+    """Parse a single entity line from gents output"""
+    try:
+        # Remove leading number and dot: "01. 042419 AstVoxel [NoF] False False 'Silicon Asteroid' (-)"
+        clean_line = re.sub(r'^\s*\d+\.\s*', '', line)
+        
+        # Parse: "042419 AstVoxel [NoF] False False 'Silicon Asteroid' (-)"
+        # More flexible pattern to handle various formats
+        pattern = r'^(\d+)\s+(\w+)\s+\[([^\]]+)\]\s+\w+\s+\w+\s+\'([^\']+)\'\s*\([^)]*\)'
+        match = re.match(pattern, clean_line)
+        
+        if not match:
+            # Try alternative pattern without the trailing ()
+            pattern_alt = r'^(\d+)\s+(\w+)\s+\[([^\]]+)\]\s+\w+\s+\w+\s+\'([^\']+)\''
+            match = re.match(pattern_alt, clean_line)
+        
+        if not match:
+            logger.debug(f"Failed to parse entity line: {line}")
+            logger.debug(f"Clean line was: {clean_line}")
+            return None
+        
+        entity_id, entity_type, faction, name = match.groups()
+        
+        # Clean up the extracted data
+        entity_id = entity_id.strip()
+        entity_type = entity_type.strip()
+        faction = faction.strip()
+        name = name.strip()
+        
+        # Categorize the entity
+        category = categorize_entity(entity_type, faction, name)
+        
+        return {
+            'entity_id': entity_id,
+            'type': entity_type,
+            'faction': faction,
+            'name': name,
+            'playfield': playfield,
+            'category': category
+        }
+        
+    except Exception as e:
+        logger.debug(f"Error parsing entity line '{line}': {e}")
+        return None
+
+def categorize_entity(entity_type, faction, name):
+    """Categorize entity for easier filtering"""
+    if entity_type == 'AstVoxel':
+        return 'asteroid'
+    
+    if (faction == 'Wreck' or 
+        'wreck' in name.lower() or 
+        'debris' in name.lower() or 
+        'abandoned' in name.lower() or
+        'destroyed' in name.lower()):
+        return 'wreck'
+    
+    if entity_type == 'BA':
+        return 'structure'
+    
+    if entity_type in ['CV', 'SV']:
+        return 'ship'
+    
+    return 'other'
 
 # ============================================================================
 # NEW MESSAGING ROUTES
@@ -664,7 +687,7 @@ if __name__ == '__main__':
     
     local_ip = get_local_ip()
     
-    logger.info("Starting Empyrion Web Helper v0.3.0 with messaging support")
+    logger.info("Starting Empyrion Web Helper v0.3.0 with messaging and entities support")
     logger.info(f"Server accessible at: http://{local_ip}:5001")
     logger.info(f"From other devices on your network: http://{local_ip}:5001")
     

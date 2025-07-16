@@ -11,6 +11,8 @@
 
 Empyrion Web Helper is a comprehensive server management solution that provides real-time player monitoring, automated messaging, and professional logging through an intuitive web interface. Built with modularity and scalability in mind, it's the perfect tool for hobby server administrators who want professional-grade functionality.
 
+![Empyrion Web Helper Interface](https://via.placeholder.com/800x400/1a1a1a/ffffff?text=Empyrion+Web+Helper+Interface)
+
 ## ✨ Features
 
 ### 🎮 **Player Management**
@@ -53,7 +55,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 ## 🛠️ Installation
 
 ### Prerequisites
-- **Linux** (tested on CachyOS, but should work on any Linux distro)
+- **Linux Server** (Ubuntu 20.04+ recommended)
 - **Python 3.8 or higher**
 - **Empyrion Galactic Survival Dedicated Server** with RCON enabled
 
