@@ -1,0 +1,70 @@
+// FILE LOCATION: /static/js/main.js
+/**
+ * Main application initialization for Empyrion Web Helper
+ * Copyright (c) 2025 Chaosz Software
+ */
+
+// Application initialization
+document.addEventListener('DOMContentLoaded', function() {
+    debugLog('Empyrion Web Helper v0.3.0 - Enhanced with messaging system');
+    
+    // Initialize all managers
+    initializeApplication();
+    
+    // Auto-connect if enabled in config
+    if (window.CONFIG.autoconnect) {
+        debugLog('Auto-connect enabled, connecting...');
+        setTimeout(() => {
+            window.ConnectionManager.connect();
+        }, 1000);
+    }
+});
+
+function initializeApplication() {
+    // Initialize connection manager
+    if (window.ConnectionManager) {
+        window.ConnectionManager.init();
+    }
+    
+    // Initialize players manager
+    if (window.PlayersManager) {
+        window.PlayersManager.init();
+        window.PlayersManager.loadPlayersFromDatabase();
+    }
+    
+    // Initialize entities manager
+    if (window.EntitiesManager) {
+        window.EntitiesManager.init();
+    }
+    
+    // Initialize messaging manager
+    if (window.MessagingManager) {
+        window.MessagingManager.init();
+    }
+    
+    // Initialize logs manager
+    if (window.LogsManager) {
+        window.LogsManager.init();
+    }
+    
+    debugLog('All managers initialized');
+}
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (window.ConnectionManager) {
+        window.ConnectionManager.stopAutoRefresh();
+    }
+});
+
+// Global error handler
+window.addEventListener('error', function(event) {
+    console.error('Global error:', event.error);
+    showToast('An unexpected error occurred', 'error');
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('Unhandled promise rejection:', event.reason);
+    showToast('A network error occurred', 'error');
+});
