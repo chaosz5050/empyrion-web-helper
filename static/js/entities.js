@@ -1,6 +1,7 @@
 // FILE LOCATION: /static/js/entities.js
 /**
  * Entity management functionality for Empyrion Web Helper
+ * Enhanced with database persistence and last refresh tracking
  * Copyright (c) 2025 Chaosz Software
  */
 
@@ -8,6 +9,7 @@
 window.EntitiesManager = {
     allEntities: [],
     rawGentsData: '',
+    lastRefresh: null,
     filterElements: {},
 
     init() {
@@ -28,38 +30,72 @@ window.EntitiesManager = {
         }
 
         debugLog('Entities manager initialized');
+        
+        // Load entities from database on startup
+        this.loadEntitiesFromDatabase();
     },
 
-    async refreshEntities() {
+    async loadEntitiesFromDatabase() {
+        debugLog('loadEntitiesFromDatabase() called');
+        
+        try {
+            const data = await apiCall('/entities');
+            debugLog('Database load response:', data);
+            
+            if (data.success) {
+                this.allEntities = data.entities || [];
+                this.lastRefresh = data.last_refresh;
+                this.updateEntitiesTable();
+                this.updateEntityStats(data.stats);
+                this.updateLastRefreshDisplay();
+                
+                if (this.allEntities.length > 0) {
+                    showToast(`Loaded ${this.allEntities.length} entities from database`, 'info');
+                } else {
+                    debugLog('No entities in database - user needs to refresh from server');
+                }
+            } else {
+                debugLog('Database load failed:', data.message);
+            }
+        } catch (error) {
+            debugLog('Database load error:', error);
+        }
+    },
+
+    async refreshEntitiesFromServer() {
         if (!isConnected) {
             showToast('Not connected to server', 'error');
             return;
         }
 
-        debugLog('refreshEntities() called');
+        debugLog('refreshEntitiesFromServer() called');
         this.showEntitiesLoading(true);
         
         const refreshBtn = document.getElementById('refreshEntitiesBtn');
         const originalText = refreshBtn.textContent;
         refreshBtn.disabled = true;
-        refreshBtn.textContent = '🔄 Loading...';
+        refreshBtn.textContent = '🔄 Refreshing from server...';
 
         try {
-            const data = await apiCall('/entities');
-            debugLog('Entities response:', data);
+            const data = await apiCall('/entities/refresh', { method: 'POST' });
+            debugLog('Server refresh response:', data);
 
             if (data.success) {
                 this.rawGentsData = data.raw_data || '';
                 this.allEntities = data.entities || [];
+                this.lastRefresh = data.last_refresh;
                 this.updateEntitiesTable();
-                this.updateEntityStats();
-                showToast(`Loaded ${this.allEntities.length} entities`, 'success');
+                this.updateEntityStats(data.stats);
+                this.updateLastRefreshDisplay();
+                
+                const updatedCount = data.updated_count || this.allEntities.length;
+                showToast(`Refreshed ${updatedCount} entities from server`, 'success');
             } else {
-                showToast(data.message || 'Failed to load entities', 'error');
+                showToast(data.message || 'Failed to refresh entities from server', 'error');
             }
         } catch (error) {
-            console.error('Error refreshing entities:', error);
-            showToast('Error loading entities: ' + error, 'error');
+            console.error('Error refreshing entities from server:', error);
+            showToast('Error refreshing entities: ' + error, 'error');
         } finally {
             this.showEntitiesLoading(false);
             refreshBtn.disabled = false;
@@ -67,118 +103,32 @@ window.EntitiesManager = {
         }
     },
 
-    parseGentsOutput(gentsData) {
-        const entities = [];
-        const lines = gentsData.split('\n');
-        let currentPlayfield = '';
-
-        for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-
-            // Check if this is a playfield header
-            if (!line.match(/^\s*\d+\./)) {
-                currentPlayfield = line;
-                continue;
-            }
-
-            // Parse entity line
-            const entity = this.parseEntityLine(line, currentPlayfield);
-            if (entity) {
-                entities.push(entity);
+    async applyFilters() {
+        debugLog('applyFilters() called');
+        
+        // Build filter parameters
+        const params = new URLSearchParams();
+        for (const [key, element] of Object.entries(this.filterElements)) {
+            if (element && element.value.trim()) {
+                params.append(key, element.value.trim());
             }
         }
-
-        return entities;
-    },
-
-    parseEntityLine(line, playfield) {
+        
         try {
-            // Remove leading number and dot
-            const cleanLine = line.replace(/^\s*\d+\.\s*/, '');
+            const data = await apiCall('/entities?' + params.toString());
             
-            // Parse: "050043 AstVoxel [NoF] False False 'Copper Asteroid' (-)"
-            const match = cleanLine.match(/^(\d+)\s+(\w+)\s+\[([^\]]+)\]\s+\w+\s+\w+\s+'([^']+)'/);
-            
-            if (!match) {
-                debugLog('Failed to parse entity line:', line);
-                return null;
+            if (data.success) {
+                this.allEntities = data.entities || [];
+                this.updateEntitiesTable();
+                this.updateEntityStats(data.stats);
+                debugLog(`Applied filters, showing ${this.allEntities.length} entities`);
+            } else {
+                showToast(data.message || 'Failed to apply filters', 'error');
             }
-
-            const [, entityId, type, faction, name] = match;
-
-            return {
-                entity_id: entityId,
-                type: type,
-                faction: faction,
-                name: name,
-                playfield: playfield,
-                category: this.categorizeEntity(type, faction, name)
-            };
         } catch (error) {
-            debugLog('Error parsing entity line:', line, error);
-            return null;
+            console.error('Error applying filters:', error);
+            showToast('Error applying filters: ' + error, 'error');
         }
-    },
-
-    categorizeEntity(type, faction, name) {
-        if (type === 'AstVoxel') {
-            return 'asteroid';
-        }
-        
-        if (faction === 'Wreck' || name.toLowerCase().includes('wreck') || 
-            name.toLowerCase().includes('debris') || name.toLowerCase().includes('abandoned')) {
-            return 'wreck';
-        }
-        
-        if (type === 'BA') {
-            return 'structure';
-        }
-        
-        if (type === 'CV' || type === 'SV') {
-            return 'ship';
-        }
-        
-        return 'other';
-    },
-
-    applyFilters() {
-        const filteredEntities = this.allEntities.filter(entity => {
-            // Entity ID filter
-            if (this.filterElements.entity_id.value.trim() && 
-                !entity.entity_id.includes(this.filterElements.entity_id.value.trim())) {
-                return false;
-            }
-
-            // Type filter
-            if (this.filterElements.type.value && 
-                entity.type !== this.filterElements.type.value) {
-                return false;
-            }
-
-            // Faction filter
-            if (this.filterElements.faction.value.trim() && 
-                !entity.faction.toLowerCase().includes(this.filterElements.faction.value.trim().toLowerCase())) {
-                return false;
-            }
-
-            // Name filter
-            if (this.filterElements.name.value.trim() && 
-                !entity.name.toLowerCase().includes(this.filterElements.name.value.trim().toLowerCase())) {
-                return false;
-            }
-
-            // Playfield filter
-            if (this.filterElements.playfield.value.trim() && 
-                !entity.playfield.toLowerCase().includes(this.filterElements.playfield.value.trim().toLowerCase())) {
-                return false;
-            }
-
-            return true;
-        });
-
-        this.updateEntitiesTable(filteredEntities);
-        this.updateEntityStats(filteredEntities);
     },
 
     clearEntityFilters() {
@@ -187,19 +137,17 @@ window.EntitiesManager = {
                 element.value = '';
             }
         }
-        this.updateEntitiesTable();
-        this.updateEntityStats();
+        // Reload all entities from database
+        this.loadEntitiesFromDatabase();
     },
 
-    updateEntitiesTable(entitiesToShow = null) {
+    updateEntitiesTable() {
         const entitiesTableBody = document.getElementById('entitiesTableBody');
         if (!entitiesTableBody) return;
 
-        const entities = entitiesToShow || this.allEntities;
-
-        if (entities.length === 0) {
-            const message = this.allEntities.length === 0 
-                ? 'Connect to server and click "Refresh Entities" to view galaxy objects'
+        if (this.allEntities.length === 0) {
+            const message = !this.lastRefresh 
+                ? 'Connect to server and click "Refresh from Server" to load galaxy objects'
                 : 'No entities match the current filters';
             entitiesTableBody.innerHTML = `
                 <tr>
@@ -210,7 +158,7 @@ window.EntitiesManager = {
         }
 
         let html = '';
-        entities.forEach(entity => {
+        this.allEntities.forEach(entity => {
             const typeClass = entity.type.toLowerCase();
             const factionClass = entity.faction.toLowerCase().replace(/\s+/g, '');
             const categoryClass = entity.category;
@@ -230,8 +178,9 @@ window.EntitiesManager = {
         entitiesTableBody.innerHTML = html;
     },
 
-    updateEntityStats(entitiesToCount = null) {
-        const entities = entitiesToCount || this.allEntities;
+    updateEntityStats(stats = null) {
+        // Use provided stats or get them from current entities
+        const entityStats = stats || this.calculateStatsFromEntities();
         
         const totalEntities = document.getElementById('totalEntities');
         const asteroidEntities = document.getElementById('asteroidEntities');
@@ -239,18 +188,40 @@ window.EntitiesManager = {
         const shipEntities = document.getElementById('shipEntities');
         const wreckEntities = document.getElementById('wreckEntities');
 
-        if (totalEntities) totalEntities.textContent = entities.length;
+        if (totalEntities) totalEntities.textContent = entityStats.total || 0;
+        if (asteroidEntities) asteroidEntities.textContent = entityStats.asteroids || 0;
+        if (baseEntities) baseEntities.textContent = entityStats.structures || 0;
+        if (shipEntities) shipEntities.textContent = entityStats.ships || 0;
+        if (wreckEntities) wreckEntities.textContent = entityStats.wrecks || 0;
+    },
 
-        // Count by category
-        const asteroids = entities.filter(e => e.category === 'asteroid').length;
-        const bases = entities.filter(e => e.category === 'structure').length;
-        const ships = entities.filter(e => e.category === 'ship').length;
-        const wrecks = entities.filter(e => e.category === 'wreck').length;
+    calculateStatsFromEntities() {
+        const asteroids = this.allEntities.filter(e => e.category === 'asteroid').length;
+        const structures = this.allEntities.filter(e => e.category === 'structure').length;
+        const ships = this.allEntities.filter(e => e.category === 'ship').length;
+        const wrecks = this.allEntities.filter(e => e.category === 'wreck').length;
+        
+        return {
+            total: this.allEntities.length,
+            asteroids: asteroids,
+            structures: structures,
+            ships: ships,
+            wrecks: wrecks
+        };
+    },
 
-        if (asteroidEntities) asteroidEntities.textContent = asteroids;
-        if (baseEntities) baseEntities.textContent = bases;
-        if (shipEntities) shipEntities.textContent = ships;
-        if (wreckEntities) wreckEntities.textContent = wrecks;
+    updateLastRefreshDisplay() {
+        const lastRefreshElement = document.getElementById('entitiesLastRefresh');
+        if (lastRefreshElement) {
+            if (this.lastRefresh) {
+                const refreshTime = formatTimestamp(this.lastRefresh);
+                lastRefreshElement.textContent = `Last refreshed: ${refreshTime}`;
+                lastRefreshElement.style.color = '#cccccc';
+            } else {
+                lastRefreshElement.textContent = 'Never refreshed from server';
+                lastRefreshElement.style.color = '#ff9900';
+            }
+        }
     },
 
     showEntitiesLoading(show) {
@@ -266,7 +237,7 @@ window.EntitiesManager = {
 
     exportEntitiesData() {
         if (!this.rawGentsData) {
-            showToast('No entity data to export. Refresh entities first.', 'error');
+            showToast('No raw entity data available. Refresh from server first.', 'error');
             return;
         }
 
@@ -291,6 +262,31 @@ window.EntitiesManager = {
         }
     },
 
+    async clearAllEntities() {
+        if (!confirm('Are you sure you want to clear all entities from the database? This will remove all stored entity data.')) {
+            return;
+        }
+
+        try {
+            const data = await apiCall('/entities/clear', { method: 'POST' });
+            
+            if (data.success) {
+                this.allEntities = [];
+                this.rawGentsData = '';
+                this.lastRefresh = null;
+                this.updateEntitiesTable();
+                this.updateEntityStats();
+                this.updateLastRefreshDisplay();
+                showToast('All entities cleared from database', 'success');
+            } else {
+                showToast(data.message || 'Failed to clear entities', 'error');
+            }
+        } catch (error) {
+            console.error('Error clearing entities:', error);
+            showToast('Error clearing entities: ' + error, 'error');
+        }
+    },
+
     enableEntitiesFeatures(enabled) {
         const refreshBtn = document.getElementById('refreshEntitiesBtn');
         if (refreshBtn) {
@@ -300,8 +296,12 @@ window.EntitiesManager = {
 };
 
 // Global functions for HTML onclick handlers
-function refreshEntities() {
-    window.EntitiesManager.refreshEntities();
+function refreshEntitiesFromServer() {
+    window.EntitiesManager.refreshEntitiesFromServer();
+}
+
+function loadEntitiesFromDatabase() {
+    window.EntitiesManager.loadEntitiesFromDatabase();
 }
 
 function clearEntityFilters() {
@@ -310,4 +310,13 @@ function clearEntityFilters() {
 
 function exportEntitiesData() {
     window.EntitiesManager.exportEntitiesData();
+}
+
+function clearAllEntities() {
+    window.EntitiesManager.clearAllEntities();
+}
+
+// Backward compatibility - keep the old function name
+function refreshEntities() {
+    window.EntitiesManager.refreshEntitiesFromServer();
 }
