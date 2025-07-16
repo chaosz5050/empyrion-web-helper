@@ -1,0 +1,64 @@
+<!-- FILE LOCATION: /templates/tabs/entities.html -->
+<div class="panel" id="entitiesPanel" style="display: none;">
+    <h2>🌌 Entities (Galaxy Objects)</h2>
+    
+    <div class="entity-stats" id="entityStats">
+        <div class="stat-item">Total: <span class="stat-value" id="totalEntities">0</span></div>
+        <div class="stat-item">Asteroids: <span class="stat-value" id="asteroidEntities">0</span></div>
+        <div class="stat-item">Bases: <span class="stat-value" id="baseEntities">0</span></div>
+        <div class="stat-item">Ships: <span class="stat-value" id="shipEntities">0</span></div>
+        <div class="stat-item">Wrecks: <span class="stat-value" id="wreckEntities">0</span></div>
+    </div>
+    
+    <div class="filters-panel">
+        <input type="text" class="filter-input" id="filterEntityId" placeholder="Filter Entity ID...">
+        <select class="filter-input" id="filterEntityType">
+            <option value="">Filter Type...</option>
+            <option value="AstVoxel">Asteroid</option>
+            <option value="BA">Base</option>
+            <option value="CV">Capital Vessel</option>
+            <option value="SV">Small Vessel</option>
+        </select>
+        <input type="text" class="filter-input" id="filterEntityFaction" placeholder="Filter Faction...">
+        <input type="text" class="filter-input" id="filterEntityName" placeholder="Filter Name...">
+        <input type="text" class="filter-input" id="filterEntityPlayfield" placeholder="Filter Playfield...">
+        <button onclick="clearEntityFilters()">Clear Filters</button>
+        <button onclick="exportEntitiesData()" class="btn-secondary">📄 Export Raw Data</button>
+    </div>
+    
+    <div class="entity-actions-panel">
+        <button onclick="refreshEntities()" id="refreshEntitiesBtn" disabled>🔄 Refresh Entities</button>
+        <span class="refresh-warning">⚠️ Warning: Entity refresh can take several seconds</span>
+    </div>
+    
+    <div class="entity-table-container">
+        <table class="entity-table">
+            <thead>
+                <tr>
+                    <th>Entity ID</th>
+                    <th>Type</th>
+                    <th>Faction</th>
+                    <th>Name</th>
+                    <th>Playfield</th>
+                    <th>Category</th>
+                </tr>
+            </thead>
+            <tbody id="entitiesTableBody">
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        Connect to server and click "Refresh Entities" to view galaxy objects
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="refresh-info">
+        <strong>Note:</strong> Entity data is fetched from server on-demand due to large data size. 
+        Use filters to find specific objects quickly.
+    </div>
+    
+    <div class="loading" id="entitiesLoadingIndicator">
+        <p>Loading entities... This may take several seconds...</p>
+    </div>
+</div>
