@@ -1,6 +1,7 @@
 // FILE LOCATION: /static/js/players.js
 /**
  * Player management functionality for Empyrion Web Helper
+ * Enhanced with geolocation support
  * Copyright (c) 2025 Chaosz Software
  */
 
@@ -10,13 +11,14 @@ window.PlayersManager = {
     filterElements: {},
 
     init() {
-        // Get filter elements
+        // Get filter elements - now includes country filter
         this.filterElements = {
             steam_id: document.getElementById('filterSteamId'),
             name: document.getElementById('filterName'),
             status: document.getElementById('filterStatus'),
             faction: document.getElementById('filterFaction'),
             ip_address: document.getElementById('filterIp'),
+            country: document.getElementById('filterCountry'),
             playfield: document.getElementById('filterPlayfield'),
             last_seen: document.getElementById('filterLastSeen')
         };
@@ -28,7 +30,7 @@ window.PlayersManager = {
             }
         }
 
-        debugLog('Players manager initialized');
+        debugLog('Players manager initialized with geolocation support');
     },
 
     async refreshPlayers() {
@@ -145,7 +147,7 @@ window.PlayersManager = {
             const message = isConnected ? 'No players found' : 'Connect to server to view players';
             playersTableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="empty-state">${message}</td>
+                    <td colspan="9" class="empty-state">${message}</td>
                 </tr>
             `;
             return;
@@ -155,6 +157,7 @@ window.PlayersManager = {
         this.allPlayers.forEach(player => {
             const lastSeen = formatLastSeen(player.last_seen, player.status);
             const ipDisplay = player.ip_address || '';
+            const countryDisplay = this.formatCountry(player.country);
             const playfieldDisplay = player.playfield || '';
             const factionDisplay = player.faction || '';
             
@@ -181,6 +184,7 @@ window.PlayersManager = {
                     <td><span class="player-status ${player.status.toLowerCase()}">${player.status}</span></td>
                     <td class="player-faction">${escapeHtml(factionDisplay)}</td>
                     <td class="player-ip">${escapeHtml(ipDisplay)}</td>
+                    <td class="player-country">${countryDisplay}</td>
                     <td class="player-playfield">${escapeHtml(playfieldDisplay)}</td>
                     <td class="player-last-seen">${lastSeen}</td>
                     <td class="player-actions">${actionButtons}</td>
@@ -189,6 +193,81 @@ window.PlayersManager = {
         });
         
         playersTableBody.innerHTML = html;
+    },
+
+    formatCountry(country) {
+        if (!country || country.trim() === '') {
+            return '<span class="country-unknown">Unknown location</span>';
+        }
+        
+        // Different styling for different states
+        const countryLower = country.toLowerCase();
+        let cssClass = 'country-normal';
+        let displayText = escapeHtml(country);
+        
+        if (countryLower === 'unknown location') {
+            cssClass = 'country-unknown';
+        } else if (countryLower === 'service down') {
+            cssClass = 'country-error';
+        } else if (countryLower === 'no internet') {
+            cssClass = 'country-error';
+        } else if (countryLower === 'local network') {
+            cssClass = 'country-local';
+        } else {
+            cssClass = 'country-normal';
+            // Add flag emoji for known countries if desired
+            displayText = this.addCountryFlag(country);
+        }
+        
+        return `<span class="${cssClass}">${displayText}</span>`;
+    },
+
+    addCountryFlag(country) {
+        // Simple country to flag emoji mapping for popular countries
+        const countryFlags = {
+            'United States': '🇺🇸',
+            'Germany': '🇩🇪',
+            'Netherlands': '🇳🇱',
+            'United Kingdom': '🇬🇧',
+            'France': '🇫🇷',
+            'Canada': '🇨🇦',
+            'Australia': '🇦🇺',
+            'Japan': '🇯🇵',
+            'Brazil': '🇧🇷',
+            'Russia': '🇷🇺',
+            'China': '🇨🇳',
+            'India': '🇮🇳',
+            'South Korea': '🇰🇷',
+            'Mexico': '🇲🇽',
+            'Italy': '🇮🇹',
+            'Spain': '🇪🇸',
+            'Sweden': '🇸🇪',
+            'Norway': '🇳🇴',
+            'Denmark': '🇩🇰',
+            'Finland': '🇫🇮',
+            'Poland': '🇵🇱',
+            'Czech Republic': '🇨🇿',
+            'Austria': '🇦🇹',
+            'Switzerland': '🇨🇭',
+            'Belgium': '🇧🇪',
+            'Ireland': '🇮🇪',
+            'Portugal': '🇵🇹',
+            'Greece': '🇬🇷',
+            'Turkey': '🇹🇷',
+            'Ukraine': '🇺🇦',
+            'Romania': '🇷🇴',
+            'Hungary': '🇭🇺',
+            'Bulgaria': '🇧🇬',
+            'Croatia': '🇭🇷',
+            'Slovakia': '🇸🇰',
+            'Slovenia': '🇸🇮',
+            'Lithuania': '🇱🇹',
+            'Latvia': '🇱🇻',
+            'Estonia': '🇪🇪'
+        };
+        
+        const flag = countryFlags[country];
+        return flag ? `${flag} ${escapeHtml(country)}` : escapeHtml(country);
     },
 
     updatePlayerStats(stats) {
@@ -203,7 +282,7 @@ window.PlayersManager = {
         }
     },
 
-    // Player action methods
+    // Player action methods (unchanged)
     currentKickData: null,
 
     showKickModal(playerName, steamId) {
@@ -314,6 +393,49 @@ window.PlayersManager = {
         } catch (error) {
             showToast('Unban failed: ' + error, 'error');
         }
+    },
+
+    // ============================================================================
+    // GEOLOCATION AND DATA FIX METHODS
+    // ============================================================================
+
+    async refreshGeolocation() {
+        if (!isConnected) {
+            showToast('Not connected to server', 'error');
+            return;
+        }
+
+        const refreshGeoBtn = document.getElementById('refreshGeoBtn');
+        const originalText = refreshGeoBtn.textContent;
+        refreshGeoBtn.disabled = true;
+        refreshGeoBtn.textContent = '🌍 Updating...';
+
+        try {
+            showToast('Refreshing geolocation data...', 'info');
+            
+            const data = await apiCall('/players/refresh_geolocation', { method: 'POST' });
+            
+            if (data.success) {
+                showToast(`Updated geolocation for ${data.updated_count} players`, 'success');
+                this.refreshPlayers(); // Refresh the player list to show new data
+            } else {
+                showToast(data.message || 'Failed to refresh geolocation', 'error');
+            }
+        } catch (error) {
+            console.error('Error refreshing geolocation:', error);
+            showToast('Error refreshing geolocation: ' + error, 'error');
+        } finally {
+            refreshGeoBtn.disabled = false;
+            refreshGeoBtn.textContent = originalText;
+        }
+    },
+
+    enablePlayerFeatures(enabled) {
+        const refreshPlayersBtn = document.getElementById('refreshPlayersBtn');
+        const refreshGeoBtn = document.getElementById('refreshGeoBtn');
+        
+        if (refreshPlayersBtn) refreshPlayersBtn.disabled = !enabled;
+        if (refreshGeoBtn) refreshGeoBtn.disabled = !enabled;
     }
 };
 
@@ -336,4 +458,8 @@ function cancelKick() {
 
 function executeKick() {
     window.PlayersManager.executeKick();
+}
+
+function refreshGeolocation() {
+    window.PlayersManager.refreshGeolocation();
 }

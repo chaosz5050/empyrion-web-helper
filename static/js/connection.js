@@ -114,6 +114,11 @@ window.ConnectionManager = {
                 window.EntitiesManager.enableEntitiesFeatures(true);
             }
             
+            // Enable player features
+            if (window.PlayersManager) {
+                window.PlayersManager.enablePlayerFeatures(true);
+            }
+            
             if (window.MessagingManager) {
                 window.MessagingManager.loadMessageHistory();
             }
@@ -137,6 +142,11 @@ window.ConnectionManager = {
             // Disable entities features
             if (window.EntitiesManager) {
                 window.EntitiesManager.enableEntitiesFeatures(false);
+            }
+            
+            // Disable player features
+            if (window.PlayersManager) {
+                window.PlayersManager.enablePlayerFeatures(false);
             }
         }
     },
