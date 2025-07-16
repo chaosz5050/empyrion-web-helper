@@ -4,7 +4,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.3.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.4.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A modern, web-based administration tool for Empyrion Galactic Survival dedicated servers**
