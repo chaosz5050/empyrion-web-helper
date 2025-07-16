@@ -2,7 +2,7 @@
 #!/usr/bin/env python3
 """
 Database manager for Empyrion Web Helper
-Enhanced with secure credentials storage
+Enhanced with secure credentials storage and entity persistence
 """
 
 import sqlite3
@@ -23,7 +23,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class PlayerDatabase:
-    """Manages SQLite database for player tracking and secure credentials"""
+    """Manages SQLite database for player tracking, entities, and secure credentials"""
     
     def __init__(self, db_path: str = "instance/players.db"):
         self.db_path = db_path
@@ -95,7 +95,7 @@ class PlayerDatabase:
             return encrypted_credential  # Return as-is if can't decrypt
     
     def init_database(self):
-        """Initialize database tables including credentials"""
+        """Initialize database tables including credentials and entities"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -145,11 +145,40 @@ class PlayerDatabase:
                     )
                 """)
                 
+                # NEW: Create entities table for persistent entity storage
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS entities (
+                        entity_id TEXT PRIMARY KEY,
+                        type TEXT NOT NULL,
+                        faction TEXT DEFAULT '',
+                        name TEXT NOT NULL,
+                        playfield TEXT DEFAULT '',
+                        category TEXT DEFAULT '',
+                        first_seen TEXT NOT NULL,
+                        last_seen TEXT,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
+                
+                # NEW: Create metadata table for tracking refresh times and other app metadata
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS app_metadata (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
+                
                 # Create indexes for better performance
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_status ON players (status)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_last_seen ON players (last_seen)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_steam_id ON player_sessions (steam_id)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_credentials_type ON credentials (credential_type)")
+                # NEW: Entity indexes
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_type ON entities (type)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_category ON entities (category)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_playfield ON entities (playfield)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_faction ON entities (faction)")
                 
                 # Set secure permissions on database file
                 try:
@@ -158,13 +187,308 @@ class PlayerDatabase:
                     logger.warning(f"Could not set secure permissions on database: {e}")
                 
                 conn.commit()
-                logger.info("Database initialized successfully with credentials support")
+                logger.info("Database initialized successfully with credentials and entities support")
                 
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
     
     # ============================================================================
-    # CREDENTIAL MANAGEMENT METHODS
+    # ENTITY MANAGEMENT METHODS (NEW)
+    # ============================================================================
+    
+    def update_entity(self, entity_data: Dict) -> bool:
+        """Update or insert entity data"""
+        try:
+            entity_id = str(entity_data.get('entity_id', ''))
+            if not entity_id:
+                logger.warning("Skipping entity with missing entity_id")
+                return False
+            
+            current_time = datetime.now().isoformat()
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Check if entity exists
+                cursor.execute("SELECT entity_id, first_seen FROM entities WHERE entity_id = ?", (entity_id,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Entity exists - update it
+                    cursor.execute("""
+                        UPDATE entities SET
+                            type = ?,
+                            faction = ?,
+                            name = ?,
+                            playfield = ?,
+                            category = ?,
+                            last_seen = ?,
+                            updated_at = ?
+                        WHERE entity_id = ?
+                    """, (
+                        entity_data.get('type', ''),
+                        entity_data.get('faction', ''),
+                        entity_data.get('name', ''),
+                        entity_data.get('playfield', ''),
+                        entity_data.get('category', ''),
+                        current_time,
+                        current_time,
+                        entity_id
+                    ))
+                    logger.debug(f"Updated entity: {entity_data.get('name', 'Unknown')} ({entity_id})")
+                else:
+                    # New entity - insert it
+                    cursor.execute("""
+                        INSERT INTO entities (
+                            entity_id, type, faction, name, playfield, 
+                            category, first_seen, last_seen, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        entity_id,
+                        entity_data.get('type', ''),
+                        entity_data.get('faction', ''),
+                        entity_data.get('name', ''),
+                        entity_data.get('playfield', ''),
+                        entity_data.get('category', ''),
+                        current_time,
+                        current_time,
+                        current_time
+                    ))
+                    logger.debug(f"Added new entity: {entity_data.get('name', 'Unknown')} ({entity_id})")
+                
+                conn.commit()
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error updating entity {entity_data.get('name', 'Unknown')}: {e}")
+            return False
+    
+    def update_multiple_entities(self, entities_data: List[Dict]) -> int:
+        """Update multiple entities at once and mark missing ones as last_seen"""
+        updated_count = 0
+        current_time = datetime.now().isoformat()
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get current entity IDs from the new data
+                current_entity_ids = {str(e.get('entity_id', '')) for e in entities_data if e.get('entity_id')}
+                
+                # Update/insert entities from current data
+                for entity_data in entities_data:
+                    if self.update_entity(entity_data):
+                        updated_count += 1
+                
+                # Mark entities not in current data as "last_seen" (they may have been destroyed)
+                if current_entity_ids:
+                    placeholders = ','.join('?' * len(current_entity_ids))
+                    cursor.execute(f"""
+                        UPDATE entities SET 
+                            last_seen = ?,
+                            updated_at = ?
+                        WHERE entity_id NOT IN ({placeholders})
+                        AND last_seen IS NULL
+                    """, [current_time, current_time] + list(current_entity_ids))
+                    
+                    if cursor.rowcount > 0:
+                        logger.info(f"Marked {cursor.rowcount} entities as last_seen (no longer in gents output)")
+                
+                conn.commit()
+                
+        except Exception as e:
+            logger.error(f"Error updating multiple entities: {e}")
+        
+        logger.info(f"Updated {updated_count} entities in database")
+        return updated_count
+    
+    def get_all_entities(self, filters: Optional[Dict] = None) -> List[Dict]:
+        """Get all entities from database with optional filters"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Base query
+                query = """
+                    SELECT entity_id, type, faction, name, playfield, 
+                           category, first_seen, last_seen, updated_at
+                    FROM entities
+                """
+                params = []
+                
+                # Add filters if provided
+                if filters:
+                    conditions = []
+                    
+                    if filters.get('entity_id'):
+                        conditions.append("entity_id LIKE ?")
+                        params.append(f"%{filters['entity_id']}%")
+                    
+                    if filters.get('type'):
+                        conditions.append("type = ?")
+                        params.append(filters['type'])
+                    
+                    if filters.get('faction'):
+                        conditions.append("faction LIKE ?")
+                        params.append(f"%{filters['faction']}%")
+                    
+                    if filters.get('name'):
+                        conditions.append("name LIKE ?")
+                        params.append(f"%{filters['name']}%")
+                    
+                    if filters.get('playfield'):
+                        conditions.append("playfield LIKE ?")
+                        params.append(f"%{filters['playfield']}%")
+                    
+                    if filters.get('category'):
+                        conditions.append("category = ?")
+                        params.append(filters['category'])
+                    
+                    if conditions:
+                        query += " WHERE " + " AND ".join(conditions)
+                
+                # Order by category, then by name
+                query += " ORDER BY category, name"
+                
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                
+                # Convert to list of dictionaries
+                entities = []
+                for row in rows:
+                    entities.append({
+                        'entity_id': row[0],
+                        'type': row[1],
+                        'faction': row[2],
+                        'name': row[3],
+                        'playfield': row[4],
+                        'category': row[5],
+                        'first_seen': row[6],
+                        'last_seen': row[7],
+                        'updated_at': row[8]
+                    })
+                
+                return entities
+                
+        except Exception as e:
+            logger.error(f"Error getting entities from database: {e}")
+            return []
+    
+    def get_entity_stats(self) -> Dict[str, int]:
+        """Get entity statistics by category"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Total entities
+                cursor.execute("SELECT COUNT(*) FROM entities")
+                total = cursor.fetchone()[0]
+                
+                # Count by category
+                cursor.execute("""
+                    SELECT category, COUNT(*) 
+                    FROM entities 
+                    GROUP BY category
+                """)
+                by_category = dict(cursor.fetchall())
+                
+                return {
+                    'total': total,
+                    'asteroids': by_category.get('asteroid', 0),
+                    'structures': by_category.get('structure', 0),
+                    'ships': by_category.get('ship', 0),
+                    'wrecks': by_category.get('wreck', 0),
+                    'other': by_category.get('other', 0)
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting entity stats: {e}")
+            return {
+                'total': 0,
+                'asteroids': 0,
+                'structures': 0,
+                'ships': 0,
+                'wrecks': 0,
+                'other': 0
+            }
+    
+    def clear_all_entities(self) -> bool:
+        """Clear all entities from database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM entities")
+                conn.commit()
+                
+                logger.info("All entities cleared from database")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error clearing entities: {e}")
+            return False
+    
+    def set_entities_last_refresh(self) -> bool:
+        """Set the timestamp when entities were last refreshed from server"""
+        return self.set_metadata('entities_last_refresh', datetime.now().isoformat())
+    
+    def get_entities_last_refresh(self) -> Optional[str]:
+        """Get the timestamp when entities were last refreshed from server"""
+        return self.get_metadata('entities_last_refresh')
+    
+    # ============================================================================
+    # METADATA MANAGEMENT METHODS (NEW)
+    # ============================================================================
+    
+    def set_metadata(self, key: str, value: str) -> bool:
+        """Set a metadata key-value pair"""
+        try:
+            current_time = datetime.now().isoformat()
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO app_metadata (key, value, updated_at)
+                    VALUES (?, ?, ?)
+                """, (key, value, current_time))
+                conn.commit()
+                
+                logger.debug(f"Set metadata: {key} = {value}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error setting metadata {key}: {e}")
+            return False
+    
+    def get_metadata(self, key: str) -> Optional[str]:
+        """Get a metadata value by key"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM app_metadata WHERE key = ?", (key,))
+                row = cursor.fetchone()
+                
+                return row[0] if row else None
+                
+        except Exception as e:
+            logger.error(f"Error getting metadata {key}: {e}")
+            return None
+    
+    def get_all_metadata(self) -> Dict[str, str]:
+        """Get all metadata as a dictionary"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT key, value FROM app_metadata")
+                rows = cursor.fetchall()
+                
+                return dict(rows)
+                
+        except Exception as e:
+            logger.error(f"Error getting all metadata: {e}")
+            return {}
+    
+    # ============================================================================
+    # CREDENTIAL MANAGEMENT METHODS (EXISTING)
     # ============================================================================
     
     def store_credential(self, credential_type: str, username: str = '', password: str = '', 
