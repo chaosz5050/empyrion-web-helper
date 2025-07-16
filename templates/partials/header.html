@@ -1,0 +1,16 @@
+<!-- FILE LOCATION: /templates/partials/header.html -->
+<header>
+    <h1>
+        <img src="/static/ewh_icon.png" alt="Empyrion Web Helper" class="header-icon"> 
+        Empyrion Web Helper
+    </h1>
+    <p class="subtitle">v0.3.0 - Enhanced with Messaging System</p>
+    
+    <div class="connection-panel">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <span class="status-text" id="statusText">Disconnected</span>
+        <span class="server-info" id="serverInfo">{{ config.host }}:{{ config.telnet_port }}</span>
+        <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+        <button id="refreshBtn" onclick="refreshPlayers()" disabled>Refresh Players</button>
+    </div>
+</header>

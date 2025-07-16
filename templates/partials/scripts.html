@@ -1,0 +1,19 @@
+<!-- FILE LOCATION: /templates/partials/scripts.html -->
+<!-- JavaScript Modules -->
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/connection.js"></script>
+<script src="/static/js/players.js"></script>
+<script src="/static/js/entities.js"></script>
+<script src="/static/js/messaging.js"></script>
+<script src="/static/js/logs.js"></script>
+<script src="/static/js/main.js"></script>
+
+<script>
+    // Pass Flask config to JavaScript
+    window.CONFIG = {
+        host: '{{ config.host }}',
+        telnet_port: {{ config.telnet_port }},
+        update_interval: {{ config.update_interval }},
+        autoconnect: {{ config.autoconnect|lower }}
+    };
+</script>
