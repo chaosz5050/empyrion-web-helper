@@ -8,6 +8,11 @@
         <div class="stat-item">Offline: <span class="stat-value" id="offlinePlayers">0</span></div>
     </div>
     
+    <div class="player-actions-panel">
+        <button onclick="refreshPlayers()" id="refreshPlayersBtn" disabled>🔄 Refresh Players</button>
+        <button onclick="refreshGeolocation()" id="refreshGeoBtn" disabled>🌍 Refresh Geolocation</button>
+    </div>
+    
     <div class="filters-panel">
         <input type="text" class="filter-input" id="filterSteamId" placeholder="Filter Steam ID...">
         <input type="text" class="filter-input" id="filterName" placeholder="Filter Name...">
@@ -18,6 +23,7 @@
         </select>
         <input type="text" class="filter-input" id="filterFaction" placeholder="Filter Faction...">
         <input type="text" class="filter-input" id="filterIp" placeholder="Filter IP Address...">
+        <input type="text" class="filter-input" id="filterCountry" placeholder="Filter Country...">
         <input type="text" class="filter-input" id="filterPlayfield" placeholder="Filter Playfield...">
         <input type="text" class="filter-input" id="filterLastSeen" placeholder="Filter Last Seen...">
         <button onclick="clearFilters()">Clear Filters</button>
@@ -32,6 +38,7 @@
                     <th>Status</th>
                     <th>Faction</th>
                     <th>IP Address</th>
+                    <th>Country</th>
                     <th>Playfield</th>
                     <th>Last Seen</th>
                     <th>Actions</th>
@@ -39,7 +46,7 @@
             </thead>
             <tbody id="playersTableBody">
                 <tr>
-                    <td colspan="8" class="empty-state">
+                    <td colspan="9" class="empty-state">
                         Connect to server to view players
                     </td>
                 </tr>
