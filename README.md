@@ -7,8 +7,6 @@
 [![Version](https://img.shields.io/badge/Version-0.4.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-## DISCLAIMER: This readme was AI generated, so read around all the fluff ;) 
-
 > **A modern, web-based administration tool for Empyrion Galactic Survival dedicated servers**
 
 Empyrion Web Helper is a comprehensive server management solution that provides real-time player monitoring, automated messaging, and professional logging through an intuitive web interface. Built with modularity and scalability in mind, it's the perfect tool for hobby server administrators who want professional-grade functionality.

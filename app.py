@@ -3,7 +3,7 @@
 """
 Empyrion Web Helper v0.4.0
 A web-based admin tool for Empyrion Galactic Survival servers
-Enhanced with entity database persistence and comprehensive logging
+Enhanced with modular messaging system, professional log rotation, and IP geolocation
 """
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -66,7 +66,7 @@ def initialize_app():
     if cleanup_result['deleted_files'] > 0:
         logger.info(f"Startup cleanup: removed {cleanup_result['deleted_files']} old log files ({cleanup_result['deleted_bytes']} bytes)")
     
-    logger.info("Empyrion Web Helper v0.4.0 initialized with entity database persistence")
+    logger.info("Empyrion Web Helper v0.4.0 initialized with secure credential storage and geolocation")
     logger.info(f"Target server: {config_manager.get('host')}:{config_manager.get('telnet_port')}")
     logger.info(f"Messaging manager initialized with config file: {config_file_path}")
     
@@ -226,7 +226,7 @@ def get_all_players():
     
     try:
         filters = {}
-        for param in ['steam_id', 'name', 'status', 'faction', 'ip_address', 'playfield']:
+        for param in ['steam_id', 'name', 'status', 'faction', 'ip_address', 'country', 'playfield']:
             value = request.args.get(param)
             if value:
                 filters[param] = value
@@ -289,51 +289,17 @@ def player_action():
         return jsonify({'success': False, 'message': str(e)})
 
 # ============================================================================
-# ENHANCED ENTITIES ROUTES - WITH DATABASE PERSISTENCE
+# ENTITIES ROUTES
 # ============================================================================
 
 @app.route('/entities')
 def get_entities():
-    """Get entities list - from database first, then optionally refresh from server"""
-    try:
-        # Always try to load from database first
-        logger.info("=== STARTING /entities route - loading from database ===")
-        
-        # Get any filters from request
-        filters = {}
-        for param in ['entity_id', 'type', 'faction', 'name', 'playfield', 'category']:
-            value = request.args.get(param)
-            if value:
-                filters[param] = value
-        
-        # Load entities from database
-        entities = player_db.get_all_entities(filters) if player_db else []
-        entity_stats = player_db.get_entity_stats() if player_db else {}
-        last_refresh = player_db.get_entities_last_refresh() if player_db else None
-        
-        logger.info(f"Loaded {len(entities)} entities from database")
-        
-        return jsonify({
-            'success': True,
-            'entities': entities,
-            'stats': entity_stats,
-            'last_refresh': last_refresh,
-            'source': 'database',
-            'total_count': len(entities)
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting entities from database: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/entities/refresh', methods=['POST'])
-def refresh_entities_from_server():
-    """Refresh entities from server and update database"""
+    """Get entities list using gents command"""
     if not is_connected or not connection_handler:
         return jsonify({'success': False, 'message': 'Not connected to server'})
     
     try:
-        logger.info("=== STARTING /entities/refresh - fetching from server ===")
+        logger.info("=== STARTING /entities route ===")
         
         # Send gents command - this can take several seconds
         logger.info("Sending 'gents' command to server...")
@@ -347,72 +313,19 @@ def refresh_entities_from_server():
         
         # Parse the gents output
         entities = parse_gents_data(raw_data)
+        
         logger.info(f"Parsed {len(entities)} entities from gents output")
-        
-        # Update database with new entities
-        if player_db and entities:
-            updated_count = player_db.update_multiple_entities(entities)
-            # Set last refresh timestamp
-            player_db.set_entities_last_refresh()
-            logger.info(f"Updated {updated_count} entities in database")
-        
-        # Get updated stats
-        entity_stats = player_db.get_entity_stats() if player_db else {}
-        last_refresh = player_db.get_entities_last_refresh() if player_db else None
-        
-        logger.info("=== ENDING /entities/refresh ===")
+        logger.info("=== ENDING /entities route ===")
         
         return jsonify({
-            'success': True,
+            'success': True, 
             'entities': entities,
-            'stats': entity_stats,
-            'last_refresh': last_refresh,
             'raw_data': raw_data,
-            'source': 'server_refresh',
-            'total_count': len(entities),
-            'updated_count': updated_count if player_db else len(entities)
+            'total_count': len(entities)
         })
         
     except Exception as e:
-        logger.error(f"Error refreshing entities from server: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/entities/stats')
-def get_entity_stats():
-    """Get entity statistics from database"""
-    try:
-        if not player_db:
-            return jsonify({'success': False, 'message': 'Database not available'})
-        
-        stats = player_db.get_entity_stats()
-        last_refresh = player_db.get_entities_last_refresh()
-        
-        return jsonify({
-            'success': True,
-            'stats': stats,
-            'last_refresh': last_refresh
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting entity stats: {e}")
-        return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/entities/clear', methods=['POST'])
-def clear_entities():
-    """Clear all entities from database"""
-    try:
-        if not player_db:
-            return jsonify({'success': False, 'message': 'Database not available'})
-        
-        success = player_db.clear_all_entities()
-        
-        if success:
-            return jsonify({'success': True, 'message': 'All entities cleared from database'})
-        else:
-            return jsonify({'success': False, 'message': 'Failed to clear entities'})
-            
-    except Exception as e:
-        logger.error(f"Error clearing entities: {e}")
+        logger.error(f"Error getting entities: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 def parse_gents_data(raw_data):
@@ -688,13 +601,49 @@ def clear_message_history():
 # ============================================================================
 
 @app.route('/logging/stats')
-def get_log_stats():
-    """Get log file statistics"""
+def get_logging_stats():
+    """Get logging statistics"""
     try:
         stats = logging_manager.get_log_stats()
-        return jsonify({'success': True, 'stats': stats})
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
     except Exception as e:
-        logger.error(f"Error getting log stats: {e}")
+        logger.error(f"Error getting logging stats: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/logging/settings', methods=['GET', 'POST'])
+def logging_settings():
+    """Get or update logging settings"""
+    try:
+        if request.method == 'GET':
+            return jsonify({
+                'success': True,
+                'settings': {
+                    'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
+                    'backup_count': logging_manager.backup_count,
+                    'max_age_days': logging_manager.max_age_days
+                }
+            })
+        
+        elif request.method == 'POST':
+            data = request.json
+            max_size_mb = data.get('max_size_mb', 1)
+            backup_count = data.get('backup_count', 3)
+            max_age_days = data.get('max_age_days', 7)
+            
+            success = logging_manager.update_settings(max_size_mb, backup_count, max_age_days)
+            
+            if success:
+                return jsonify({'success': True, 'message': 'Logging settings updated successfully'})
+            else:
+                return jsonify({'success': False, 'message': 'Failed to update logging settings'})
+                
+    except Exception as e:
+        logger.error(f"Error handling logging settings: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/logging/recent')
@@ -703,51 +652,31 @@ def get_recent_logs():
     try:
         lines = request.args.get('lines', 100, type=int)
         logs = logging_manager.get_recent_logs(lines)
-        return jsonify({'success': True, 'logs': logs})
+        
+        return jsonify({
+            'success': True,
+            'logs': logs
+        })
+        
     except Exception as e:
         logger.error(f"Error getting recent logs: {e}")
         return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/logging/settings', methods=['GET', 'POST'])
-def log_settings():
-    """Get or update log settings"""
-    if request.method == 'GET':
-        try:
-            settings = {
-                'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
-                'backup_count': logging_manager.backup_count,
-                'max_age_days': logging_manager.max_age_days
-            }
-            return jsonify({'success': True, 'settings': settings})
-        except Exception as e:
-            logger.error(f"Error getting log settings: {e}")
-            return jsonify({'success': False, 'message': str(e)})
-    
-    elif request.method == 'POST':
-        try:
-            data = request.json
-            max_size_mb = data.get('max_size_mb')
-            backup_count = data.get('backup_count')
-            max_age_days = data.get('max_age_days')
-            
-            success = logging_manager.update_settings(max_size_mb, backup_count, max_age_days)
-            
-            if success:
-                return jsonify({'success': True, 'message': 'Log settings updated successfully'})
-            else:
-                return jsonify({'success': False, 'message': 'Failed to update log settings'})
-                
-        except Exception as e:
-            logger.error(f"Error updating log settings: {e}")
-            return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/logging/cleanup', methods=['POST'])
 def cleanup_old_logs():
     """Clean up old log files"""
     try:
         result = logging_manager.cleanup_old_logs()
+        
         message = f"Cleaned up {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
-        return jsonify({'success': True, 'message': message, 'result': result})
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'deleted_files': result['deleted_files'],
+            'deleted_bytes': result['deleted_bytes']
+        })
+        
     except Exception as e:
         logger.error(f"Error cleaning up logs: {e}")
         return jsonify({'success': False, 'message': str(e)})
@@ -765,6 +694,84 @@ def clear_all_logs():
             
     except Exception as e:
         logger.error(f"Error clearing logs: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+# ============================================================================
+# GEOLOCATION ROUTES
+# ============================================================================
+
+@app.route('/geolocation/stats')
+def get_geolocation_stats():
+    """Get geolocation statistics"""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        stats = player_db.get_geolocation_stats()
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting geolocation stats: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/geolocation/force_update', methods=['POST'])
+def force_update_geolocation():
+    """Force update geolocation for all players (admin function)"""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        updated_count = player_db.force_update_all_geolocations()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Updated geolocation for {updated_count} players',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in force geolocation update: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/geolocation/clear_cache', methods=['POST'])
+def clear_geolocation_cache():
+    """Clear the geolocation cache"""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        player_db.clear_geolocation_cache()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Geolocation cache cleared successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error clearing geolocation cache: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/players/refresh_geolocation', methods=['POST'])
+def refresh_player_geolocation():
+    """Refresh geolocation for players without country data"""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        updated_count = player_db.refresh_geolocation_for_existing_players()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Updated geolocation for {updated_count} players',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error refreshing player geolocation: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 # ============================================================================
@@ -858,7 +865,7 @@ if __name__ == '__main__':
     
     local_ip = get_local_ip()
     
-    logger.info("Starting Empyrion Web Helper v0.4.0 with entity database persistence")
+    logger.info("Starting Empyrion Web Helper v0.4.0 with messaging, entities, and geolocation support")
     logger.info(f"Server accessible at: http://{local_ip}:5001")
     logger.info(f"From other devices on your network: http://{local_ip}:5001")
     

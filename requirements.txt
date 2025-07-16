@@ -1,5 +1,5 @@
-# Empyrion Web Helper v0.3.0 - Enhanced with Security & Messaging
-# Dependencies for connection, player management, secure credentials, and messaging
+# Empyrion Web Helper v0.4.0 - Enhanced with Security, Messaging & Geolocation
+# Dependencies for connection, player management, secure credentials, messaging, and IP geolocation
 
 # ============================================================================
 # CORE WEB FRAMEWORK
@@ -24,6 +24,14 @@ python-socketio==5.9.0
 cryptography==41.0.8
 
 # ============================================================================
+# GEOLOCATION & NETWORK
+# ============================================================================
+
+# HTTP requests for geolocation API calls
+# Used for ip-api.com geolocation lookups
+requests==2.31.0
+
+# ============================================================================
 # BUILT-IN PYTHON MODULES (No installation required)
 # ============================================================================
 
@@ -39,6 +47,7 @@ cryptography==41.0.8
 # - re               (Regular expressions)
 # - json             (JSON data handling)
 # - threading        (Multi-threading support)
+# - time             (Time operations)
 
 # ============================================================================
 # INSTALLATION INSTRUCTIONS
@@ -56,7 +65,10 @@ cryptography==41.0.8
 # 3. Verify cryptography installation:
 #    python3 -c "from cryptography.fernet import Fernet; print('✅ Cryptography OK')"
 
-# 4. If cryptography installation fails, try:
+# 4. Verify requests installation:
+#    python3 -c "import requests; print('✅ Requests OK')"
+
+# 5. If cryptography installation fails, try:
 #    # On Ubuntu/Debian:
 #    sudo apt-get install build-essential libssl-dev libffi-dev python3-dev
 #    pip install --upgrade pip setuptools wheel
@@ -97,9 +109,31 @@ cryptography==41.0.8
 # For maximum security, ensure cryptography is installed and working.
 
 # ============================================================================
+# GEOLOCATION FEATURES
+# ============================================================================
+
+# The requests package enables IP geolocation features:
+# - Automatic country lookup for player IP addresses
+# - Uses ip-api.com (free, no API key required)
+# - Smart caching to minimize API calls
+# - Graceful fallback when service is unavailable
+# - Rate limiting to respect API limits (1000 requests/hour)
+
+# Geolocation is a bonus feature and won't break the app if it fails.
+
+# ============================================================================
 # TROUBLESHOOTING
 # ============================================================================
 
 # If you encounter installation issues:
 
-# Issue: "Failed build
+# Issue: "Failed building wheel for cryptography"
+# Solution: Install system dependencies first:
+#   sudo apt-get install build-essential libssl-dev libffi-dev python3-dev
+
+# Issue: "No module named requests"
+# Solution: pip install requests
+
+# Issue: "SSL certificate verification failed"
+# Solution: This is a network/firewall issue. The app will gracefully
+#           handle geolocation failures and show "Service down" status.

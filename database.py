@@ -2,7 +2,7 @@
 #!/usr/bin/env python3
 """
 Database manager for Empyrion Web Helper
-Enhanced with secure credentials storage and entity persistence
+Enhanced with secure credentials storage and IP geolocation
 """
 
 import sqlite3
@@ -10,6 +10,8 @@ import logging
 import os
 import base64
 import getpass
+import requests
+import time
 from datetime import datetime
 from typing import List, Dict, Optional, Union
 
@@ -23,11 +25,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class PlayerDatabase:
-    """Manages SQLite database for player tracking, entities, and secure credentials"""
+    """Manages SQLite database for player tracking and secure credentials"""
     
     def __init__(self, db_path: str = "instance/players.db"):
         self.db_path = db_path
         self.encryption_key = None
+        self.geolocation_cache = {}  # Simple in-memory cache for geolocation
+        self.last_geo_request = 0  # Rate limiting for API calls
         self.ensure_directory_exists()
         self.init_database()
         if CRYPTO_AVAILABLE:
@@ -95,12 +99,12 @@ class PlayerDatabase:
             return encrypted_credential  # Return as-is if can't decrypt
     
     def init_database(self):
-        """Initialize database tables including credentials and entities"""
+        """Initialize database tables including credentials and geolocation"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Create players table
+                # Create players table with country column
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS players (
                         steam_id TEXT PRIMARY KEY,
@@ -109,6 +113,7 @@ class PlayerDatabase:
                         faction TEXT DEFAULT '',
                         role TEXT DEFAULT '',
                         ip_address TEXT DEFAULT '',
+                        country TEXT DEFAULT NULL,
                         playfield TEXT DEFAULT '',
                         last_seen TEXT,
                         first_seen TEXT NOT NULL,
@@ -116,6 +121,14 @@ class PlayerDatabase:
                         updated_at TEXT NOT NULL
                     )
                 """)
+                
+                # Check if country column exists, add it if missing (migration)
+                cursor.execute("PRAGMA table_info(players)")
+                columns = [column[1] for column in cursor.fetchall()]
+                if 'country' not in columns:
+                    logger.info("Adding country column to players table")
+                    cursor.execute("ALTER TABLE players ADD COLUMN country TEXT DEFAULT NULL")
+                    logger.info("Country column added successfully")
                 
                 # Create credentials table for secure storage
                 cursor.execute("""
@@ -145,40 +158,12 @@ class PlayerDatabase:
                     )
                 """)
                 
-                # NEW: Create entities table for persistent entity storage
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS entities (
-                        entity_id TEXT PRIMARY KEY,
-                        type TEXT NOT NULL,
-                        faction TEXT DEFAULT '',
-                        name TEXT NOT NULL,
-                        playfield TEXT DEFAULT '',
-                        category TEXT DEFAULT '',
-                        first_seen TEXT NOT NULL,
-                        last_seen TEXT,
-                        updated_at TEXT NOT NULL
-                    )
-                """)
-                
-                # NEW: Create metadata table for tracking refresh times and other app metadata
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS app_metadata (
-                        key TEXT PRIMARY KEY,
-                        value TEXT NOT NULL,
-                        updated_at TEXT NOT NULL
-                    )
-                """)
-                
                 # Create indexes for better performance
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_status ON players (status)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_last_seen ON players (last_seen)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_country ON players (country)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_steam_id ON player_sessions (steam_id)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_credentials_type ON credentials (credential_type)")
-                # NEW: Entity indexes
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_type ON entities (type)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_category ON entities (category)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_playfield ON entities (playfield)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_faction ON entities (faction)")
                 
                 # Set secure permissions on database file
                 try:
@@ -187,308 +172,136 @@ class PlayerDatabase:
                     logger.warning(f"Could not set secure permissions on database: {e}")
                 
                 conn.commit()
-                logger.info("Database initialized successfully with credentials and entities support")
+                logger.info("Database initialized successfully with credentials and geolocation support")
                 
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
     
     # ============================================================================
-    # ENTITY MANAGEMENT METHODS (NEW)
+    # GEOLOCATION METHODS
     # ============================================================================
     
-    def update_entity(self, entity_data: Dict) -> bool:
-        """Update or insert entity data"""
+    def _lookup_country(self, ip_address: str) -> str:
+        """
+        Lookup country for IP address using ip-api.com
+        Returns country name or appropriate error message
+        """
+        if not ip_address or ip_address.strip() == '':
+            return "Unknown location"
+        
+        # Check cache first
+        if ip_address in self.geolocation_cache:
+            logger.debug(f"Using cached geolocation for {ip_address}: {self.geolocation_cache[ip_address]}")
+            return self.geolocation_cache[ip_address]
+        
+        # Rate limiting - wait at least 1 second between requests
+        current_time = time.time()
+        if current_time - self.last_geo_request < 1.0:
+            time.sleep(1.0 - (current_time - self.last_geo_request))
+        
         try:
-            entity_id = str(entity_data.get('entity_id', ''))
-            if not entity_id:
-                logger.warning("Skipping entity with missing entity_id")
-                return False
+            logger.debug(f"Looking up geolocation for IP: {ip_address}")
             
-            current_time = datetime.now().isoformat()
+            # Make request to ip-api.com
+            url = f"http://ip-api.com/json/{ip_address}"
+            response = requests.get(url, timeout=10)
+            self.last_geo_request = time.time()
             
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
+            if response.status_code == 200:
+                data = response.json()
                 
-                # Check if entity exists
-                cursor.execute("SELECT entity_id, first_seen FROM entities WHERE entity_id = ?", (entity_id,))
-                existing = cursor.fetchone()
-                
-                if existing:
-                    # Entity exists - update it
-                    cursor.execute("""
-                        UPDATE entities SET
-                            type = ?,
-                            faction = ?,
-                            name = ?,
-                            playfield = ?,
-                            category = ?,
-                            last_seen = ?,
-                            updated_at = ?
-                        WHERE entity_id = ?
-                    """, (
-                        entity_data.get('type', ''),
-                        entity_data.get('faction', ''),
-                        entity_data.get('name', ''),
-                        entity_data.get('playfield', ''),
-                        entity_data.get('category', ''),
-                        current_time,
-                        current_time,
-                        entity_id
-                    ))
-                    logger.debug(f"Updated entity: {entity_data.get('name', 'Unknown')} ({entity_id})")
+                if data.get('status') == 'success':
+                    country = data.get('country', 'Unknown location')
+                    logger.info(f"Geolocation lookup successful: {ip_address} -> {country}")
+                    
+                    # Cache the result
+                    self.geolocation_cache[ip_address] = country
+                    return country
+                    
+                elif data.get('status') == 'fail':
+                    error_msg = data.get('message', 'Unknown error')
+                    logger.warning(f"Geolocation lookup failed for {ip_address}: {error_msg}")
+                    
+                    if 'private range' in error_msg.lower() or 'reserved range' in error_msg.lower():
+                        result = "Local network"
+                    elif 'invalid' in error_msg.lower():
+                        result = "Unknown location"
+                    else:
+                        result = "Unknown location"
+                    
+                    # Cache failed lookups to avoid repeated attempts
+                    self.geolocation_cache[ip_address] = result
+                    return result
+                    
                 else:
-                    # New entity - insert it
-                    cursor.execute("""
-                        INSERT INTO entities (
-                            entity_id, type, faction, name, playfield, 
-                            category, first_seen, last_seen, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        entity_id,
-                        entity_data.get('type', ''),
-                        entity_data.get('faction', ''),
-                        entity_data.get('name', ''),
-                        entity_data.get('playfield', ''),
-                        entity_data.get('category', ''),
-                        current_time,
-                        current_time,
-                        current_time
-                    ))
-                    logger.debug(f"Added new entity: {entity_data.get('name', 'Unknown')} ({entity_id})")
-                
-                conn.commit()
-                return True
-                
-        except Exception as e:
-            logger.error(f"Error updating entity {entity_data.get('name', 'Unknown')}: {e}")
-            return False
-    
-    def update_multiple_entities(self, entities_data: List[Dict]) -> int:
-        """Update multiple entities at once and mark missing ones as last_seen"""
-        updated_count = 0
-        current_time = datetime.now().isoformat()
-        
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Get current entity IDs from the new data
-                current_entity_ids = {str(e.get('entity_id', '')) for e in entities_data if e.get('entity_id')}
-                
-                # Update/insert entities from current data
-                for entity_data in entities_data:
-                    if self.update_entity(entity_data):
-                        updated_count += 1
-                
-                # Mark entities not in current data as "last_seen" (they may have been destroyed)
-                if current_entity_ids:
-                    placeholders = ','.join('?' * len(current_entity_ids))
-                    cursor.execute(f"""
-                        UPDATE entities SET 
-                            last_seen = ?,
-                            updated_at = ?
-                        WHERE entity_id NOT IN ({placeholders})
-                        AND last_seen IS NULL
-                    """, [current_time, current_time] + list(current_entity_ids))
+                    logger.warning(f"Unexpected geolocation response for {ip_address}: {data}")
+                    return "Unknown location"
                     
-                    if cursor.rowcount > 0:
-                        logger.info(f"Marked {cursor.rowcount} entities as last_seen (no longer in gents output)")
+            elif response.status_code == 429:
+                logger.warning(f"Geolocation API rate limited for {ip_address}")
+                return "Unknown location"  # Don't cache rate limits
                 
-                conn.commit()
+            else:
+                logger.warning(f"Geolocation API returned status {response.status_code} for {ip_address}")
+                return "Service down"
                 
-        except Exception as e:
-            logger.error(f"Error updating multiple entities: {e}")
-        
-        logger.info(f"Updated {updated_count} entities in database")
-        return updated_count
-    
-    def get_all_entities(self, filters: Optional[Dict] = None) -> List[Dict]:
-        """Get all entities from database with optional filters"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Base query
-                query = """
-                    SELECT entity_id, type, faction, name, playfield, 
-                           category, first_seen, last_seen, updated_at
-                    FROM entities
-                """
-                params = []
-                
-                # Add filters if provided
-                if filters:
-                    conditions = []
-                    
-                    if filters.get('entity_id'):
-                        conditions.append("entity_id LIKE ?")
-                        params.append(f"%{filters['entity_id']}%")
-                    
-                    if filters.get('type'):
-                        conditions.append("type = ?")
-                        params.append(filters['type'])
-                    
-                    if filters.get('faction'):
-                        conditions.append("faction LIKE ?")
-                        params.append(f"%{filters['faction']}%")
-                    
-                    if filters.get('name'):
-                        conditions.append("name LIKE ?")
-                        params.append(f"%{filters['name']}%")
-                    
-                    if filters.get('playfield'):
-                        conditions.append("playfield LIKE ?")
-                        params.append(f"%{filters['playfield']}%")
-                    
-                    if filters.get('category'):
-                        conditions.append("category = ?")
-                        params.append(filters['category'])
-                    
-                    if conditions:
-                        query += " WHERE " + " AND ".join(conditions)
-                
-                # Order by category, then by name
-                query += " ORDER BY category, name"
-                
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-                
-                # Convert to list of dictionaries
-                entities = []
-                for row in rows:
-                    entities.append({
-                        'entity_id': row[0],
-                        'type': row[1],
-                        'faction': row[2],
-                        'name': row[3],
-                        'playfield': row[4],
-                        'category': row[5],
-                        'first_seen': row[6],
-                        'last_seen': row[7],
-                        'updated_at': row[8]
-                    })
-                
-                return entities
-                
-        except Exception as e:
-            logger.error(f"Error getting entities from database: {e}")
-            return []
-    
-    def get_entity_stats(self) -> Dict[str, int]:
-        """Get entity statistics by category"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Total entities
-                cursor.execute("SELECT COUNT(*) FROM entities")
-                total = cursor.fetchone()[0]
-                
-                # Count by category
-                cursor.execute("""
-                    SELECT category, COUNT(*) 
-                    FROM entities 
-                    GROUP BY category
-                """)
-                by_category = dict(cursor.fetchall())
-                
-                return {
-                    'total': total,
-                    'asteroids': by_category.get('asteroid', 0),
-                    'structures': by_category.get('structure', 0),
-                    'ships': by_category.get('ship', 0),
-                    'wrecks': by_category.get('wreck', 0),
-                    'other': by_category.get('other', 0)
-                }
-                
-        except Exception as e:
-            logger.error(f"Error getting entity stats: {e}")
-            return {
-                'total': 0,
-                'asteroids': 0,
-                'structures': 0,
-                'ships': 0,
-                'wrecks': 0,
-                'other': 0
-            }
-    
-    def clear_all_entities(self) -> bool:
-        """Clear all entities from database"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM entities")
-                conn.commit()
-                
-                logger.info("All entities cleared from database")
-                return True
-                
-        except Exception as e:
-            logger.error(f"Error clearing entities: {e}")
-            return False
-    
-    def set_entities_last_refresh(self) -> bool:
-        """Set the timestamp when entities were last refreshed from server"""
-        return self.set_metadata('entities_last_refresh', datetime.now().isoformat())
-    
-    def get_entities_last_refresh(self) -> Optional[str]:
-        """Get the timestamp when entities were last refreshed from server"""
-        return self.get_metadata('entities_last_refresh')
-    
-    # ============================================================================
-    # METADATA MANAGEMENT METHODS (NEW)
-    # ============================================================================
-    
-    def set_metadata(self, key: str, value: str) -> bool:
-        """Set a metadata key-value pair"""
-        try:
-            current_time = datetime.now().isoformat()
+        except requests.exceptions.ConnectException:
+            logger.warning(f"No internet connection for geolocation lookup of {ip_address}")
+            return "No Internet"
             
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT OR REPLACE INTO app_metadata (key, value, updated_at)
-                    VALUES (?, ?, ?)
-                """, (key, value, current_time))
-                conn.commit()
-                
-                logger.debug(f"Set metadata: {key} = {value}")
+        except requests.exceptions.Timeout:
+            logger.warning(f"Geolocation lookup timed out for {ip_address}")
+            return "Service down"
+            
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Geolocation lookup failed for {ip_address}: {e}")
+            return "Service down"
+            
+        except Exception as e:
+            logger.error(f"Unexpected error in geolocation lookup for {ip_address}: {e}")
+            return "Unknown location"
+    
+    def _should_update_geolocation(self, player_data: Dict, existing_player: Optional[Dict]) -> bool:
+        """
+        Determine if we should update the geolocation for this player
+        Only lookup when:
+        1. Player has no country stored (NULL)
+        2. IP address changed from what's in database
+        3. Current country is an error state (retry failed lookups occasionally)
+        """
+        current_ip = player_data.get('ip_address', '').strip()
+        
+        if not current_ip:
+            return False  # No IP, can't lookup
+        
+        if not existing_player:
+            return True  # New player with IP
+        
+        existing_ip = existing_player.get('ip_address', '').strip()
+        existing_country = existing_player.get('country')
+        
+        # IP address changed
+        if current_ip != existing_ip:
+            logger.debug(f"IP changed for {player_data.get('name')}: {existing_ip} -> {current_ip}")
+            return True
+        
+        # No country stored
+        if not existing_country:
+            return True
+        
+        # Retry error states occasionally (every 10th update to avoid spam)
+        error_states = ["Unknown location", "Service down", "No Internet"]
+        if existing_country in error_states:
+            # Simple retry mechanism - only retry occasionally
+            import random
+            if random.randint(1, 10) == 1:  # 10% chance to retry
+                logger.debug(f"Retrying geolocation for {player_data.get('name')} (was: {existing_country})")
                 return True
-                
-        except Exception as e:
-            logger.error(f"Error setting metadata {key}: {e}")
-            return False
-    
-    def get_metadata(self, key: str) -> Optional[str]:
-        """Get a metadata value by key"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT value FROM app_metadata WHERE key = ?", (key,))
-                row = cursor.fetchone()
-                
-                return row[0] if row else None
-                
-        except Exception as e:
-            logger.error(f"Error getting metadata {key}: {e}")
-            return None
-    
-    def get_all_metadata(self) -> Dict[str, str]:
-        """Get all metadata as a dictionary"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT key, value FROM app_metadata")
-                rows = cursor.fetchall()
-                
-                return dict(rows)
-                
-        except Exception as e:
-            logger.error(f"Error getting all metadata: {e}")
-            return {}
+        
+        return False
     
     # ============================================================================
-    # CREDENTIAL MANAGEMENT METHODS (EXISTING)
+    # CREDENTIAL MANAGEMENT METHODS
     # ============================================================================
     
     def store_credential(self, credential_type: str, username: str = '', password: str = '', 
@@ -712,11 +525,11 @@ class PlayerDatabase:
         )
     
     # ============================================================================
-    # EXISTING PLAYER MANAGEMENT METHODS
+    # ENHANCED PLAYER MANAGEMENT METHODS WITH GEOLOCATION
     # ============================================================================
     
     def update_player(self, player_data: Dict) -> bool:
-        """Update or insert player data with proper status change handling"""
+        """Update or insert player data with proper status change handling and geolocation"""
         try:
             # Validate Steam ID (no negative IDs)
             steam_id = str(player_data.get('steam_id', ''))
@@ -729,16 +542,43 @@ class PlayerDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Check if player exists and get current status
-                cursor.execute("SELECT steam_id, first_seen, ip_address, playfield, status, last_seen FROM players WHERE steam_id = ?", (steam_id,))
+                # Check if player exists and get current data
+                cursor.execute("""
+                    SELECT steam_id, first_seen, ip_address, playfield, status, last_seen, country 
+                    FROM players WHERE steam_id = ?
+                """, (steam_id,))
                 existing = cursor.fetchone()
                 
+                existing_player = None
                 if existing:
+                    existing_player = {
+                        'steam_id': existing[0],
+                        'first_seen': existing[1],
+                        'ip_address': existing[2],
+                        'playfield': existing[3],
+                        'status': existing[4],
+                        'last_seen': existing[5],
+                        'country': existing[6]
+                    }
+                
+                # Determine if we need to lookup geolocation
+                should_lookup_geo = self._should_update_geolocation(player_data, existing_player)
+                country = existing_player.get('country') if existing_player else None
+                
+                if should_lookup_geo:
+                    current_ip = player_data.get('ip_address', '').strip()
+                    if current_ip:
+                        logger.debug(f"Performing geolocation lookup for {player_data.get('name')} ({current_ip})")
+                        country = self._lookup_country(current_ip)
+                    else:
+                        country = "Unknown location"
+                
+                if existing_player:
                     # Player exists - handle status changes
-                    existing_ip = existing[2] if existing[2] else ''
-                    existing_playfield = existing[3] if existing[3] else ''
-                    old_status = existing[4] if existing[4] else 'Offline'
-                    existing_last_seen = existing[5] if existing[5] else None
+                    existing_ip = existing_player['ip_address'] if existing_player['ip_address'] else ''
+                    existing_playfield = existing_player['playfield'] if existing_player['playfield'] else ''
+                    old_status = existing_player['status'] if existing_player['status'] else 'Offline'
+                    existing_last_seen = existing_player['last_seen'] if existing_player['last_seen'] else None
                     
                     new_status = player_data.get('status', 'Offline')
                     new_ip = player_data.get('ip_address', '')
@@ -752,56 +592,85 @@ class PlayerDatabase:
                     else:
                         final_ip = existing_ip  # plys has no IP, keep database IP
                     
-                    # Determine final playfield and last_seen based on status change
+                    # Determine if we should update this player (only update if something meaningful changed)
+                    should_update = False
+                    final_last_seen = existing_last_seen
+                    final_updated_at = existing_player.get('updated_at', current_time)
+                    
+                    # Status change logic
                     if old_status == 'Offline' and new_status == 'Online':
                         # Player logging in
                         final_playfield = new_playfield or existing_playfield
-                        final_last_seen = existing_last_seen  # Keep existing last_seen
-                        logger.info(f"PLAYER LOGIN: {player_data.get('name')} - IP: plys='{new_ip}' -> final='{final_ip}'")
+                        should_update = True
+                        final_updated_at = current_time
+                        logger.info(f"PLAYER LOGIN: {player_data.get('name')} - IP: plys='{new_ip}' -> final='{final_ip}', Country: {country}")
                         
                     elif old_status == 'Online' and new_status == 'Offline':
-                        # Player logging out - clear playfield, set last_seen
+                        # Player logging out - set last_seen
                         final_playfield = ''  # Clear playfield on logout
                         final_last_seen = current_time  # Set logout time
-                        logger.info(f"PLAYER LOGOUT: {player_data.get('name')} - IP: plys='{new_ip}', existing='{existing_ip}' -> final='{final_ip}', last_seen='{final_last_seen}'")
+                        should_update = True
+                        final_updated_at = current_time
+                        logger.info(f"PLAYER LOGOUT: {player_data.get('name')} - IP: plys='{new_ip}', existing='{existing_ip}' -> final='{final_ip}', last_seen='{final_last_seen}', Country: {country}")
+                        
+                    elif old_status == 'Online' and new_status == 'Online':
+                        # Player staying online - update playfield and other data but keep last_seen unchanged
+                        final_playfield = new_playfield or existing_playfield
+                        should_update = True
+                        final_updated_at = current_time
+                        logger.debug(f"PLAYER ONLINE UPDATE: {player_data.get('name')} - IP: plys='{new_ip}' -> final='{final_ip}', Country: {country}")
                         
                     else:
-                        # No status change
-                        final_playfield = new_playfield or existing_playfield  
-                        final_last_seen = existing_last_seen  # Don't change last_seen
-                        logger.debug(f"NO STATUS CHANGE: {player_data.get('name')} - IP: plys='{new_ip}' -> final='{final_ip}'")
+                        # Both offline - only update if IP/country/name changed
+                        final_playfield = existing_playfield  # Keep existing playfield for offline players
+                        
+                        if (player_data.get('name', '') != existing_player.get('name', '') or
+                            final_ip != existing_ip or
+                            country != existing_player.get('country') or
+                            player_data.get('faction', '') != existing_player.get('faction', '') or
+                            player_data.get('role', '') != existing_player.get('role', '')):
+                            should_update = True
+                            final_updated_at = current_time
+                            logger.debug(f"OFFLINE PLAYER DATA UPDATE: {player_data.get('name')} - Updated data for offline player")
+                        else:
+                            logger.debug(f"NO UPDATE NEEDED: {player_data.get('name')} - No meaningful changes for offline player")
                     
-                    # Update player
-                    cursor.execute("""
-                        UPDATE players SET
-                            name = ?,
-                            status = ?,
-                            faction = ?,
-                            role = ?,
-                            ip_address = ?,
-                            playfield = ?,
-                            last_seen = ?,
-                            updated_at = ?
-                        WHERE steam_id = ?
-                    """, (
-                        player_data.get('name', ''),
-                        new_status,
-                        player_data.get('faction', ''),
-                        player_data.get('role', ''),
-                        final_ip,
-                        final_playfield,
-                        final_last_seen,
-                        current_time,
-                        steam_id
-                    ))
+                    # Only update database if something changed
+                    if should_update:
+                        cursor.execute("""
+                            UPDATE players SET
+                                name = ?,
+                                status = ?,
+                                faction = ?,
+                                role = ?,
+                                ip_address = ?,
+                                country = ?,
+                                playfield = ?,
+                                last_seen = ?,
+                                updated_at = ?
+                            WHERE steam_id = ?
+                        """, (
+                            player_data.get('name', ''),
+                            new_status,
+                            player_data.get('faction', ''),
+                            player_data.get('role', ''),
+                            final_ip,
+                            country,
+                            final_playfield,
+                            final_last_seen,
+                            final_updated_at,
+                            steam_id
+                        ))
                     
                 else:
-                    # New player - insert with current data, no last_seen for fresh entries
+                    # New player - insert with current data
+                    final_last_seen = None if player_data.get('status') == 'Online' else None
+                    logger.info(f"NEW PLAYER: {player_data.get('name', 'Unknown')} ({steam_id}), Country: {country}")
                     cursor.execute("""
                         INSERT INTO players (
-                            steam_id, name, status, faction, role, ip_address, 
+                            steam_id, name, status, faction, role, ip_address, country,
                             playfield, last_seen, first_seen, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         steam_id,
                         player_data.get('name', ''),
@@ -809,12 +678,12 @@ class PlayerDatabase:
                         player_data.get('faction', ''),
                         player_data.get('role', ''),
                         player_data.get('ip_address', ''),
+                        country,
                         player_data.get('playfield', ''),
-                        None,  # last_seen = NULL for fresh entries
+                        final_last_seen,
                         current_time,
                         current_time
                     ))
-                    logger.info(f"NEW PLAYER: {player_data.get('name', 'Unknown')} ({steam_id})")
                 
                 conn.commit()
                 return True
@@ -932,9 +801,9 @@ class PlayerDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Base query
+                # Base query - now includes country column
                 query = """
-                    SELECT steam_id, name, status, faction, role, ip_address, 
+                    SELECT steam_id, name, status, faction, role, ip_address, country,
                            playfield, last_seen, first_seen, total_playtime
                     FROM players
                 """
@@ -964,6 +833,10 @@ class PlayerDatabase:
                         conditions.append("ip_address LIKE ?")
                         params.append(f"%{filters['ip_address']}%")
                     
+                    if filters.get('country'):
+                        conditions.append("country LIKE ?")
+                        params.append(f"%{filters['country']}%")
+                    
                     if filters.get('playfield'):
                         conditions.append("playfield LIKE ?")
                         params.append(f"%{filters['playfield']}%")
@@ -987,10 +860,11 @@ class PlayerDatabase:
                         'faction': row[3],
                         'role': row[4],
                         'ip_address': row[5],
-                        'playfield': row[6],
-                        'last_seen': row[7],
-                        'first_seen': row[8],
-                        'total_playtime': row[9]
+                        'country': row[6],  # New field
+                        'playfield': row[7],
+                        'last_seen': row[8],
+                        'first_seen': row[9],
+                        'total_playtime': row[10]
                     })
                 
                 return players
@@ -1046,3 +920,130 @@ class PlayerDatabase:
         except Exception as e:
             logger.error(f"Error deleting player {steam_id}: {e}")
             return False
+    
+    # ============================================================================
+    # GEOLOCATION UTILITY METHODS
+    # ============================================================================
+    
+    def get_geolocation_stats(self) -> Dict[str, any]:
+        """Get statistics about geolocation data"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Count players by country
+                cursor.execute("""
+                    SELECT country, COUNT(*) as count 
+                    FROM players 
+                    WHERE country IS NOT NULL 
+                    GROUP BY country 
+                    ORDER BY count DESC
+                """)
+                country_counts = dict(cursor.fetchall())
+                
+                # Total players with geolocation data
+                cursor.execute("SELECT COUNT(*) FROM players WHERE country IS NOT NULL")
+                with_geo = cursor.fetchone()[0]
+                
+                # Total players without geolocation data
+                cursor.execute("SELECT COUNT(*) FROM players WHERE country IS NULL")
+                without_geo = cursor.fetchone()[0]
+                
+                return {
+                    'with_geolocation': with_geo,
+                    'without_geolocation': without_geo,
+                    'country_breakdown': country_counts,
+                    'cache_size': len(self.geolocation_cache)
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting geolocation stats: {e}")
+            return {}
+    
+    def clear_geolocation_cache(self):
+        """Clear the in-memory geolocation cache"""
+        self.geolocation_cache.clear()
+        logger.info("Geolocation cache cleared")
+    
+    def force_update_all_geolocations(self) -> int:
+        """Force update geolocation for all players with IP addresses (admin function)"""
+        try:
+            updated_count = 0
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get all players with IP addresses
+                cursor.execute("""
+                    SELECT steam_id, name, ip_address 
+                    FROM players 
+                    WHERE ip_address IS NOT NULL AND ip_address != ''
+                """)
+                players_with_ips = cursor.fetchall()
+                
+                logger.info(f"Forcing geolocation update for {len(players_with_ips)} players")
+                
+                for steam_id, name, ip_address in players_with_ips:
+                    country = self._lookup_country(ip_address)
+                    
+                    cursor.execute("""
+                        UPDATE players SET country = ?, updated_at = ? 
+                        WHERE steam_id = ?
+                    """, (country, datetime.now().isoformat(), steam_id))
+                    
+                    updated_count += 1
+                    logger.info(f"Updated geolocation for {name}: {ip_address} -> {country}")
+                    
+                    # Small delay to respect API rate limits
+                    time.sleep(1)
+                
+                conn.commit()
+                logger.info(f"Forced geolocation update completed: {updated_count} players updated")
+                return updated_count
+                
+        except Exception as e:
+            logger.error(f"Error in force geolocation update: {e}")
+            return 0
+    
+    def refresh_geolocation_for_existing_players(self) -> int:
+        """Refresh geolocation for players that don't have country data yet"""
+        try:
+            updated_count = 0
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get players with IP but no country
+                cursor.execute("""
+                    SELECT steam_id, name, ip_address 
+                    FROM players 
+                    WHERE ip_address IS NOT NULL 
+                    AND ip_address != ''
+                    AND (country IS NULL OR country = '')
+                    LIMIT 20
+                """)
+                players_needing_geo = cursor.fetchall()
+                
+                logger.info(f"Refreshing geolocation for {len(players_needing_geo)} players")
+                
+                for steam_id, name, ip_address in players_needing_geo:
+                    country = self._lookup_country(ip_address)
+                    
+                    cursor.execute("""
+                        UPDATE players SET country = ?
+                        WHERE steam_id = ?
+                    """, (country, steam_id))
+                    
+                    updated_count += 1
+                    logger.info(f"Added geolocation for {name}: {ip_address} -> {country}")
+                    
+                    # Small delay to respect API rate limits
+                    time.sleep(1)
+                
+                conn.commit()
+                logger.info(f"Geolocation refresh completed: {updated_count} players updated")
+                return updated_count
+                
+        except Exception as e:
+            logger.error(f"Error refreshing geolocation: {e}")
+            return 0
