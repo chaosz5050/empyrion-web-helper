@@ -14,9 +14,19 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
 class LoggingManager:
-    """Manages logging configuration and rotation for the application"""
+    """
+    Manages logging configuration, rotation, cleanup, and statistics for the Empyrion Web Helper application.
+
+    Provides methods for loading and saving logging settings, setting up rotating loggers, cleaning up old logs, retrieving log statistics, and managing log files.
+    """
     
     def __init__(self, config_file: str = "empyrion_helper.conf"):
+        """
+        Initialize the LoggingManager.
+
+        Args:
+            config_file (str, optional): Path to the configuration file. Defaults to 'empyrion_helper.conf'.
+        """
         self.config_file = config_file
         self.logger = logging.getLogger(__name__)
         
@@ -30,7 +40,9 @@ class LoggingManager:
         self._load_config()
     
     def _load_config(self):
-        """Load logging configuration from empyrion_helper.conf"""
+        """
+        Load logging configuration from the empyrion_helper.conf file.
+        """
         try:
             config = configparser.ConfigParser()
             
@@ -53,7 +65,12 @@ class LoggingManager:
             self.logger.error(f"Error loading logging config: {e}")
     
     def _save_config(self):
-        """Save logging configuration to empyrion_helper.conf"""
+        """
+        Save logging configuration to the empyrion_helper.conf file.
+
+        Returns:
+            bool: True if saved successfully, False otherwise.
+        """
         try:
             config = configparser.ConfigParser()
             
@@ -83,7 +100,16 @@ class LoggingManager:
             return False
     
     def setup_rotating_logger(self, logger_name: str = None, level: int = logging.INFO) -> logging.Logger:
-        """Set up rotating file handler for the application logger"""
+        """
+        Set up a rotating file handler for the application logger.
+
+        Args:
+            logger_name (str, optional): Name of the logger to configure. Defaults to root logger.
+            level (int, optional): Logging level. Defaults to logging.INFO.
+
+        Returns:
+            logging.Logger: Configured logger instance.
+        """
         try:
             # Get the root logger if no specific logger requested
             if logger_name:
@@ -137,7 +163,12 @@ class LoggingManager:
             return logging.getLogger()
     
     def cleanup_old_logs(self) -> Dict[str, int]:
-        """Clean up old log files based on age"""
+        """
+        Clean up old log files based on their age.
+
+        Returns:
+            Dict[str, int]: Dictionary with number of deleted files and total bytes deleted.
+        """
         try:
             cutoff_date = datetime.now() - timedelta(days=self.max_age_days)
             
@@ -180,7 +211,12 @@ class LoggingManager:
             return {'deleted_files': 0, 'deleted_bytes': 0}
     
     def get_log_stats(self) -> Dict[str, any]:
-        """Get statistics about log files"""
+        """
+        Get statistics about the current and backup log files.
+
+        Returns:
+            Dict[str, any]: Dictionary with log file statistics.
+        """
         try:
             stats = {
                 'current_log': {
@@ -250,7 +286,12 @@ class LoggingManager:
             return {}
     
     def clear_all_logs(self) -> bool:
-        """Clear all log files (current and backups)"""
+        """
+        Clear all log files, including current and backup files.
+
+        Returns:
+            bool: True if any log files were deleted, False otherwise.
+        """
         try:
             # Find all log files
             log_pattern = f"{self.log_file}*"
@@ -282,7 +323,15 @@ class LoggingManager:
             return False
     
     def get_recent_logs(self, lines: int = 100) -> List[str]:
-        """Get recent log entries from the current log file"""
+        """
+        Get recent log entries from the current log file.
+
+        Args:
+            lines (int, optional): Number of recent lines to retrieve. Defaults to 100.
+
+        Returns:
+            List[str]: List of recent log lines.
+        """
         try:
             self.logger.info(f"DEBUG: Getting recent logs from {self.log_file}, requesting {lines} lines")
             
@@ -310,7 +359,17 @@ class LoggingManager:
             return []
     
     def update_settings(self, max_size_mb: int = None, backup_count: int = None, max_age_days: int = None) -> bool:
-        """Update logging settings"""
+        """
+        Update logging settings and save them to the configuration file.
+
+        Args:
+            max_size_mb (int, optional): Maximum log file size in MB. Defaults to None.
+            backup_count (int, optional): Number of backup log files to keep. Defaults to None.
+            max_age_days (int, optional): Maximum age for log files in days. Defaults to None.
+
+        Returns:
+            bool: True if settings updated successfully, False otherwise.
+        """
         try:
             if max_size_mb is not None:
                 self.max_bytes = max_size_mb * 1024 * 1024

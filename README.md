@@ -347,6 +347,7 @@ The web interface shows:
 
 ## 🔒 Security Considerations
 
+- **Automatic Flask Secret Key Management** - On first run, the app generates a secure secret key and stores it in `instance/ewh_secret.key`. This key is used for session security and should not be deleted. The file is automatically ignored by git and does not require user management.
 - **Encrypted Credential Storage** - AES-256 encryption for all passwords
 - **Secure File Permissions** - Database and key files protected
 - **Environment Variable Support** - For automated deployments

@@ -12,20 +12,40 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ConfigManager:
-    """Manages application configuration with database-based credential storage"""
+    """
+    Manages application configuration for Empyrion Web Helper.
+
+    Provides configuration loading, saving, and runtime management, with secure credential storage via database integration. Handles migration of legacy credentials, supports interactive credential setup, and ensures no sensitive data is written to config files.
+    """
     
     def __init__(self, config_file: str = 'empyrion_helper.conf', player_db=None):
+        """
+        Initialize the ConfigManager.
+
+        Args:
+            config_file (str): Path to the configuration file. Defaults to 'empyrion_helper.conf'.
+            player_db (PlayerDatabase, optional): Player database instance for credential management.
+        """
         self.config_file = config_file
         self.config = {}
         self.player_db = player_db  # Reference to PlayerDatabase for credentials
         self._set_defaults()
     
     def set_database(self, player_db):
-        """Set the database reference after initialization"""
+        """
+        Set the player database reference after initialization.
+
+        Args:
+            player_db (PlayerDatabase): The player database instance.
+        """
         self.player_db = player_db
     
     def _set_defaults(self):
-        """Set default configuration values (no sensitive data)"""
+        """
+        Set default configuration values for the application.
+
+        No sensitive data is included in these defaults.
+        """
         self.config = {
             # Server settings (no password here anymore)
             'host': '192.168.1.100',
@@ -48,7 +68,12 @@ class ConfigManager:
         }
     
     def load_config(self) -> bool:
-        """Load configuration from file (credentials come from database)"""
+        """
+        Load configuration from file, with credentials retrieved from the database.
+
+        Returns:
+            bool: True if configuration loaded successfully, False otherwise.
+        """
         if not os.path.exists(self.config_file):
             logger.warning(f"Config file {self.config_file} not found, using defaults")
             return False
@@ -131,7 +156,16 @@ class ConfigManager:
             return False
     
     def get(self, key: str, default=None):
-        """Get a configuration value with database credential lookup"""
+        """
+        Get a configuration value, with secure credential lookup if needed.
+
+        Args:
+            key (str): Configuration key to retrieve.
+            default: Default value if key is not found.
+
+        Returns:
+            The configuration value, or credential if requested.
+        """
         # Handle credential requests
         if key == 'telnet_password':
             if self.player_db:
@@ -171,7 +205,12 @@ class ConfigManager:
         return self.config.get(key, default)
     
     def get_all(self) -> dict:
-        """Get all configuration values (credentials marked as stored securely)"""
+        """
+        Get all configuration values, with credentials marked as stored securely.
+
+        Returns:
+            dict: Dictionary of all configuration values, with credential fields replaced by status markers.
+        """
         config_copy = self.config.copy()
         
         # Add credential status indicators
@@ -197,7 +236,16 @@ class ConfigManager:
         return config_copy
     
     def set(self, key: str, value):
-        """Set a configuration value (runtime only, credentials go to database)"""
+        """
+        Set a configuration value at runtime. Credentials must be set via database methods.
+
+        Args:
+            key (str): Configuration key to set.
+            value: Value to assign to the key.
+
+        Returns:
+            bool: True if value set, False otherwise (for credential keys).
+        """
         if key in ['telnet_password', 'ftp_password', 'ftp_user']:
             logger.warning(f"Cannot set {key} via config - use database credential methods")
             return False
@@ -206,7 +254,12 @@ class ConfigManager:
         return True
     
     def save_config(self) -> bool:
-        """Save current configuration to file (no sensitive data)"""
+        """
+        Save the current configuration to file, excluding sensitive data.
+
+        Returns:
+            bool: True if configuration saved successfully, False otherwise.
+        """
         try:
             parser = configparser.ConfigParser()
             
@@ -244,7 +297,12 @@ class ConfigManager:
             return False
     
     def validate_config(self) -> dict:
-        """Validate current configuration"""
+        """
+        Validate the current configuration and check for missing or invalid settings.
+
+        Returns:
+            dict: Validation result with 'valid', 'issues', and 'warnings' keys.
+        """
         issues = []
         warnings = []
         
@@ -277,7 +335,12 @@ class ConfigManager:
         }
     
     def get_server_info(self) -> dict:
-        """Get server connection information"""
+        """
+        Get server connection information (host, port, update interval).
+
+        Returns:
+            dict: Server connection info.
+        """
         return {
             'host': self.config['host'],
             'port': self.config['telnet_port'],
@@ -285,7 +348,12 @@ class ConfigManager:
         }
     
     def setup_credentials_interactive(self):
-        """Interactive setup for all credentials"""
+        """
+        Interactively prompt the user to set up all required credentials (RCON, FTP).
+
+        Returns:
+            bool: True if setup completed successfully, False otherwise.
+        """
         if not self.player_db:
             logger.error("Database not available for credential setup")
             return False

@@ -24,9 +24,21 @@ from threading import Timer
 logger = logging.getLogger(__name__)
 
 class MessagingManager:
-    """Manages all messaging functionality for the Empyrion server"""
+    """
+    Manages all messaging functionality for the Empyrion server.
+
+    Handles scheduled messages, custom player status messages (welcome/goodbye), global messaging, message history logging, and configuration management.
+    """
     
     def __init__(self, connection_handler=None, player_db=None, config_file="empyrion_helper.conf"):
+        """
+        Initialize the MessagingManager.
+
+        Args:
+            connection_handler: Handler for sending messages to the Empyrion server (optional).
+            player_db: Player database instance for logging and lookups (optional).
+            config_file (str, optional): Path to the configuration file. Defaults to 'empyrion_helper.conf'.
+        """
         self.connection_handler = connection_handler
         self.player_db = player_db
         self.config_file = config_file
@@ -49,7 +61,9 @@ class MessagingManager:
         logger.info("MessagingManager initialized with config from empyrion_helper.conf")
     
     def _load_config(self):
-        """Load messaging configuration from empyrion_helper.conf"""
+        """
+        Load messaging configuration from the empyrion_helper.conf file.
+        """
         try:
             config = configparser.ConfigParser()
             
@@ -83,7 +97,12 @@ class MessagingManager:
             logger.error(f"Error loading messaging config: {e}")
     
     def _save_config(self):
-        """Save messaging configuration to empyrion_helper.conf"""
+        """
+        Save messaging configuration to the empyrion_helper.conf file.
+
+        Returns:
+            bool: True if saved successfully, False otherwise.
+        """
         try:
             logger.info(f"Attempting to save config to: {self.config_file}")
             
@@ -133,7 +152,9 @@ class MessagingManager:
             return False
     
     def _init_message_database(self):
-        """Initialize database tables for messaging (ONLY message history)"""
+        """
+        Initialize the SQLite database tables for message history logging.
+        """
         try:
             with sqlite3.connect('instance/players.db') as conn:
                 cursor = conn.cursor()
@@ -157,22 +178,36 @@ class MessagingManager:
             logger.error(f"Error initializing message database: {e}")
     
     def set_connection_handler(self, connection_handler):
-        """Set the connection handler (called from main app)"""
+        """
+        Set the connection handler for sending messages to the Empyrion server.
+
+        Args:
+            connection_handler: The connection handler instance.
+        """
         self.connection_handler = connection_handler
     
     # ============================================================================
     # GLOBAL MESSAGES
     # ============================================================================
     
-    def send_global_message(self, message: str, message_type: str = 'manual') -> bool:
-        """Send a global message to all players"""
+    def send_global_message(self, message: str, message_type: str = 'manual') -> Dict:
+        """
+        Send a global message to all players on the Empyrion server.
+
+        Args:
+            message (str): The message to send.
+            message_type (str, optional): The type of message ('manual', 'scheduled', etc.). Defaults to 'manual'.
+
+        Returns:
+            Dict: Result dictionary with 'success' and 'message' keys.
+        """
         if not message.strip():
             logger.warning("Cannot send empty global message")
-            return False
+            return {'success': False, 'message': 'Cannot send empty global message'}
         
         if not self.connection_handler:
             logger.error("No connection handler available for messaging")
-            return False
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
         
         try:
             # Use the connection handler's send_command method
@@ -185,30 +220,44 @@ class MessagingManager:
             
             if success:
                 logger.info(f"Global message sent successfully: {message}")
+                return {'success': True, 'message': 'Message sent successfully'}
             else:
                 logger.error(f"Failed to send global message: {result}")
-            
-            return success
+                return {'success': False, 'message': 'Failed to send global message'}
             
         except Exception as e:
-            logger.error(f"Error sending global message: {e}")
+            logger.error(f"Error sending global message: {e}", exc_info=True)
             self._store_message_log(message, message_type, success=False)
-            return False
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     # ============================================================================
     # CUSTOM PLAYER STATUS MESSAGES
     # ============================================================================
     
-    def load_custom_messages(self) -> Dict[str, str]:
-        """Load custom welcome/goodbye messages from config"""
+    def load_custom_messages(self) -> Dict:
+        """
+        Load custom welcome and goodbye messages from the configuration file.
+
+        Returns:
+            Dict: Dictionary with 'welcome_message' and 'goodbye_message'.
+        """
         self._load_config()  # Reload from config file
         return {
             'welcome_message': self.welcome_message_template,
             'goodbye_message': self.goodbye_message_template
         }
     
-    def save_custom_messages(self, welcome_msg: str, goodbye_msg: str) -> bool:
-        """Save custom welcome/goodbye messages to config"""
+    def save_custom_messages(self, welcome_msg: str, goodbye_msg: str) -> Dict:
+        """
+        Save custom welcome and goodbye messages to the configuration file.
+
+        Args:
+            welcome_msg (str): The welcome message template.
+            goodbye_msg (str): The goodbye message template.
+
+        Returns:
+            Dict: Result dictionary with 'success' and 'message' keys.
+        """
         try:
             logger.info(f"Saving custom messages - Welcome: '{welcome_msg}', Goodbye: '{goodbye_msg}'")
             
@@ -228,33 +277,47 @@ class MessagingManager:
             logger.info(f"Updated templates - Old goodbye: '{old_goodbye}' -> New: '{goodbye_msg}'")
             
             # Save to config file (NOT database)
-            success = self._save_config()
+            result = self._save_config()
             
-            if success:
+            if result['success']:
                 logger.info("SUCCESS: Custom messages saved to empyrion_helper.conf")
+                return {'success': True, 'message': 'Custom messages saved successfully'}
             else:
                 logger.error("FAILED: Could not save custom messages to config file")
-            
-            return success
+                return {'success': False, 'message': 'Failed to save custom messages'}
             
         except Exception as e:
-            logger.error(f"Error saving custom messages: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            return False
+            logger.error(f"Error saving custom messages: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
-    def send_welcome_message(self, player_name: str) -> bool:
-        """Send welcome message for a player"""
+    def send_welcome_message(self, player_name: str) -> Dict:
+        """
+        Send a welcome message for a player.
+
+        Args:
+            player_name (str): Name of the player to welcome.
+
+        Returns:
+            Dict: Result dictionary with 'success' and 'message' keys.
+        """
         if not player_name:
-            return False
+            return {'success': False, 'message': 'Cannot send welcome message for empty player name'}
         
         message = self.welcome_message_template.replace('<playername>', player_name)
         return self.send_global_message(message, message_type='welcome')
     
-    def send_goodbye_message(self, player_name: str) -> bool:
-        """Send goodbye message for a player"""
+    def send_goodbye_message(self, player_name: str) -> Dict:
+        """
+        Send a goodbye message for a player.
+
+        Args:
+            player_name (str): Name of the player to say goodbye to.
+
+        Returns:
+            Dict: Result dictionary with 'success' and 'message' keys.
+        """
         if not player_name:
-            return False
+            return {'success': False, 'message': 'Cannot send goodbye message for empty player name'}
         
         message = self.goodbye_message_template.replace('<playername>', player_name)
         return self.send_global_message(message, message_type='goodbye')
@@ -264,7 +327,12 @@ class MessagingManager:
     # ============================================================================
     
     def load_scheduled_messages(self) -> List[Dict]:
-        """Load scheduled messages from config"""
+        """
+        Load scheduled messages from the configuration file.
+
+        Returns:
+            List[Dict]: List of scheduled message dictionaries.
+        """
         self._load_config()  # Reload from config file
         
         # Ensure we have at least 5 message slots
@@ -280,7 +348,15 @@ class MessagingManager:
         return self.scheduled_messages
     
     def save_scheduled_messages(self, messages_data: List[Dict]) -> bool:
-        """Save scheduled messages to config"""
+        """
+        Save scheduled messages to the configuration file.
+
+        Args:
+            messages_data (List[Dict]): List of scheduled message dictionaries to save.
+
+        Returns:
+            bool: True if saved successfully, False otherwise.
+        """
         try:
             logger.info(f"Saving {len(messages_data)} scheduled messages to config")
             
@@ -318,7 +394,9 @@ class MessagingManager:
             return False
     
     def start_message_scheduler(self):
-        """Start the scheduled message timer"""
+        """
+        Start the scheduled message timer for sending scheduled messages.
+        """
         if self.message_timer:
             self.message_timer.cancel()
         
@@ -328,14 +406,18 @@ class MessagingManager:
         logger.info("Message scheduler started")
     
     def stop_message_scheduler(self):
-        """Stop the scheduled message timer"""
+        """
+        Stop the scheduled message timer.
+        """
         if self.message_timer:
             self.message_timer.cancel()
             self.message_timer = None
         logger.info("Message scheduler stopped")
     
     def _check_scheduled_messages(self):
-        """Check and send scheduled messages if needed"""
+        """
+        Check and send scheduled messages if their schedule interval has elapsed.
+        """
         try:
             current_time = datetime.now()
             
@@ -371,7 +453,17 @@ class MessagingManager:
             self.start_message_scheduler()
     
     def _should_send_message(self, msg_index: int, schedule: str, current_time: datetime) -> bool:
-        """Determine if a scheduled message should be sent"""
+        """
+        Determine if a scheduled message should be sent based on its schedule and last sent time.
+
+        Args:
+            msg_index (int): Index of the message in the scheduled messages list.
+            schedule (str): Schedule string (e.g., 'Every 5 minutes').
+            current_time (datetime): The current datetime.
+
+        Returns:
+            bool: True if the message should be sent, False otherwise.
+        """
         last_sent = self.last_message_check.get(msg_index)
         
         if not last_sent:
@@ -404,7 +496,15 @@ class MessagingManager:
     # ============================================================================
     
     def get_message_history(self, limit: int = 100) -> List[Dict]:
-        """Get recent message history"""
+        """
+        Get recent message history from the database.
+
+        Args:
+            limit (int, optional): Maximum number of history entries to retrieve. Defaults to 100.
+
+        Returns:
+            List[Dict]: List of message history entries.
+        """
         try:
             with sqlite3.connect('instance/players.db') as conn:
                 cursor = conn.cursor()
@@ -432,7 +532,15 @@ class MessagingManager:
             return []
     
     def _store_message_log(self, message: str, message_type: str, player_name: str = None, success: bool = True):
-        """Store message in history log (database only)"""
+        """
+        Store a message in the message history log in the database.
+
+        Args:
+            message (str): The message text.
+            message_type (str): The type of message ('manual', 'scheduled', etc.).
+            player_name (str, optional): Name of the player associated with the message.
+            success (bool, optional): Whether the message was sent successfully. Defaults to True.
+        """
         try:
             current_time = datetime.now().isoformat()
             
@@ -454,15 +562,36 @@ class MessagingManager:
     # ============================================================================
     
     def test_welcome_message(self, test_player_name: str = "TestPlayer") -> bool:
-        """Send a test welcome message"""
+        """
+        Send a test welcome message for a given player name.
+
+        Args:
+            test_player_name (str, optional): Name of the test player. Defaults to "TestPlayer".
+
+        Returns:
+            bool: Result of sending the welcome message.
+        """
         return self.send_welcome_message(test_player_name)
     
     def test_goodbye_message(self, test_player_name: str = "TestPlayer") -> bool:
-        """Send a test goodbye message"""
+        """
+        Send a test goodbye message for a given player name.
+
+        Args:
+            test_player_name (str, optional): Name of the test player. Defaults to "TestPlayer".
+
+        Returns:
+            bool: Result of sending the goodbye message.
+        """
         return self.send_goodbye_message(test_player_name)
     
     def get_message_stats(self) -> Dict[str, int]:
-        """Get message statistics"""
+        """
+        Get statistics about messages sent and stored in the database.
+
+        Returns:
+            Dict[str, int]: Dictionary with total, successful, failed, and by_type message counts.
+        """
         try:
             with sqlite3.connect('instance/players.db') as conn:
                 cursor = conn.cursor()
@@ -500,7 +629,12 @@ class MessagingManager:
             }
     
     def clear_message_history(self) -> bool:
-        """Clear all message history"""
+        """
+        Clear all message history from the database.
+
+        Returns:
+            bool: True if cleared successfully, False otherwise.
+        """
         try:
             with sqlite3.connect('instance/players.db') as conn:
                 cursor = conn.cursor()

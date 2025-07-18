@@ -25,9 +25,19 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class PlayerDatabase:
-    """Manages SQLite database for player tracking and secure credentials"""
+    """
+    Manages the SQLite database for Empyrion Web Helper, including player tracking, secure credential storage, and geolocation data.
+
+    Provides methods for initializing the database, storing and retrieving encrypted credentials, updating player status, and managing geolocation data for player IP addresses.
+    """
     
     def __init__(self, db_path: str = "instance/players.db"):
+        """
+        Initialize the PlayerDatabase.
+
+        Args:
+            db_path (str, optional): Path to the SQLite database file. Defaults to 'instance/players.db'.
+        """
         self.db_path = db_path
         self.encryption_key = None
         self.geolocation_cache = {}  # Simple in-memory cache for geolocation
@@ -40,7 +50,9 @@ class PlayerDatabase:
             logger.warning("Cryptography not installed - install with: pip install cryptography")
     
     def ensure_directory_exists(self):
-        """Create directory if it doesn't exist"""
+        """
+        Ensure the database directory exists, creating it if necessary.
+        """
         directory = os.path.dirname(self.db_path)
         if directory and not os.path.exists(directory):
             os.makedirs(directory)
@@ -99,7 +111,9 @@ class PlayerDatabase:
             return encrypted_credential  # Return as-is if can't decrypt
     
     def init_database(self):
-        """Initialize database tables including credentials and geolocation"""
+        """
+        Initialize the database tables for players, credentials, and player sessions, including geolocation support.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -170,12 +184,14 @@ class PlayerDatabase:
                     os.chmod(self.db_path, 0o600)
                 except Exception as e:
                     logger.warning(f"Could not set secure permissions on database: {e}")
+                    return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
                 
                 conn.commit()
                 logger.info("Database initialized successfully with credentials and geolocation support")
                 
         except Exception as e:
-            logger.error(f"Error initializing database: {e}")
+            logger.error(f"Error initializing database: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     # ============================================================================
     # GEOLOCATION METHODS
@@ -306,7 +322,20 @@ class PlayerDatabase:
     
     def store_credential(self, credential_type: str, username: str = '', password: str = '', 
                         host: str = '', port: int = 0, additional_data: str = '') -> bool:
-        """Store encrypted credentials in database"""
+        """
+        Store encrypted credentials in the database.
+
+        Args:
+            credential_type (str): Type of credential (e.g., 'rcon', 'ftp').
+            username (str, optional): Username for the credential. Defaults to ''.
+            password (str, optional): Password for the credential. Defaults to ''.
+            host (str, optional): Host for the credential. Defaults to ''.
+            port (int, optional): Port for the credential. Defaults to 0.
+            additional_data (str, optional): Any additional data. Defaults to ''.
+
+        Returns:
+            bool or dict: True if stored successfully, or error dict if failed.
+        """
         try:
             current_time = datetime.now().isoformat()
             
@@ -332,11 +361,19 @@ class PlayerDatabase:
                 return True
                 
         except Exception as e:
-            logger.error(f"Error storing {credential_type} credentials: {e}")
-            return False
+            logger.error(f"Error storing {credential_type} credentials: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def get_credential(self, credential_type: str) -> Optional[Dict]:
-        """Retrieve and decrypt credentials from database"""
+        """
+        Retrieve and decrypt credentials from the database.
+
+        Args:
+            credential_type (str): Type of credential to retrieve.
+
+        Returns:
+            Optional[Dict] or dict: Credential dictionary if found, None or error dict otherwise.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -363,11 +400,19 @@ class PlayerDatabase:
                 }
                 
         except Exception as e:
-            logger.error(f"Error retrieving {credential_type} credentials: {e}")
-            return None
+            logger.error(f"Error retrieving {credential_type} credentials: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def delete_credential(self, credential_type: str) -> bool:
-        """Delete credentials from database"""
+        """
+        Delete credentials from the database.
+
+        Args:
+            credential_type (str): Type of credential to delete.
+
+        Returns:
+            bool or dict: True if deleted, False if not found, or error dict if failed.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -382,11 +427,16 @@ class PlayerDatabase:
                     return False
                     
         except Exception as e:
-            logger.error(f"Error deleting {credential_type} credentials: {e}")
-            return False
+            logger.error(f"Error deleting {credential_type} credentials: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def list_stored_credentials(self) -> List[str]:
-        """Get list of stored credential types"""
+        """
+        Get a list of all stored credential types in the database.
+
+        Returns:
+            List[str] or dict: List of credential types, or error dict if failed.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -394,12 +444,23 @@ class PlayerDatabase:
                 return [row[0] for row in cursor.fetchall()]
                 
         except Exception as e:
-            logger.error(f"Error listing credentials: {e}")
-            return []
+            logger.error(f"Error listing credentials: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def prompt_for_credentials(self, credential_type: str, description: str, 
                              include_host: bool = True, include_username: bool = True) -> Optional[Dict]:
-        """Interactively prompt for credentials if running in terminal"""
+        """
+        Interactively prompt the user for credentials if running in a terminal.
+
+        Args:
+            credential_type (str): Type of credential (e.g., 'rcon', 'ftp').
+            description (str): Description for the prompt.
+            include_host (bool, optional): Whether to prompt for host. Defaults to True.
+            include_username (bool, optional): Whether to prompt for username. Defaults to True.
+
+        Returns:
+            Optional[Dict] or dict: Credential dictionary if entered, None or error dict otherwise.
+        """
         if not os.isatty(0):  # Not running in terminal
             logger.warning(f"Cannot prompt for {credential_type} credentials (not in terminal)")
             return None
@@ -461,10 +522,15 @@ class PlayerDatabase:
             return None
         except Exception as e:
             logger.error(f"Error prompting for {credential_type} credentials: {e}")
-            return None
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def get_rcon_credentials(self) -> Optional[Dict]:
-        """Get RCON credentials, prompting if not stored"""
+        """
+        Retrieve RCON credentials, prompting the user if not already stored.
+
+        Returns:
+            Optional[Dict]: Credential dictionary if found or entered, None otherwise.
+        """
         # Try environment variable first
         env_password = os.environ.get('EMPYRION_RCON_PASSWORD')
         if env_password:
@@ -493,7 +559,12 @@ class PlayerDatabase:
         )
     
     def get_ftp_credentials(self) -> Optional[Dict]:
-        """Get FTP credentials, prompting if not stored"""
+        """
+        Retrieve FTP credentials, prompting the user if not already stored.
+
+        Returns:
+            Optional[Dict]: Credential dictionary if found or entered, None otherwise.
+        """
         # Try environment variables first
         env_user = os.environ.get('EMPYRION_FTP_USER')
         env_password = os.environ.get('EMPYRION_FTP_PASSWORD')
@@ -529,7 +600,15 @@ class PlayerDatabase:
     # ============================================================================
     
     def update_player(self, player_data: Dict) -> bool:
-        """Update or insert player data with proper status change handling and geolocation"""
+        """
+        Update or insert player data, handling status changes and geolocation lookup.
+
+        Args:
+            player_data (Dict): Dictionary of player data to update or insert.
+
+        Returns:
+            bool or dict: True if updated/inserted, or error dict if failed.
+        """
         try:
             # Validate Steam ID (no negative IDs)
             steam_id = str(player_data.get('steam_id', ''))
@@ -689,11 +768,19 @@ class PlayerDatabase:
                 return True
                 
         except Exception as e:
-            logger.error(f"Error updating player {player_data.get('name', 'Unknown')}: {e}")
-            return False
+            logger.error(f"Error updating player {player_data.get('name', 'Unknown')}: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def update_multiple_players(self, players_data: List[Dict]) -> int:
-        """Update multiple players at once"""
+        """
+        Update multiple players at once.
+
+        Args:
+            players_data (List[Dict]): List of player data dictionaries.
+
+        Returns:
+            int: Number of players updated.
+        """
         updated_count = 0
         
         # First, process each player to detect status changes BEFORE marking offline
@@ -711,7 +798,12 @@ class PlayerDatabase:
         return updated_count
     
     def mark_remaining_offline(self, current_players: List[Dict]):
-        """Mark players as offline who didn't appear in current plys data"""
+        """
+        Mark players as offline who did not appear in the current 'plys' data.
+
+        Args:
+            current_players (List[Dict]): List of current player data from 'plys'.
+        """
         try:
             current_time = datetime.now().isoformat()
             current_steam_ids = {str(p.get('steam_id', '')) for p in current_players if p.get('steam_id')}
@@ -739,10 +831,13 @@ class PlayerDatabase:
                 conn.commit()
                 
         except Exception as e:
-            logger.error(f"Error marking remaining players offline: {e}")
+            logger.error(f"Error marking remaining players offline: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def mark_all_offline(self):
-        """Mark all players as offline (called before updating online players)"""
+        """
+        Mark all players as offline. Called before updating online players.
+        """
         try:
             current_time = datetime.now().isoformat()
             with sqlite3.connect(self.db_path) as conn:
@@ -762,10 +857,13 @@ class PlayerDatabase:
                 
                 conn.commit()
         except Exception as e:
-            logger.error(f"Error marking players offline: {e}")
+            logger.error(f"Error marking players offline: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def cleanup_negative_steam_ids(self):
-        """Remove entries with negative Steam IDs if a positive Steam ID exists for the same player name"""
+        """
+        Remove entries with negative Steam IDs if a positive Steam ID exists for the same player name.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -793,10 +891,19 @@ class PlayerDatabase:
                     logger.info(f"Cleaned up {len(negative_entries)} negative Steam ID entries")
                 
         except Exception as e:
-            logger.error(f"Error cleaning up negative Steam IDs: {e}")
+            logger.error(f"Error cleaning up negative Steam IDs: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def get_all_players(self, filters: Optional[Dict] = None) -> List[Dict]:
-        """Get all players from database with optional filters"""
+        """
+        Get all players from the database, with optional filters.
+
+        Args:
+            filters (Optional[Dict], optional): Dictionary of filter criteria. Defaults to None.
+
+        Returns:
+            List[Dict] or dict: List of player dictionaries, or error dict if failed.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -870,15 +977,25 @@ class PlayerDatabase:
                 return players
                 
         except Exception as e:
-            logger.error(f"Error getting players from database: {e}")
-            return []
+            logger.error(f"Error getting players from database: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def get_online_players(self) -> List[Dict]:
-        """Get only currently online players"""
+        """
+        Get only currently online players from the database.
+
+        Returns:
+            List[Dict]: List of online player dictionaries.
+        """
         return self.get_all_players({'status': 'Online'})
     
     def get_player_count(self) -> Dict[str, int]:
-        """Get player statistics"""
+        """
+        Get player statistics (total, online, and offline counts).
+
+        Returns:
+            Dict[str, int] or dict: Dictionary with total, online, and offline player counts, or error dict if failed.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -898,11 +1015,19 @@ class PlayerDatabase:
                 }
                 
         except Exception as e:
-            logger.error(f"Error getting player count: {e}")
-            return {'total': 0, 'online': 0, 'offline': 0}
+            logger.error(f"Error getting player count: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def delete_player(self, steam_id: str) -> bool:
-        """Delete a player from the database"""
+        """
+        Delete a player and their sessions from the database.
+
+        Args:
+            steam_id (str): Steam ID of the player to delete.
+
+        Returns:
+            bool: True if deleted, False otherwise.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -918,7 +1043,7 @@ class PlayerDatabase:
                     return False
                     
         except Exception as e:
-            logger.error(f"Error deleting player {steam_id}: {e}")
+            logger.error(f"Error deleting player {steam_id}: {e}", exc_info=True)
             return False
     
     # ============================================================================
@@ -926,7 +1051,12 @@ class PlayerDatabase:
     # ============================================================================
     
     def get_geolocation_stats(self) -> Dict[str, any]:
-        """Get statistics about geolocation data"""
+        """
+        Get statistics about geolocation data for all players.
+
+        Returns:
+            Dict[str, any]: Dictionary with geolocation stats.
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -961,12 +1091,19 @@ class PlayerDatabase:
             return {}
     
     def clear_geolocation_cache(self):
-        """Clear the in-memory geolocation cache"""
+        """
+        Clear the in-memory geolocation cache.
+        """
         self.geolocation_cache.clear()
         logger.info("Geolocation cache cleared")
     
     def force_update_all_geolocations(self) -> int:
-        """Force update geolocation for all players with IP addresses (admin function)"""
+        """
+        Force update geolocation for all players with IP addresses. (Admin function)
+
+        Returns:
+            int: Number of players updated.
+        """
         try:
             updated_count = 0
             
@@ -1006,7 +1143,12 @@ class PlayerDatabase:
             return 0
     
     def refresh_geolocation_for_existing_players(self) -> int:
-        """Refresh geolocation for players that don't have country data yet"""
+        """
+        Refresh geolocation for players that do not have country data yet.
+
+        Returns:
+            int: Number of players updated.
+        """
         try:
             updated_count = 0
             

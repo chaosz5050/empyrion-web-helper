@@ -2,8 +2,10 @@
 #!/usr/bin/env python3
 """
 Empyrion Web Helper v0.4.1
-A web-based admin tool for Empyrion Galactic Survival servers
-Enhanced with background service architecture for independent operation
+A web-based admin tool for Empyrion Galactic Survival servers.
+
+This Flask-based application provides a web interface for server administration, with
+background service architecture for independent operation and robust error handling.
 """
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -26,7 +28,29 @@ logger = logging_manager.setup_rotating_logger()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'empyrion-web-helper-secret-key-change-me'
+
+def get_or_create_secret_key(key_path='instance/ewh_secret.key'):
+    """
+    Retrieve or generate a persistent secret key for Flask session security.
+
+    Args:
+        key_path (str): Path to the secret key file.
+
+    Returns:
+        bytes: The secret key.
+    """
+    import secrets
+    if os.path.exists(key_path):
+        with open(key_path, 'rb') as f:
+            return f.read()
+    else:
+        key = secrets.token_bytes(32)  # 256-bit key
+        os.makedirs(os.path.dirname(key_path), exist_ok=True)
+        with open(key_path, 'wb') as f:
+            f.write(key)
+        return key
+
+app.config['SECRET_KEY'] = get_or_create_secret_key()
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Global state - now managed by background service
@@ -36,7 +60,15 @@ player_db = None
 messaging_manager = None
 
 def initialize_app():
-    """Initialize the application with background service"""
+    """
+    Initialize the application and its core components.
+
+    Sets up the player database, configuration manager, messaging manager, logging, and background service.
+    Checks for required credentials and prepares the environment for operation.
+
+    Returns:
+        bool: True if initialization is successful and credentials are present, False otherwise.
+    """
     global config_manager, player_db, messaging_manager, background_service
     
     # Initialize player database first (needed for credentials)
@@ -80,7 +112,12 @@ def initialize_app():
     return True
 
 def start_background_service():
-    """Start the background service if credentials are available"""
+    """
+    Start the background service if RCON credentials are available.
+
+    Returns:
+        bool: True if the background service was started successfully, False otherwise.
+    """
     global background_service
     
     if not background_service:
@@ -99,6 +136,12 @@ def start_background_service():
     return True
 
 def stop_background_service():
+    """
+    Stop the background service if it is running.
+
+    Returns:
+        bool: True if the service was stopped, False otherwise.
+    """
     """Stop the background service"""
     global background_service
     if background_service:
@@ -106,6 +149,11 @@ def stop_background_service():
 
 # Only register cleanup for normal exit, not signals during development
 def cleanup_on_exit():
+    """
+    Perform cleanup actions when the application exits.
+
+    Ensures background services are stopped and resources are released.
+    """
     """Clean shutdown handler for normal exit only"""
     logger.info("🛑 Application shutting down, stopping background service...")
     stop_background_service()
@@ -113,7 +161,14 @@ def cleanup_on_exit():
 atexit.register(cleanup_on_exit)
 
 @app.route('/')
+@app.route('/')
 def index():
+    """
+    Render the main page of the web interface.
+
+    Returns:
+        Response: Rendered HTML for the main page.
+    """
     """Main page"""
     if player_db:
         db_players = player_db.get_all_players()
@@ -132,12 +187,29 @@ def index():
                          service_status=connection_status)
 
 @app.route('/static/<path:filename>')
+@app.route('/static/<path:filename>')
 def serve_static(filename):
+    """
+    Serve static files such as images, CSS, or JavaScript.
+
+    Args:
+        filename (str): The name of the static file to serve.
+
+    Returns:
+        Response: The static file response.
+    """
     """Serve static files (like favicon)"""
     return send_from_directory('.', filename)
 
 @app.route('/status')
+@app.route('/status')
 def get_status():
+    """
+    Get the current status of the background service and connection.
+
+    Returns:
+        Response: JSON with status information.
+    """
     """Get current service and connection status"""
     if not background_service:
         return jsonify({
@@ -157,7 +229,14 @@ def get_status():
     })
 
 @app.route('/service/start', methods=['POST'])
+@app.route('/service/start', methods=['POST'])
 def start_service():
+    """
+    API endpoint to start the background service.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     """Start the background service (only needed if credentials were just configured)"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not initialized'})
@@ -172,7 +251,14 @@ def start_service():
         return jsonify({'success': False, 'message': 'Failed to start background service - check credentials'})
 
 @app.route('/service/stop', methods=['POST'])
+@app.route('/service/stop', methods=['POST'])
 def stop_service():
+    """
+    API endpoint to stop the background service.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     """Stop the background service"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not initialized'})
@@ -182,7 +268,14 @@ def stop_service():
 
 # Legacy routes for backward compatibility (now just return status)
 @app.route('/connect', methods=['POST'])
+@app.route('/connect', methods=['POST'])
 def connect():
+    """
+    Legacy API endpoint for connecting to the server (now managed by background service).
+
+    Returns:
+        Response: JSON indicating connection status.
+    """
     """Legacy connect route - now managed by background service"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not available'})
@@ -194,12 +287,26 @@ def connect():
         return jsonify({'success': False, 'message': 'Connection managed by background service - check logs'})
 
 @app.route('/disconnect', methods=['POST'])
+@app.route('/disconnect', methods=['POST'])
 def disconnect():
+    """
+    Legacy API endpoint for disconnecting from the server (now managed by background service).
+
+    Returns:
+        Response: JSON indicating disconnection status.
+    """
     """Legacy disconnect route - now managed by background service"""
     return jsonify({'success': True, 'message': 'Connection managed by background service'})
 
 @app.route('/players')
+@app.route('/players', methods=['GET'])
 def get_players():
+    """
+    Get the current list of players from the database.
+
+    Returns:
+        Response: JSON with player list and statistics.
+    """
     """Get current player list from database (no longer queries server directly)"""
     if not player_db:
         return jsonify({'success': False, 'message': 'Database not initialized'})
@@ -212,11 +319,18 @@ def get_players():
         return jsonify({'success': True, 'players': players})
         
     except Exception as e:
-        logger.error(f"Error getting players: {e}")
-        return jsonify({'success': False, 'message': str(e)})
+        logger.error(f"Error getting players: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 @app.route('/players/all')
+@app.route('/players/all', methods=['GET'])
 def get_all_players():
+    """
+    Get all players from the database, with optional filtering.
+
+    Returns:
+        Response: JSON with all player records and statistics.
+    """
     """Get all players from database with filtering"""
     if not player_db:
         return jsonify({'success': False, 'message': 'Database not initialized'})
@@ -240,13 +354,19 @@ def get_all_players():
         })
         
     except Exception as e:
-        logger.error(f"Error getting all players: {e}")
-        return jsonify({'success': False, 'message': str(e)})
+        logger.error(f"Error getting all players: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 # Simplified messaging and other routes - keeping them but focusing on the main issue
 @app.route('/messaging/send', methods=['POST'])
+@app.route('/messaging/send', methods=['POST'])
 def send_global_message():
-    """Send a global message to all players"""
+    """
+    Send a global message to all players via the messaging manager.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not available'})
     
@@ -266,11 +386,12 @@ def send_global_message():
         if success:
             return jsonify({'success': True, 'message': 'Global message sent successfully'})
         else:
+            return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
             return jsonify({'success': False, 'message': 'Failed to send global message'})
             
     except Exception as e:
-        logger.error(f"Error sending global message: {e}")
-        return jsonify({'success': False, 'message': str(e)})
+        logger.error(f"Error sending global message: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 # Additional routes would go here - keeping it simple for now
 
@@ -300,7 +421,12 @@ if __name__ == '__main__':
     import socket
     
     def get_local_ip():
-        """Get the local network IP address"""
+        """
+        Get the local network IP address for displaying network access info.
+
+        Returns:
+            str: The detected local IP address, or '0.0.0.0' if unavailable.
+        """
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.connect(("8.8.8.8", 80))

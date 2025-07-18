@@ -15,9 +15,22 @@ from typing import List, Dict, Optional
 logger = logging.getLogger(__name__)
 
 class EmpyrionConnection:
-    """Handles RCON connection and basic player management for Empyrion server"""
+    """
+    Handles RCON connection and basic player management for Empyrion Galactic Survival servers.
+
+    Provides methods for connecting, authenticating, sending commands, retrieving player lists, and managing player status (kick, ban, unban) via the server's RCON/telnet interface.
+    """
     
     def __init__(self, host: str, port: int, password: str, timeout: int = 10):
+        """
+        Initialize the EmpyrionConnection.
+
+        Args:
+            host (str): Server hostname or IP address.
+            port (int): RCON/telnet port number.
+            password (str): RCON/telnet password.
+            timeout (int, optional): Socket timeout in seconds. Defaults to 10.
+        """
         self.host = host
         self.port = port
         self.password = password
@@ -27,8 +40,10 @@ class EmpyrionConnection:
         
     def connect(self) -> bool:
         """
-        Connect to the Empyrion server via RCON/telnet
-        Returns True if successful, False otherwise
+        Connect to the Empyrion server via RCON/telnet and authenticate.
+
+        Returns:
+            bool or dict: True if successful, False or a dict with error info if connection/authentication fails.
         """
         try:
             logger.info(f"Connecting to {self.host}:{self.port}")
@@ -85,17 +100,19 @@ class EmpyrionConnection:
                         self.disconnect()
                         return False
             except Exception as e:
-                logger.error(f"Error reading auth response: {e}")
+                logger.error(f"Error reading auth response: {e}", exc_info=True)
                 self.disconnect()
-                return False
+                return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
                 
         except Exception as e:
-            logger.error(f"Connection failed: {e}")
+            logger.error(f"Connection failed: {e}", exc_info=True)
             self.disconnect()
-            return False
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def disconnect(self):
-        """Disconnect from the server and clean up"""
+        """
+        Disconnect from the server and clean up the socket.
+        """
         try:
             if self.socket:
                 self.socket.close()
@@ -103,15 +120,28 @@ class EmpyrionConnection:
             self.socket = None
             logger.info("Disconnected from server")
         except Exception as e:
-            logger.error(f"Error during disconnect: {e}")
+            logger.error(f"Error during disconnect: {e}", exc_info=True)
     
     def _send_raw(self, data: str):
-        """Send raw data to the socket"""
+        """
+        Send raw data to the server socket.
+
+        Args:
+            data (str): Data string to send.
+        """
         if self.socket:
             self.socket.send(data.encode('utf-8'))
     
     def _receive_data(self, timeout: float = 5.0) -> str:
-        """Receive data from the socket with timeout"""
+        """
+        Receive data from the server socket with a specified timeout.
+
+        Args:
+            timeout (float, optional): Timeout in seconds. Defaults to 5.0.
+
+        Returns:
+            str: Decoded response string, or empty string if no data.
+        """
         if not self.socket:
             return ""
         
@@ -165,13 +195,19 @@ class EmpyrionConnection:
             return result
             
         except Exception as e:
-            logger.error(f"Error receiving data: {e}")
+            logger.error(f"Error receiving data: {e}", exc_info=True)
             return ""
     
     def send_command(self, command: str, timeout: float = 5.0) -> Optional[str]:
         """
-        Send a command to the server and return the response
-        Returns None if command fails or times out
+        Send a command to the server and return the response.
+
+        Args:
+            command (str): Command string to send.
+            timeout (float, optional): Timeout for response. Defaults to 5.0.
+
+        Returns:
+            Optional[str] or dict: Response string if successful, None or error dict if failed.
         """
         if not self.is_connected or not self.socket:
             logger.error("Cannot send command: not connected to server")
@@ -194,15 +230,17 @@ class EmpyrionConnection:
                 return None
             
         except Exception as e:
-            logger.error(f"Error sending command '{command}': {e}")
+            logger.error(f"Error sending command '{command}': {e}", exc_info=True)
             # Connection might be broken, mark as disconnected
             self.is_connected = False
-            return None
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def get_players(self) -> List[Dict]:
         """
-        Get comprehensive list of players from all sections of 'plys' command
-        Returns list of player dictionaries with full info
+        Get a comprehensive list of players from all sections of the 'plys' command.
+
+        Returns:
+            List[Dict] or dict: List of player dictionaries with full info, or error dict if failed.
         """
         try:
             # Use 'plys' command to get comprehensive player data
@@ -267,13 +305,18 @@ class EmpyrionConnection:
             return merged_players
             
         except Exception as e:
-            logger.error(f"Error getting players: {e}")
-            return []
+            logger.error(f"Error getting players: {e}", exc_info=True)
+            return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
     
     def _parse_connected_player(self, line: str) -> Optional[Dict]:
         """
-        Parse connected player line
-        Format: "11:  2100, ChaoszMind,     Roggery Sector, 24.132.253.107|56418"
+        Parse a connected player line from the 'plys' output.
+
+        Args:
+            line (str): Line of text representing a connected player.
+
+        Returns:
+            Optional[Dict]: Player info dictionary if parsed, else None.
         """
         try:
             import re
@@ -315,8 +358,13 @@ class EmpyrionConnection:
     
     def _parse_online_player(self, line: str) -> Optional[Dict]:
         """
-        Parse online player line
-        Format: "1. id=2100 name=ChaoszMind fac=[GOM 101] role=Founder"
+        Parse an online player line from the 'plys' output.
+
+        Args:
+            line (str): Line of text representing an online player.
+
+        Returns:
+            Optional[Dict]: Player info dictionary if parsed, else None.
         """
         try:
             import re
@@ -361,8 +409,13 @@ class EmpyrionConnection:
     
     def _parse_global_player(self, line: str) -> Optional[Dict]:
         """
-        Parse global player line (includes offline players)
-        Format: "1. id=46489 name=ManosdeAlien fac=[Hum 1] role=Admin online=12580903"
+        Parse a global player line (includes offline players) from the 'plys' output.
+
+        Args:
+            line (str): Line of text representing a global player.
+
+        Returns:
+            Optional[Dict]: Player info dictionary if parsed, else None.
         """
         try:
             import re
@@ -412,8 +465,15 @@ class EmpyrionConnection:
     
     def _merge_player_data(self, players: List[Dict]) -> List[Dict]:
         """
-        Merge player data from different sections, combining information
-        Priority: Connected > Online > Global for status determination
+        Merge player data from different sections, combining information.
+
+        Priority: Connected > Online > Global for status determination.
+
+        Args:
+            players (List[Dict]): List of player dictionaries from all sections.
+
+        Returns:
+            List[Dict]: Merged and deduplicated list of player dictionaries.
         """
         merged = {}
         connected_steam_ids = set()
@@ -489,8 +549,10 @@ class EmpyrionConnection:
     
     def is_connection_alive(self) -> bool:
         """
-        Check if the connection is still alive
-        Returns True if connected and responsive, False otherwise
+        Check if the connection is still alive and responsive.
+
+        Returns:
+            bool: True if connected and responsive, False otherwise.
         """
         if not self.is_connected or not self.socket:
             return False
@@ -499,14 +561,21 @@ class EmpyrionConnection:
             # Send a simple command to test connection
             response = self.send_command("help", timeout=3.0)
             return response is not None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error checking connection: {e}", exc_info=True)
             self.is_connected = False
             return False
     
     def kick_player(self, player_name: str, message: str = "Kicked by Admin") -> bool:
         """
-        Kick a player by name with message
-        Format: kick <player> '<message>'
+        Kick a player by name with a custom message.
+
+        Args:
+            player_name (str): Name of the player to kick.
+            message (str, optional): Kick message. Defaults to "Kicked by Admin".
+
+        Returns:
+            bool: True if command succeeded, False otherwise.
         """
         try:
             # Escape single quotes in message and wrap in single quotes
@@ -527,8 +596,14 @@ class EmpyrionConnection:
     
     def ban_player(self, steam_id: str, duration: str = "1d") -> bool:
         """
-        Ban a player by Steam ID for specified duration
-        Format: ban <steam-id> <duration>
+        Ban a player by Steam ID for a specified duration.
+
+        Args:
+            steam_id (str): Steam ID of the player to ban.
+            duration (str, optional): Ban duration (e.g., '1d'). Defaults to '1d'.
+
+        Returns:
+            bool: True if command succeeded, False otherwise.
         """
         try:
             command = f"ban {steam_id} {duration}"
@@ -542,13 +617,18 @@ class EmpyrionConnection:
                 return False
                 
         except Exception as e:
-            logger.error(f"Error banning player {steam_id}: {e}")
+            logger.error(f"Error banning player {steam_id}: {e}", exc_info=True)
             return False
     
     def unban_player(self, steam_id: str) -> bool:
         """
-        Unban a player by Steam ID
-        Format: unban <steam-id>
+        Unban a player by Steam ID.
+
+        Args:
+            steam_id (str): Steam ID of the player to unban.
+
+        Returns:
+            bool: True if command succeeded, False otherwise.
         """
         try:
             command = f"unban {steam_id}"
@@ -562,5 +642,5 @@ class EmpyrionConnection:
                 return False
                 
         except Exception as e:
-            logger.error(f"Error unbanning player {steam_id}: {e}")
+            logger.error(f"Error unbanning player {steam_id}: {e}", exc_info=True)
             return False

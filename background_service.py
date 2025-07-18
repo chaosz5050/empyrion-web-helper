@@ -2,7 +2,9 @@
 #!/usr/bin/env python3
 """
 Background Service Manager for Empyrion Web Helper
-Independent service for 24/7 server monitoring and automated messaging
+
+This module defines the BackgroundService class, which provides independent 24/7
+server monitoring, automated messaging, and player tracking for Empyrion Galactic Survival servers.
 """
 
 import threading
@@ -14,9 +16,21 @@ from typing import Optional, Dict, List
 logger = logging.getLogger(__name__)
 
 class BackgroundService:
-    """Core background service for independent operation"""
-    
+    """
+    Core background service for independent operation.
+
+    Manages server connection, player monitoring, scheduled messaging, and background threads.
+    """
+
     def __init__(self, config_manager, player_db, messaging_manager):
+        """
+        Initialize the BackgroundService.
+
+        Args:
+            config_manager (ConfigManager): The configuration manager instance.
+            player_db (PlayerDatabase): The player database instance.
+            messaging_manager (MessagingManager): The messaging manager instance.
+        """
         self.config_manager = config_manager
         self.player_db = player_db
         self.messaging_manager = messaging_manager
@@ -44,7 +58,12 @@ class BackgroundService:
         logger.info("Background service initialized")
     
     def start(self):
-        """Start the background service"""
+        """
+        Start the background service.
+
+        Launches monitoring and scheduler threads for continuous operation.
+        Raises an exception if startup fails.
+        """
         if self.is_running:
             logger.warning("Background service already running")
             return
@@ -66,12 +85,16 @@ class BackgroundService:
             logger.info("✅ Background service started successfully")
             
         except Exception as e:
-            logger.error(f"Error starting background service: {e}")
+            logger.error(f"Error starting background service: {e}", exc_info=True)
             self.is_running = False
             raise
     
     def stop(self):
-        """Stop the background service"""
+        """
+        Stop the background service.
+
+        Signals threads to stop, disconnects from server, and waits for threads to finish.
+        """
         if not self.is_running:
             return
         
@@ -93,7 +116,12 @@ class BackgroundService:
         logger.info("✅ Background service stopped")
     
     def get_connection_status(self) -> Dict:
-        """Get current connection status for web UI"""
+        """
+        Get current connection status for web UI.
+
+        Returns:
+            dict: Dictionary with connection and service status information.
+        """
         return {
             'is_connected': self.is_connected,
             'last_attempt': self.last_connection_attempt,
@@ -102,11 +130,20 @@ class BackgroundService:
         }
     
     def get_connection_handler(self) -> Optional[object]:
-        """Get the current connection handler for web UI commands"""
+        """
+        Get the current connection handler for web UI commands.
+
+        Returns:
+            object or None: The connection handler if connected, else None.
+        """
         return self.connection_handler if self.is_connected else None
     
     def _monitor_loop(self):
-        """Main monitoring loop"""
+        """
+        Main monitoring loop.
+
+        Periodically checks server connection and player status while service is running.
+        """
         logger.info("🔍 Starting player monitoring loop")
         
         try:
@@ -137,7 +174,11 @@ class BackgroundService:
         logger.info("🔍 Player monitoring loop stopped")
     
     def _scheduler_loop(self):
-        """Message scheduler loop"""
+        """
+        Message scheduler loop.
+
+        Periodically checks and sends scheduled messages while service is running.
+        """
         logger.info("📅 Starting message scheduler loop")
         
         try:
@@ -160,7 +201,11 @@ class BackgroundService:
         logger.info("📅 Message scheduler loop stopped")
     
     def _attempt_connection(self):
-        """Attempt to connect to Empyrion server"""
+        """
+        Attempt to connect to Empyrion server.
+
+        Handles reconnection logic and updates connection state.
+        """
         if not self.is_running:
             return False
             
@@ -200,19 +245,27 @@ class BackgroundService:
             return False
     
     def _disconnect(self):
-        """Disconnect from server"""
+        """
+        Disconnect from server.
+
+        Closes the current connection handler and updates connection state.
+        """
         if self.connection_handler:
             try:
                 self.connection_handler.disconnect()
             except Exception as e:
-                logger.error(f"Error during disconnect: {e}")
+                logger.error(f"Error during disconnect: {e}", exc_info=True)
         
         self.is_connected = False
         self.connection_handler = None
         logger.info("🔌 Disconnected from server")
     
     def _handle_connection_error(self):
-        """Handle connection errors"""
+        """
+        Handle connection errors.
+
+        Logs the error and manages reconnection attempts.
+        """
         self.is_connected = False
         self.reconnect_attempts += 1
         
@@ -231,7 +284,11 @@ class BackgroundService:
         self.connection_handler = None
     
     def _monitor_players(self):
-        """Monitor players"""
+        """
+        Monitor players.
+
+        Retrieves current player list and detects player status changes.
+        """
         if not self.is_running:
             return
             
@@ -262,12 +319,19 @@ class BackgroundService:
                 self._detect_status_changes(current_players)
             
         except Exception as e:
-            logger.error(f"❌ Error monitoring players: {e}")
+            logger.error(f"❌ Error monitoring players: {e}", exc_info=True)
             if self.is_running:  # Only handle error if service should be running
                 self._handle_connection_error()
     
     def _detect_status_changes(self, current_players: List[Dict]):
-        """Detect player status changes"""
+        """
+        Detect player status changes.
+
+        Compares current and previous player lists to identify joins and leaves.
+
+        Args:
+            current_players (list of dict): The current list of player records.
+        """
         if not self.messaging_manager or not self.is_running:
             return
         
@@ -309,7 +373,11 @@ class BackgroundService:
             logger.error(f"❌ Error detecting status changes: {e}")
     
     def _check_scheduled_messages(self):
-        """Check scheduled messages"""
+        """
+        Check scheduled messages.
+
+        Loads scheduled messages and sends them at appropriate intervals.
+        """
         if not self.messaging_manager or not self.is_running:
             return
             
@@ -350,7 +418,17 @@ class BackgroundService:
             logger.error(f"❌ Error checking scheduled messages: {e}")
     
     def _should_send_scheduled_message(self, msg_index: int, schedule: str, current_time: datetime) -> bool:
-        """Determine if a scheduled message should be sent"""
+        """
+        Determine if a scheduled message should be sent.
+
+        Args:
+            msg_index (int): Index of the scheduled message.
+            schedule (str): Schedule string (e.g., 'Every 5 minutes').
+            current_time (datetime): The current time.
+
+        Returns:
+            bool: True if the message should be sent, False otherwise.
+        """
         if not self.messaging_manager:
             return False
         
