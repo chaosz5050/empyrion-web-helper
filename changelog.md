@@ -10,16 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- GitHub Actions CI/CD pipeline for automated testing
-- Comprehensive contributing guidelines
-- Development environment setup documentation
+- Standardized Google-style docstrings for all public classes and methods across all backend Python modules
+- Robust error logging with `exc_info=True` throughout the backend
+- Secure, persistent Flask secret key management (auto-generated, stored outside source)
 
 ### Changed
-- Improved code organization and modularity
-- Enhanced security with proper gitignore configuration
+- All backend modules now return only generic error messages to clients; exception details are logged, never exposed
+- Credentials (RCON, FTP, etc.) are now securely stored in the database with encryption and never in plaintext config files
+- Improved logging manager with log rotation, cleanup, and statistics
+- Consistent code structure, modularity, and maintainability across all modules
 
 ### Fixed
-- Minor UI consistency improvements
+- Improved error handling and logging for all user-facing exceptions
+
 
 ## [0.4.1] - 2025-01-18
 
