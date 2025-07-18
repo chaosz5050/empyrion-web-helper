@@ -400,6 +400,12 @@ netstat -tlnp | grep 5001
 sudo ufw status
 ```
 
+### Player Geolocation Not Updating
+- The app now performs a **one-time, silent geolocation refresh** for all players with missing or error country data after each service restart.
+- If you notice missing or incorrect country information for players, simply **restart the service** to trigger another geolocation update attempt.
+- There is **no longer a manual "Refresh Geolocation" button** in the Players tab—the process is automatic and silent.
+- If the issue persists after a restart, check your network connectivity and the status of the external geolocation API (ip-api.com).
+
 ## 🔄 Migration from v0.4.0
 
 If upgrading from v0.4.0:

@@ -357,6 +357,88 @@ def get_all_players():
         logger.error(f"Error getting all players: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
+@app.route('/api/settings/monitoring', methods=['GET'])
+def get_monitoring_settings():
+    """Return current monitoring settings (update_interval) from the database."""
+    val = player_db.get_app_setting('update_interval')
+    try:
+        val = int(val)
+    except Exception:
+        val = 20
+    return jsonify({'update_interval': val})
+
+@app.route('/api/settings/monitoring', methods=['POST'])
+def set_monitoring_settings():
+    """Set monitoring settings (update_interval) in the database, with validation."""
+    data = request.get_json(force=True)
+    interval = data.get('update_interval')
+    try:
+        interval = int(interval)
+    except Exception:
+        return jsonify({'success': False, 'error': 'Invalid update_interval'}), 400
+    if interval < 10:
+        return jsonify({'success': False, 'error': 'Update interval must be at least 10 seconds.'}), 400
+    player_db.set_app_setting('update_interval', str(interval))
+    return jsonify({'success': True, 'update_interval': interval})
+
+# --- RESTORED API ENDPOINTS FOR FRONTEND INTEGRATION ---
+
+@app.route('/entities', methods=['GET'])
+def get_entities():
+    """
+    Placeholder endpoint for entities. Should return a list of entities (ships, bases, etc.).
+    """
+    # TODO: Replace with real entity data from database/service
+    return jsonify({'success': True, 'entities': []})
+
+@app.route('/messaging/custom', methods=['GET'])
+def get_custom_messages():
+    """
+    Placeholder endpoint for custom messages. Should return a list of custom messages.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'messages': []})
+
+@app.route('/messaging/scheduled', methods=['GET'])
+def get_scheduled_messages():
+    """
+    Placeholder endpoint for scheduled messages. Should return a list of scheduled messages.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'messages': []})
+
+@app.route('/messaging/history', methods=['GET'])
+def get_message_history():
+    """
+    Placeholder endpoint for message history. Should return recent message history.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'history': []})
+
+@app.route('/logging/stats', methods=['GET'])
+def get_logging_stats():
+    """
+    Placeholder endpoint for logging stats. Should return stats about logs.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'stats': {}})
+
+@app.route('/logging/recent', methods=['GET'])
+def get_recent_logs():
+    """
+    Placeholder endpoint for recent logs. Should return recent log entries.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'logs': []})
+
+@app.route('/logging/settings', methods=['GET'])
+def get_logging_settings():
+    """
+    Placeholder endpoint for logging settings. Should return log configuration/settings.
+    """
+    # TODO: Replace with real data
+    return jsonify({'success': True, 'settings': {}})
+
 # Simplified messaging and other routes - keeping them but focusing on the main issue
 @app.route('/messaging/send', methods=['POST'])
 @app.route('/messaging/send', methods=['POST'])
@@ -393,7 +475,97 @@ def send_global_message():
         logger.error(f"Error sending global message: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
-# Additional routes would go here - keeping it simple for now
+@app.route('/api/credentials/status', methods=['GET'])
+def api_credential_status():
+    """
+    Returns JSON indicating whether all required credentials and connection info are present in the database.
+    """
+    rcon_creds = player_db.get_credential('rcon')
+    ftp_creds = player_db.get_credential('ftp')
+    server_host = player_db.get_app_setting('server_host')
+    server_port = player_db.get_app_setting('server_port')
+    ftp_host = player_db.get_app_setting('ftp_host')
+    ftp_remote_log_path = player_db.get_app_setting('ftp_remote_log_path')
+    status = {
+        'rcon': bool(rcon_creds and rcon_creds.get('password')),
+        'ftp': bool(ftp_creds and ftp_creds.get('password') and ftp_creds.get('username')),
+        'server_host': bool(server_host),
+        'server_port': bool(server_port),
+        'ftp_host': bool(ftp_host),
+        'ftp_remote_log_path': bool(ftp_remote_log_path)
+    }
+    return jsonify(status)
+
+
+@app.route('/api/credentials/set', methods=['POST'])
+def api_set_credentials():
+    """
+    Accepts JSON with RCON, FTP, server, and FTP connection info and stores them securely in the database.
+    """
+    data = request.get_json(force=True)
+    errors = {}
+    updated = []
+
+    # RCON
+    rcon_pw = data.get('rcon_password')
+    if rcon_pw is not None:
+        if not isinstance(rcon_pw, str) or len(rcon_pw.strip()) < 4:
+            errors['rcon'] = 'RCON password must be at least 4 characters.'
+        else:
+            player_db.store_credential('rcon', password=rcon_pw.strip())
+            updated.append('rcon')
+
+    # FTP
+    ftp_user = data.get('ftp_user')
+    ftp_pw = data.get('ftp_password')
+    if ftp_user is not None or ftp_pw is not None:
+        if not ftp_user or not isinstance(ftp_user, str) or len(ftp_user.strip()) < 3:
+            errors['ftp_user'] = 'FTP username must be at least 3 characters.'
+        if not ftp_pw or not isinstance(ftp_pw, str) or len(ftp_pw.strip()) < 4:
+            errors['ftp_password'] = 'FTP password must be at least 4 characters.'
+        if not errors.get('ftp_user') and not errors.get('ftp_password'):
+            player_db.store_credential('ftp', username=ftp_user.strip(), password=ftp_pw.strip())
+            updated.append('ftp')
+
+    # SERVER HOST/PORT
+    server_host = data.get('server_host')
+    server_port = data.get('server_port')
+    if server_host is not None:
+        if not isinstance(server_host, str) or not server_host.strip():
+            errors['server_host'] = 'Server host is required.'
+        else:
+            player_db.set_app_setting('server_host', server_host.strip())
+            updated.append('server_host')
+    if server_port is not None:
+        try:
+            port_val = int(server_port)
+            if not (1 <= port_val <= 65535):
+                raise ValueError
+            player_db.set_app_setting('server_port', str(port_val))
+            updated.append('server_port')
+        except Exception:
+            errors['server_port'] = 'Server port must be a number between 1 and 65535.'
+
+    # FTP HOST/REMOTE LOG PATH
+    ftp_host = data.get('ftp_host')
+    ftp_remote_log_path = data.get('ftp_remote_log_path')
+    if ftp_host is not None:
+        if not isinstance(ftp_host, str) or not ftp_host.strip():
+            errors['ftp_host'] = 'FTP host is required.'
+        else:
+            player_db.set_app_setting('ftp_host', ftp_host.strip())
+            updated.append('ftp_host')
+    if ftp_remote_log_path is not None:
+        if not isinstance(ftp_remote_log_path, str) or not ftp_remote_log_path.strip():
+            errors['ftp_remote_log_path'] = 'FTP remote log path is required.'
+        else:
+            player_db.set_app_setting('ftp_remote_log_path', ftp_remote_log_path.strip())
+            updated.append('ftp_remote_log_path')
+
+    if errors:
+        return jsonify({'success': False, 'errors': errors}), 400
+    return jsonify({'success': True, 'updated': updated})
+
 
 if __name__ == '__main__':
     # Initialize the application
@@ -409,6 +581,22 @@ if __name__ == '__main__':
             service_started = start_background_service()
             if service_started:
                 logger.info("🚀 Background service started successfully - operating headless!")
+
+                # --- One-time, silent geolocation refresh after service start ---
+                import threading
+                def silent_geo_refresh():
+                    logger.info("🌍 Running one-time geolocation refresh for players with missing country data...")
+                    try:
+                        updated_count = player_db.refresh_geolocation_for_existing_players()
+                        if updated_count > 0:
+                            logger.info(f"🌍 Geolocation updated for {updated_count} players. Notifying frontend.")
+                            socketio.emit('players_updated', {'reason': 'geo_refresh'})
+                        else:
+                            logger.info("🌍 No player geolocations needed updating.")
+                    except Exception as e:
+                        logger.error(f"Error during silent geolocation refresh: {e}")
+                # Run in background so web UI is not blocked
+                threading.Thread(target=silent_geo_refresh, daemon=True).start()
             else:
                 logger.error("❌ Failed to start background service")
         else:

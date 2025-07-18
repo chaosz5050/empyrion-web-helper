@@ -50,21 +50,14 @@ class ConfigManager:
             # Server settings (no password here anymore)
             'host': '192.168.1.100',
             'telnet_port': 30004,
-            
             # Monitoring settings
             'update_interval': 20,
-            'log_file': 'empyrion_helper.log',
-            
             # FTP settings (no sensitive data here)
             'ftp_host': '192.168.1.100:21',
             'remote_log_path': '/path/to/your/scenario/Content/Configuration',
-            
             # Message settings
             'welcome_message': 'Welcome to Space Cowboys, <playername>!',
-            'goodbye_message': 'Player <playername> has left our galaxy',
-            
-            # General settings
-            'autoconnect': False
+            'goodbye_message': 'Player <playername> has left our galaxy'
         }
     
     def load_config(self) -> bool:
@@ -105,8 +98,7 @@ class ConfigManager:
             # Load monitoring settings
             if parser.has_section('monitoring'):
                 self.config.update({
-                    'update_interval': parser.getint('monitoring', 'update_interval', fallback=self.config['update_interval']),
-                    'log_file': parser.get('monitoring', 'log_file', fallback=self.config['log_file'])
+                    'update_interval': parser.getint('monitoring', 'update_interval', fallback=self.config['update_interval'])
                 })
             
             # Load FTP settings (migrate credentials if present)
@@ -148,9 +140,20 @@ class ConfigManager:
                     'autoconnect': parser.getboolean('general', 'autoconnect', fallback=self.config['autoconnect'])
                 })
             
+            # After loading config from file, prefer DB for update_interval
+            if self.player_db:
+                db_update_interval = self.player_db.get_app_setting('update_interval')
+                if db_update_interval is not None:
+                    self.config['update_interval'] = self.player_db.validate_update_interval(db_update_interval)
+                else:
+                    # If not present, validate and store default
+                    valid_val = self.player_db.validate_update_interval(self.config['update_interval'])
+                    self.config['update_interval'] = valid_val
+                    self.player_db.set_app_setting('update_interval', str(valid_val))
+            
             logger.info(f"Configuration loaded from {self.config_file}")
             return True
-            
+        
         except Exception as e:
             logger.error(f"Error loading config: {e}")
             return False
@@ -246,6 +249,12 @@ class ConfigManager:
         Returns:
             bool: True if value set, False otherwise (for credential keys).
         """
+        if key == 'update_interval' and self.player_db:
+            valid_val = self.player_db.validate_update_interval(value)
+            self.config[key] = valid_val
+            self.player_db.set_app_setting('update_interval', str(valid_val))
+            return True
+        # Credentials must be set via database methods
         if key in ['telnet_password', 'ftp_password', 'ftp_user']:
             logger.warning(f"Cannot set {key} via config - use database credential methods")
             return False
@@ -266,31 +275,6 @@ class ConfigManager:
             # Create sections and populate them (no sensitive data)
             parser.add_section('server')
             parser.set('server', 'host', str(self.config['host']))
-            parser.set('server', 'telnet_port', str(self.config['telnet_port']))
-            # NOTE: No password saved to config file anymore
-            
-            parser.add_section('monitoring')
-            parser.set('monitoring', 'update_interval', str(self.config['update_interval']))
-            parser.set('monitoring', 'log_file', str(self.config['log_file']))
-            
-            parser.add_section('ftp')
-            parser.set('ftp', 'host', str(self.config['ftp_host']))
-            # NOTE: No FTP credentials saved to config file anymore
-            parser.set('ftp', 'remote_log_path', str(self.config['remote_log_path']))
-            
-            parser.add_section('messages')
-            parser.set('messages', 'welcome_message', str(self.config['welcome_message']))
-            parser.set('messages', 'goodbye_message', str(self.config['goodbye_message']))
-            
-            parser.add_section('general')
-            parser.set('general', 'autoconnect', str(self.config['autoconnect']))
-            
-            # Write to file
-            with open(self.config_file, 'w') as f:
-                parser.write(f)
-            
-            logger.info(f"Configuration saved to {self.config_file}")
-            return True
             
         except Exception as e:
             logger.error(f"Error saving config: {e}")

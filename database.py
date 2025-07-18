@@ -172,12 +172,14 @@ class PlayerDatabase:
                     )
                 """)
                 
-                # Create indexes for better performance
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_status ON players (status)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_last_seen ON players (last_seen)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_country ON players (country)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_steam_id ON player_sessions (steam_id)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_credentials_type ON credentials (credential_type)")
+                # Create app_settings table for general application settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS app_settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
                 
                 # Set secure permissions on database file
                 try:
@@ -1090,12 +1092,55 @@ class PlayerDatabase:
             logger.error(f"Error getting geolocation stats: {e}")
             return {}
     
-    def clear_geolocation_cache(self):
+    def set_app_setting(self, key: str, value: str) -> bool:
         """
-        Clear the in-memory geolocation cache.
+        Store or update an application setting in the app_settings table.
         """
-        self.geolocation_cache.clear()
-        logger.info("Geolocation cache cleared")
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = datetime.now().isoformat()
+                cursor.execute("""
+                    INSERT INTO app_settings (key, value, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+                """, (key, value, now))
+                conn.commit()
+            logger.info(f"Set app setting: {key} = {value}")
+            return True
+        except Exception as e:
+            logger.error(f"Error setting app setting {key}: {e}")
+            return False
+
+    def get_app_setting(self, key: str, default=None):
+        """
+        Retrieve an application setting from the app_settings table.
+        Returns default if not found.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
+                row = cursor.fetchone()
+                if row:
+                    return row[0]
+        except Exception as e:
+            logger.error(f"Error retrieving app setting {key}: {e}")
+        return default
+
+    def validate_update_interval(self, value) -> int:
+        """
+        Validate update_interval: must be integer >= 10. Default to 20 if invalid.
+        """
+        try:
+            val = int(value)
+            if val < 10:
+                logger.warning("update_interval below minimum (10); using 20")
+                return 20
+            return val
+        except Exception:
+            logger.warning("Invalid update_interval; using 20")
+            return 20
     
     def force_update_all_geolocations(self) -> int:
         """
