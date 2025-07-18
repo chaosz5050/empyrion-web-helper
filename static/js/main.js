@@ -6,18 +6,13 @@
 
 // Application initialization
 document.addEventListener('DOMContentLoaded', function() {
-    debugLog('Empyrion Web Helper v0.3.0 - Enhanced with messaging system');
+    debugLog('Empyrion Web Helper v0.4.1 - Background Service Architecture');
     
     // Initialize all managers
     initializeApplication();
     
-    // Auto-connect if enabled in config
-    if (window.CONFIG.autoconnect) {
-        debugLog('Auto-connect enabled, connecting...');
-        setTimeout(() => {
-            window.ConnectionManager.connect();
-        }, 1000);
-    }
+    // Auto-connect is now handled by the server-side background service
+    // No manual connection needed from frontend
 });
 
 function initializeApplication() {

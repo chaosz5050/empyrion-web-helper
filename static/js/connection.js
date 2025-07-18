@@ -1,11 +1,13 @@
 // FILE LOCATION: /static/js/connection.js
 /**
- * Connection management for Empyrion Web Helper
+ * Connection management for Empyrion Web Helper v0.4.1
+ * Updated for background service architecture
  * Copyright (c) 2025 Chaosz Software
  */
 
 // Connection state
 let isConnected = false;
+let serviceRunning = false;
 let socket = null;
 
 // Connection Manager
@@ -15,7 +17,10 @@ window.ConnectionManager = {
         socket = io();
         this.setupSocketHandlers();
         
-        debugLog('Connection manager initialized');
+        // Initial status check
+        this.checkServiceStatus();
+        
+        debugLog('Connection manager initialized for background service architecture');
     },
 
     setupSocketHandlers() {
@@ -40,118 +45,131 @@ window.ConnectionManager = {
         });
     },
 
-    async connect() {
+    async checkServiceStatus() {
+        try {
+            const data = await apiCall('/status');
+            
+            if (data.success) {
+                serviceRunning = data.service_running;
+                isConnected = data.connected;
+                
+                this.updateServiceStatus({ service_running: serviceRunning });
+                this.updateConnectionStatus(isConnected);
+                
+                if (serviceRunning) {
+                    this.startStatusMonitoring();
+                }
+            }
+        } catch (error) {
+            debugLog('Error checking service status:', error);
+        }
+    },
+
+    async startService() {
         showLoading(true);
-        const connectBtn = document.getElementById('connectBtn');
-        connectBtn.disabled = true;
+        const startBtn = document.getElementById('startServiceBtn');
+        const stopBtn = document.getElementById('stopServiceBtn');
+        
+        if (startBtn) startBtn.disabled = true;
         
         try {
-            const data = await apiCall('/connect', { method: 'POST' });
+            const data = await apiCall('/service/start', { method: 'POST' });
             
             if (data.success) {
                 showToast(data.message, 'success');
-                this.startAutoRefresh();
+                serviceRunning = true;
+                this.updateServiceStatus({ service_running: true });
+                this.startStatusMonitoring();
             } else {
                 showToast(data.message, 'error');
             }
         } catch (error) {
-            showToast('Connection failed: ' + error, 'error');
+            showToast('Failed to start service: ' + error, 'error');
         } finally {
             showLoading(false);
-            connectBtn.disabled = false;
+            if (startBtn) startBtn.disabled = false;
         }
     },
 
-    async disconnect() {
-        const connectBtn = document.getElementById('connectBtn');
-        connectBtn.disabled = true;
+    async stopService() {
+        const startBtn = document.getElementById('startServiceBtn');
+        const stopBtn = document.getElementById('stopServiceBtn');
+        
+        if (stopBtn) stopBtn.disabled = true;
         
         try {
-            const data = await apiCall('/disconnect', { method: 'POST' });
+            const data = await apiCall('/service/stop', { method: 'POST' });
             
             if (data.success) {
                 showToast(data.message, 'info');
-                this.stopAutoRefresh();
+                serviceRunning = false;
+                isConnected = false;
+                
+                this.updateServiceStatus({ service_running: false });
+                this.updateConnectionStatus(false);
+                this.stopStatusMonitoring();
             } else {
                 showToast(data.message, 'error');
             }
         } catch (error) {
-            showToast('Disconnect failed: ' + error, 'error');
+            showToast('Failed to stop service: ' + error, 'error');
         } finally {
-            connectBtn.disabled = false;
+            if (stopBtn) stopBtn.disabled = false;
         }
     },
 
-    toggleConnection() {
-        if (isConnected) {
-            this.disconnect();
+    updateServiceStatus(status) {
+        const startBtn = document.getElementById('startServiceBtn');
+        const stopBtn = document.getElementById('stopServiceBtn');
+        const serviceStatusText = document.getElementById('serviceStatusText');
+        
+        if (status.service_running) {
+            if (startBtn) startBtn.style.display = 'none';
+            if (stopBtn) stopBtn.style.display = 'inline-block';
+            if (serviceStatusText) {
+                serviceStatusText.textContent = 'Running';
+                serviceStatusText.style.color = 'var(--accent-green)';
+            }
         } else {
-            this.connect();
+            if (startBtn) startBtn.style.display = 'inline-block';
+            if (stopBtn) stopBtn.style.display = 'none';
+            if (serviceStatusText) {
+                serviceStatusText.textContent = 'Stopped';
+                serviceStatusText.style.color = 'var(--accent-red)';
+            }
         }
     },
 
     updateConnectionStatus(connected) {
         isConnected = connected;
         
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const connectBtn = document.getElementById('connectBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const refreshDataBtn = document.getElementById('refreshDataBtn');
         
         if (connected) {
-            statusIndicator.classList.add('connected');
-            statusText.classList.add('connected');
-            statusText.textContent = 'Connected';
-            connectBtn.textContent = 'Disconnect';
-            connectBtn.className = 'btn-danger';
-            refreshBtn.disabled = false;
-            
-            // Enable messaging features
-            this.enableMessagingFeatures(true);
-            
-            // Enable entities features
-            if (window.EntitiesManager) {
-                window.EntitiesManager.enableEntitiesFeatures(true);
+            if (connectionStatus) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.style.color = 'var(--accent-green)';
             }
+            if (refreshDataBtn) refreshDataBtn.disabled = false;
             
-            // Enable player features
-            if (window.PlayersManager) {
-                window.PlayersManager.enablePlayerFeatures(true);
-            }
+            // Enable features
+            this.enableFeatures(true);
             
-            if (window.MessagingManager) {
-                window.MessagingManager.loadMessageHistory();
-            }
         } else {
-            statusIndicator.classList.remove('connected');
-            statusText.classList.remove('connected');
-            statusText.textContent = 'Disconnected';
-            connectBtn.textContent = 'Connect';
-            connectBtn.className = '';
-            refreshBtn.disabled = true;
-            
-            // Clear player data
-            if (window.PlayersManager) {
-                window.PlayersManager.allPlayers = [];
-                window.PlayersManager.updatePlayersTable();
+            if (connectionStatus) {
+                connectionStatus.textContent = serviceRunning ? 'Connecting...' : 'Disconnected';
+                connectionStatus.style.color = serviceRunning ? 'var(--accent-orange)' : 'var(--accent-red)';
             }
+            if (refreshDataBtn) refreshDataBtn.disabled = true;
             
-            // Disable messaging features
-            this.enableMessagingFeatures(false);
-            
-            // Disable entities features
-            if (window.EntitiesManager) {
-                window.EntitiesManager.enableEntitiesFeatures(false);
-            }
-            
-            // Disable player features
-            if (window.PlayersManager) {
-                window.PlayersManager.enablePlayerFeatures(false);
-            }
+            // Disable features
+            this.enableFeatures(false);
         }
     },
 
-    enableMessagingFeatures(enabled) {
+    enableFeatures(enabled) {
+        // Enable messaging features
         const messagingInputs = document.querySelectorAll('#globalMessageInput, .scheduled-message-text');
         const messagingButtons = document.querySelectorAll('#sendGlobalBtn, .btn-test');
         
@@ -162,24 +180,52 @@ window.ConnectionManager = {
         messagingButtons.forEach(button => {
             button.disabled = !enabled;
         });
+        
+        // Enable entities features
+        if (window.EntitiesManager) {
+            window.EntitiesManager.enableEntitiesFeatures(enabled);
+        }
+        
+        // Enable player features
+        if (window.PlayersManager) {
+            window.PlayersManager.enablePlayerFeatures(enabled);
+        }
+    },
+
+    startStatusMonitoring() {
+        // Check status every 10 seconds while service is running
+        this.statusInterval = setInterval(() => {
+            this.checkServiceStatus();
+        }, 10000);
+        
+        // Start auto-refresh for player data
+        this.startAutoRefresh();
+        
+        debugLog('Started status monitoring');
+    },
+
+    stopStatusMonitoring() {
+        if (this.statusInterval) {
+            clearInterval(this.statusInterval);
+            this.statusInterval = null;
+        }
+        
+        this.stopAutoRefresh();
+        
+        debugLog('Stopped status monitoring');
     },
 
     startAutoRefresh() {
-        // Initial load from database
+        // Load initial data from database
         if (window.PlayersManager) {
             window.PlayersManager.loadPlayersFromDatabase();
             
-            // If connected, also refresh from server
-            if (isConnected) {
-                window.PlayersManager.refreshPlayers();
-            }
-            
-            // Set up interval for ongoing refreshes
+            // Set up interval for UI updates (background service handles server polling)
             this.refreshInterval = setInterval(() => {
-                window.PlayersManager.refreshPlayers();
-            }, window.CONFIG.update_interval * 1000);
+                window.PlayersManager.loadPlayersFromDatabase();
+            }, 30000); // Every 30 seconds - just UI refresh
             
-            debugLog(`Auto-refresh started (${window.CONFIG.update_interval}s intervals)`);
+            debugLog('Auto-refresh started (UI updates every 30s)');
         }
     },
 
@@ -191,6 +237,19 @@ window.ConnectionManager = {
         }
     },
 
+    refreshAllData() {
+        // Refresh all data from database
+        if (window.PlayersManager) {
+            window.PlayersManager.loadPlayersFromDatabase();
+        }
+        
+        if (window.EntitiesManager) {
+            window.EntitiesManager.loadEntitiesFromDatabase();
+        }
+        
+        showToast('Data refreshed from database', 'info');
+    },
+
     requestMessageHistoryUpdate() {
         if (socket && isConnected) {
             socket.emit('request_message_history');
@@ -199,6 +258,29 @@ window.ConnectionManager = {
 };
 
 // Global functions for HTML onclick handlers
+function startService() {
+    window.ConnectionManager.startService();
+}
+
+function stopService() {
+    window.ConnectionManager.stopService();
+}
+
+function refreshAllData() {
+    window.ConnectionManager.refreshAllData();
+}
+
+// Legacy functions for backward compatibility
 function toggleConnection() {
-    window.ConnectionManager.toggleConnection();
+    if (serviceRunning) {
+        stopService();
+    } else {
+        startService();
+    }
+}
+
+function refreshPlayers() {
+    if (window.PlayersManager) {
+        window.PlayersManager.loadPlayersFromDatabase();
+    }
 }
