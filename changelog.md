@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Minor UI consistency improvements
 
+## [0.4.1] - 2025-01-18
+
+### Added
+- ** The main feature of this update is that the app can now run headless or even as a service
+
 ## [0.4.0] - 2025-01-16
 
 ### Added
