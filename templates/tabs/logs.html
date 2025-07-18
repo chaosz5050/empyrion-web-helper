@@ -1,48 +1,83 @@
-<!-- FILE LOCATION: Add this section to /templates/tabs/logs.html -->
-<!-- Add this section after the Recent Logs Section in logs.html -->
+<!-- FILE LOCATION: /templates/tabs/logs.html -->
+<div class="panel" id="logsPanel" style="display: none;">
+    <h2>📋 Log Management</h2>
+    
+    <!-- Log Statistics Section -->
+    <div class="message-section">
+        <h3>📊 Log Statistics</h3>
+        <div class="log-stats-panel">
+            <div class="log-stats-grid" id="logStatsGrid">
+                <div class="stat-card">
+                    <div class="stat-label">Current Log</div>
+                    <div class="stat-value" id="currentLogSize">0 MB</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Files</div>
+                    <div class="stat-value" id="totalLogFiles">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Size</div>
+                    <div class="stat-value" id="totalLogSize">0 MB</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Max Size</div>
+                    <div class="stat-value" id="maxLogSize">1 MB</div>
+                </div>
+            </div>
+            
+            <div class="log-actions-panel">
+                <div class="log-action-row">
+                    <button onclick="refreshLogStats()" class="btn-secondary">📊 Refresh Stats</button>
+                    <button onclick="cleanupOldLogs()" class="btn-primary">🧹 Cleanup Old Logs</button>
+                    <button onclick="clearAllLogs()" class="btn-danger">🗑️ Clear All Logs</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- Geolocation Management Section -->
-<div class="message-section">
-    <h3>🌍 Geolocation Management</h3>
-    <div class="log-settings-panel">
-        <div class="geo-stats-grid" id="geoStatsGrid">
-            <div class="stat-card">
-                <div class="stat-label">Players with Location</div>
-                <div class="stat-value" id="playersWithGeo">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Unknown Locations</div>
-                <div class="stat-value" id="playersWithoutGeo">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Cache Size</div>
-                <div class="stat-value" id="geoCacheSize">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Top Country</div>
-                <div class="stat-value" id="topCountry">None</div>
-            </div>
-        </div>
-        
-        <div class="geo-actions-panel">
-            <div class="log-action-row">
-                <button onclick="refreshGeoStats()" class="btn-secondary">📊 Refresh Stats</button>
-                <button onclick="clearGeoCache()" class="btn-primary">🗑️ Clear Cache</button>
-                <button onclick="forceUpdateGeolocations()" class="btn-danger">🔄 Force Update All</button>
-            </div>
-            <div class="geo-help">
-                <small>
-                    <strong>Refresh Stats:</strong> Update geolocation statistics<br>
-                    <strong>Clear Cache:</strong> Clear in-memory geolocation cache (will re-lookup IPs)<br>
-                    <strong>Force Update:</strong> Re-lookup all player locations (slow, respects API limits)
-                </small>
+    <!-- Log Settings Section -->
+    <div class="message-section">
+        <h3>⚙️ Log Settings</h3>
+        <div class="log-settings-panel">
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="maxSizeInput">Max Size (MB)</label>
+                    <input type="number" id="maxSizeInput" class="setting-input" min="1" max="50" value="1">
+                </div>
+                <div class="setting-item">
+                    <label for="backupCountInput">Backup Files</label>
+                    <input type="number" id="backupCountInput" class="setting-input" min="1" max="10" value="3">
+                </div>
+                <div class="setting-item">
+                    <label for="maxAgeInput">Max Age (days)</label>
+                    <input type="number" id="maxAgeInput" class="setting-input" min="1" max="30" value="7">
+                </div>
+                <div class="setting-item">
+                    <button onclick="saveLogSettings()" class="btn-primary">💾 Save Settings</button>
+                </div>
             </div>
         </div>
-        
-        <div class="geo-country-breakdown" id="geoCountryBreakdown">
-            <h4>Country Breakdown</h4>
-            <div class="country-list" id="countryList">
-                <p class="empty-state">Click "Refresh Stats" to load country breakdown</p>
+    </div>
+
+    <!-- Recent Logs Section -->
+    <div class="message-section">
+        <h3>📄 Recent Logs</h3>
+        <div class="recent-logs-panel">
+            <div class="logs-controls">
+                <label for="logLinesSelect">Show:</label>
+                <select id="logLinesSelect" class="log-lines-select">
+                    <option value="20">Last 20 lines</option>
+                    <option value="50">Last 50 lines</option>
+                    <option value="100" selected>Last 100 lines</option>
+                    <option value="200">Last 200 lines</option>
+                    <option value="500">Last 500 lines</option>
+                </select>
+                <button onclick="loadRecentLogs()" class="btn-secondary">🔄 Refresh Logs</button>
+                <button onclick="downloadCurrentLog()" class="btn-secondary">💾 Download Log</button>
+            </div>
+            
+            <div class="logs-container">
+                <pre id="recentLogsContent" class="logs-content">Click "Refresh Logs" to load recent log entries</pre>
             </div>
         </div>
     </div>
