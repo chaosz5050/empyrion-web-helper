@@ -1,7 +1,8 @@
 # FILE LOCATION: /background_service.py (root directory)
 #!/usr/bin/env python3
 """
-Background Service Manager for Empyrion Web Helper - DEBUG VERSION
+Background Service Manager for Empyrion Web Helper
+Independent service for 24/7 server monitoring and automated messaging
 """
 
 import threading
@@ -13,7 +14,7 @@ from typing import Optional, Dict, List
 logger = logging.getLogger(__name__)
 
 class BackgroundService:
-    """Core background service with extensive debugging"""
+    """Core background service for independent operation"""
     
     def __init__(self, config_manager, player_db, messaging_manager):
         self.config_manager = config_manager
@@ -40,15 +41,14 @@ class BackgroundService:
         self.RECONNECT_DELAY = 30   # seconds between reconnection attempts
         self.MAX_RECONNECT_DELAY = 300  # 5 minutes max delay
         
-        logger.info("🔧 DEBUG: Background service initialized")
+        logger.info("Background service initialized")
     
     def start(self):
-        """Start the background service with debugging"""
+        """Start the background service"""
         if self.is_running:
-            logger.warning("🔧 DEBUG: Background service already running")
+            logger.warning("Background service already running")
             return
         
-        logger.info("🔧 DEBUG: Setting is_running = True")
         self.is_running = True
         self.stop_event.clear()
         
@@ -56,54 +56,39 @@ class BackgroundService:
         
         try:
             # Start monitoring thread
-            logger.info("🔧 DEBUG: Creating monitor thread")
             self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True, name="MonitorThread")
             self.monitor_thread.start()
-            logger.info("🔧 DEBUG: Monitor thread started")
             
             # Start message scheduler thread  
-            logger.info("🔧 DEBUG: Creating scheduler thread")
             self.scheduler_thread = threading.Thread(target=self._scheduler_loop, daemon=True, name="SchedulerThread")
             self.scheduler_thread.start()
-            logger.info("🔧 DEBUG: Scheduler thread started")
             
             logger.info("✅ Background service started successfully")
             
         except Exception as e:
-            logger.error(f"🔧 DEBUG: Error starting threads: {e}")
+            logger.error(f"Error starting background service: {e}")
             self.is_running = False
             raise
     
     def stop(self):
-        """Stop the background service with debugging"""
-        logger.info("🔧 DEBUG: stop() called")
-        
+        """Stop the background service"""
         if not self.is_running:
-            logger.info("🔧 DEBUG: Service already stopped")
             return
         
         logger.info("🛑 Stopping background service...")
         
-        logger.info("🔧 DEBUG: Setting is_running = False")
         self.is_running = False
-        
-        logger.info("🔧 DEBUG: Setting stop_event")
         self.stop_event.set()
         
         # Disconnect from server
-        logger.info("🔧 DEBUG: Calling _disconnect()")
         self._disconnect()
         
         # Wait for threads to finish
         if self.monitor_thread and self.monitor_thread.is_alive():
-            logger.info("🔧 DEBUG: Waiting for monitor thread to finish")
             self.monitor_thread.join(timeout=5)
-            logger.info("🔧 DEBUG: Monitor thread finished")
         
         if self.scheduler_thread and self.scheduler_thread.is_alive():
-            logger.info("🔧 DEBUG: Waiting for scheduler thread to finish")
             self.scheduler_thread.join(timeout=5)
-            logger.info("🔧 DEBUG: Scheduler thread finished")
         
         logger.info("✅ Background service stopped")
     
@@ -121,89 +106,62 @@ class BackgroundService:
         return self.connection_handler if self.is_connected else None
     
     def _monitor_loop(self):
-        """Main monitoring loop with extensive debugging"""
-        logger.info("🔧 DEBUG: Monitor loop starting")
+        """Main monitoring loop"""
+        logger.info("🔍 Starting player monitoring loop")
         
         try:
             while self.is_running and not self.stop_event.is_set():
-                logger.debug("🔧 DEBUG: Monitor loop iteration starting")
-                logger.debug(f"🔧 DEBUG: is_running={self.is_running}, stop_event.is_set()={self.stop_event.is_set()}")
-                
                 try:
                     # Ensure we're connected
                     if not self.is_connected:
-                        logger.debug("🔧 DEBUG: Not connected, attempting connection")
                         self._attempt_connection()
                     
                     # If connected, monitor players
                     if self.is_connected and self.is_running:
-                        logger.debug("🔧 DEBUG: Connected and running, monitoring players")
                         self._monitor_players()
                         self.reconnect_attempts = 0  # Reset on successful operation
-                        logger.debug("🔧 DEBUG: Player monitoring completed successfully")
                     
                     # Wait for next cycle
-                    logger.debug(f"🔧 DEBUG: Waiting {self.MONITOR_INTERVAL} seconds for next cycle")
-                    wait_result = self.stop_event.wait(self.MONITOR_INTERVAL)
-                    logger.debug(f"🔧 DEBUG: Wait completed, stop_event triggered: {wait_result}")
+                    self.stop_event.wait(self.MONITOR_INTERVAL)
                     
                 except Exception as e:
-                    logger.error(f"🔧 DEBUG: Exception in monitor loop iteration: {e}")
-                    import traceback
-                    logger.error(f"🔧 DEBUG: Traceback: {traceback.format_exc()}")
+                    logger.error(f"Exception in monitor loop: {e}")
                     
                     if self.is_running:  # Only handle error if we're still supposed to be running
-                        logger.debug("🔧 DEBUG: Handling connection error")
                         self._handle_connection_error()
-                        wait_result = self.stop_event.wait(5)  # Brief pause before retry
-                        logger.debug(f"🔧 DEBUG: Error recovery wait completed: {wait_result}")
-            
-            logger.info("🔧 DEBUG: Monitor loop exiting normally")
+                        self.stop_event.wait(5)  # Brief pause before retry
             
         except Exception as e:
-            logger.error(f"🔧 DEBUG: Fatal error in monitor loop: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Fatal traceback: {traceback.format_exc()}")
+            logger.error(f"Fatal error in monitor loop: {e}")
         
         logger.info("🔍 Player monitoring loop stopped")
     
     def _scheduler_loop(self):
-        """Message scheduler loop with debugging"""
-        logger.info("🔧 DEBUG: Scheduler loop starting")
+        """Message scheduler loop"""
+        logger.info("📅 Starting message scheduler loop")
         
         try:
             while self.is_running and not self.stop_event.is_set():
-                logger.debug("🔧 DEBUG: Scheduler loop iteration")
-                
                 try:
                     if self.is_connected and self.messaging_manager and self.is_running:
-                        logger.debug("🔧 DEBUG: Checking scheduled messages")
                         self._check_scheduled_messages()
                     
                     # Check every 30 seconds (scheduled message interval)
-                    logger.debug("🔧 DEBUG: Scheduler waiting 30 seconds")
-                    wait_result = self.stop_event.wait(30)
-                    logger.debug(f"🔧 DEBUG: Scheduler wait completed: {wait_result}")
+                    self.stop_event.wait(30)
                     
                 except Exception as e:
-                    logger.error(f"🔧 DEBUG: Exception in scheduler loop: {e}")
+                    logger.error(f"Exception in scheduler loop: {e}")
                     if self.is_running:  # Only pause if we're still supposed to be running
-                        wait_result = self.stop_event.wait(5)  # Brief pause before retry
-                        logger.debug(f"🔧 DEBUG: Scheduler error recovery wait: {wait_result}")
-            
-            logger.info("🔧 DEBUG: Scheduler loop exiting normally")
+                        self.stop_event.wait(5)  # Brief pause before retry
             
         except Exception as e:
-            logger.error(f"🔧 DEBUG: Fatal error in scheduler loop: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Fatal traceback: {traceback.format_exc()}")
+            logger.error(f"Fatal error in scheduler loop: {e}")
         
         logger.info("📅 Message scheduler loop stopped")
     
     def _attempt_connection(self):
-        """Attempt to connect to Empyrion server with debugging"""
+        """Attempt to connect to Empyrion server"""
         if not self.is_running:
-            logger.debug("🔧 DEBUG: Not running, skipping connection attempt")
             return False
             
         try:
@@ -214,7 +172,6 @@ class BackgroundService:
             # Import here to avoid circular imports
             from connection import EmpyrionConnection
             
-            logger.debug("🔧 DEBUG: Creating EmpyrionConnection instance")
             # Create new connection
             self.connection_handler = EmpyrionConnection(
                 self.config_manager.get('host'),
@@ -222,19 +179,15 @@ class BackgroundService:
                 self.config_manager.get('telnet_password')
             )
             
-            logger.debug("🔧 DEBUG: Calling connection_handler.connect()")
             if self.connection_handler.connect():
-                logger.debug("🔧 DEBUG: Connection successful, setting flags")
                 self.is_connected = True
                 self.reconnect_attempts = 0
                 
                 # Set connection handler for messaging
                 if self.messaging_manager:
-                    logger.debug("🔧 DEBUG: Setting connection handler for messaging")
                     self.messaging_manager.set_connection_handler(self.connection_handler)
                 
                 logger.info("✅ Successfully connected to Empyrion server")
-                logger.debug(f"🔧 DEBUG: Connection completed, is_running={self.is_running}")
                 return True
             else:
                 logger.error("❌ Failed to connect to Empyrion server")
@@ -243,30 +196,23 @@ class BackgroundService:
                 
         except Exception as e:
             logger.error(f"❌ Connection attempt failed: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Connection traceback: {traceback.format_exc()}")
             self._handle_connection_error()
             return False
     
     def _disconnect(self):
-        """Disconnect from server with debugging"""
-        logger.debug("🔧 DEBUG: _disconnect() called")
-        
+        """Disconnect from server"""
         if self.connection_handler:
             try:
-                logger.debug("🔧 DEBUG: Calling connection_handler.disconnect()")
                 self.connection_handler.disconnect()
             except Exception as e:
-                logger.error(f"🔧 DEBUG: Error during disconnect: {e}")
+                logger.error(f"Error during disconnect: {e}")
         
         self.is_connected = False
         self.connection_handler = None
         logger.info("🔌 Disconnected from server")
     
     def _handle_connection_error(self):
-        """Handle connection errors with debugging"""
-        logger.debug("🔧 DEBUG: _handle_connection_error() called")
-        
+        """Handle connection errors"""
         self.is_connected = False
         self.reconnect_attempts += 1
         
@@ -283,24 +229,19 @@ class BackgroundService:
             except:
                 pass
         self.connection_handler = None
-        
-        logger.debug("🔧 DEBUG: Connection error handled, service continues")
     
     def _monitor_players(self):
-        """Monitor players with debugging"""
+        """Monitor players"""
         if not self.is_running:
-            logger.debug("🔧 DEBUG: Not running, skipping player monitoring")
             return
             
         try:
             if not self.connection_handler:
-                logger.debug("🔧 DEBUG: No connection handler, skipping monitoring")
                 return
             
             logger.debug("🔍 Checking player status...")
             
             # Get current players
-            logger.debug("🔧 DEBUG: Calling get_players()")
             current_players = self.connection_handler.get_players()
             
             if current_players is None:
@@ -313,31 +254,24 @@ class BackgroundService:
             
             # Update database
             if self.player_db and self.is_running:
-                logger.debug("🔧 DEBUG: Updating player database")
                 updated_count = self.player_db.update_multiple_players(current_players)
                 logger.debug(f"💾 Updated {updated_count} players in database")
             
             # Detect status changes and send welcome/goodbye messages
             if self.is_running:  # Only send messages if service is running
-                logger.debug("🔧 DEBUG: Detecting status changes")
                 self._detect_status_changes(current_players)
-                logger.debug("🔧 DEBUG: Status change detection completed")
             
         except Exception as e:
             logger.error(f"❌ Error monitoring players: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Player monitoring traceback: {traceback.format_exc()}")
             if self.is_running:  # Only handle error if service should be running
                 self._handle_connection_error()
     
     def _detect_status_changes(self, current_players: List[Dict]):
-        """Detect player status changes with debugging"""
+        """Detect player status changes"""
         if not self.messaging_manager or not self.is_running:
-            logger.debug("🔧 DEBUG: No messaging manager or not running, skipping status detection")
             return
         
         try:
-            logger.debug("🔧 DEBUG: Building current players dict")
             current_players_dict = {p['steam_id']: p for p in current_players}
             
             # Check for players joining (offline -> online)
@@ -353,38 +287,29 @@ class BackgroundService:
                     if previous_status == 'Offline' and current_status == 'Online':
                         logger.info(f"👋 Player joined: {player_name}")
                         if self.is_running:  # Only send if service is running
-                            logger.debug("🔧 DEBUG: Sending welcome message")
                             self.messaging_manager.send_welcome_message(player_name)
-                            logger.debug("🔧 DEBUG: Welcome message sent")
                     
                     # Player left
                     elif previous_status == 'Online' and current_status == 'Offline':
                         logger.info(f"👋 Player left: {player_name}")
                         if self.is_running:  # Only send if service is running
-                            logger.debug("🔧 DEBUG: Sending goodbye message")
                             self.messaging_manager.send_goodbye_message(player_name)
-                            logger.debug("🔧 DEBUG: Goodbye message sent")
                 
                 else:
                     # New player joining for first time
                     if current_status == 'Online':
                         logger.info(f"👋 New player joined: {player_name}")
                         if self.is_running:  # Only send if service is running
-                            logger.debug("🔧 DEBUG: Sending welcome message for new player")
                             self.messaging_manager.send_welcome_message(player_name)
-                            logger.debug("🔧 DEBUG: New player welcome message sent")
             
             # Update previous players for next cycle
-            logger.debug("🔧 DEBUG: Updating previous players for next cycle")
             self.previous_players = current_players_dict.copy()
             
         except Exception as e:
             logger.error(f"❌ Error detecting status changes: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Status detection traceback: {traceback.format_exc()}")
     
     def _check_scheduled_messages(self):
-        """Check scheduled messages with minimal debugging"""
+        """Check scheduled messages"""
         if not self.messaging_manager or not self.is_running:
             return
             
