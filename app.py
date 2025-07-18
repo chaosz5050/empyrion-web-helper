@@ -374,7 +374,7 @@ def set_monitoring_settings():
     player_db.set_app_setting('update_interval', str(interval))
     return jsonify({'success': True, 'update_interval': interval})
 
-# --- RESTORED API ENDPOINTS FOR FRONTEND INTEGRATION ---
+# --- ENTITY ENDPOINTS ---
 
 @app.route('/entities', methods=['GET'])
 def get_entities():
@@ -383,6 +383,8 @@ def get_entities():
     """
     # TODO: Replace with real entity data from database/service
     return jsonify({'success': True, 'entities': []})
+
+# --- MESSAGING ENDPOINTS ---
 
 @app.route('/messaging/custom', methods=['GET'])
 def get_custom_messages():
@@ -408,31 +410,6 @@ def get_message_history():
     # TODO: Replace with real data
     return jsonify({'success': True, 'history': []})
 
-@app.route('/logging/stats', methods=['GET'])
-def get_logging_stats():
-    """
-    Placeholder endpoint for logging stats. Should return stats about logs.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'stats': {}})
-
-@app.route('/logging/recent', methods=['GET'])
-def get_recent_logs():
-    """
-    Placeholder endpoint for recent logs. Should return recent log entries.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'logs': []})
-
-@app.route('/logging/settings', methods=['GET'])
-def get_logging_settings():
-    """
-    Placeholder endpoint for logging settings. Should return log configuration/settings.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'settings': {}})
-
-# Simplified messaging and other routes - keeping them but focusing on the main issue
 @app.route('/messaging/send', methods=['POST'])
 def send_global_message():
     """
@@ -465,6 +442,127 @@ def send_global_message():
     except Exception as e:
         logger.error(f"Error sending global message: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+# --- WORKING LOGGING ENDPOINTS ---
+
+@app.route('/logging/stats', methods=['GET'])
+def get_logging_stats():
+    """
+    Get statistics about log files (sizes, counts, etc.).
+    """
+    try:
+        stats = logging_manager.get_log_stats()
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Error getting logging stats: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/recent', methods=['GET'])
+def get_recent_logs():
+    """
+    Get recent log entries with optional line limit.
+    """
+    try:
+        lines = request.args.get('lines', '100')
+        try:
+            lines = int(lines)
+        except ValueError:
+            lines = 100
+        
+        # Cap at reasonable limits
+        lines = max(10, min(lines, 1000))
+        
+        logs = logging_manager.get_recent_logs(lines)
+        return jsonify({'success': True, 'logs': logs})
+    except Exception as e:
+        logger.error(f"Error getting recent logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/settings', methods=['GET'])
+def get_logging_settings():
+    """
+    Get current logging configuration settings.
+    """
+    try:
+        settings = {
+            'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
+            'backup_count': logging_manager.backup_count,
+            'max_age_days': logging_manager.max_age_days,
+            'log_file': logging_manager.log_file
+        }
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        logger.error(f"Error getting logging settings: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/settings', methods=['POST'])
+def update_logging_settings():
+    """
+    Update logging configuration settings.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'})
+        
+        max_size_mb = data.get('max_size_mb')
+        backup_count = data.get('backup_count')
+        max_age_days = data.get('max_age_days')
+        
+        success = logging_manager.update_settings(
+            max_size_mb=max_size_mb,
+            backup_count=backup_count,
+            max_age_days=max_age_days
+        )
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Logging settings updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update logging settings'})
+            
+    except Exception as e:
+        logger.error(f"Error updating logging settings: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/cleanup', methods=['POST'])
+def cleanup_old_logs():
+    """
+    Clean up old log files based on configured age.
+    """
+    try:
+        result = logging_manager.cleanup_old_logs()
+        
+        if result['deleted_files'] > 0:
+            message = f"Cleaned up {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
+        else:
+            message = "No old log files to clean up"
+            
+        return jsonify({'success': True, 'message': message, 'result': result})
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/clear', methods=['POST'])
+def clear_all_logs():
+    """
+    Clear all log files (current and backups).
+    """
+    try:
+        success = logging_manager.clear_all_logs()
+        
+        if success:
+            message = "All log files cleared successfully"
+        else:
+            message = "No log files found to clear"
+            
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        logger.error(f"Error clearing all logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+# --- CREDENTIAL MANAGEMENT ENDPOINTS ---
 
 @app.route('/api/credentials/status', methods=['GET'])
 def api_credential_status():
