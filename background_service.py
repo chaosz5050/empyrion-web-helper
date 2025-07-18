@@ -37,8 +37,8 @@ class BackgroundService:
         
         # Service state
         self.is_running = False
-        self.is_connected = False
-        self.connection_handler = None
+        self.is_connected = False  # This should start as False
+        self.connection_handler = None  # This should start as None
         self.last_connection_attempt = None
         self.reconnect_attempts = 0
         
@@ -55,7 +55,7 @@ class BackgroundService:
         self.RECONNECT_DELAY = 30   # seconds between reconnection attempts
         self.MAX_RECONNECT_DELAY = 300  # 5 minutes max delay
         
-        logger.info("Background service initialized")
+        logger.info("Background service initialized with is_connected=False")
     
     def start(self):
         """
@@ -70,6 +70,11 @@ class BackgroundService:
         
         self.is_running = True
         self.stop_event.clear()
+        
+        # Reset connection state on startup
+        self.is_connected = False
+        self.connection_handler = None
+        self.reconnect_attempts = 0
         
         logger.info("🚀 Starting Empyrion Web Helper background service")
         
@@ -149,27 +154,40 @@ class BackgroundService:
         try:
             while self.is_running and not self.stop_event.is_set():
                 try:
-                    # Ensure we're connected
-                    if not self.is_connected:
+                    logger.debug(f"Monitor cycle: is_connected={self.is_connected}, connection_handler={self.connection_handler is not None}")
+                    
+                    # ALWAYS check connection status first
+                    if not self.is_connected or not self.connection_handler:
+                        logger.info("🔌 Not connected - attempting connection...")
                         self._attempt_connection()
+                    else:
+                        # Test if existing connection is still alive
+                        if not self.connection_handler.is_connection_alive():
+                            logger.warning("🔌 Connection is dead - reconnecting...")
+                            self.is_connected = False
+                            self.connection_handler = None
+                            self._attempt_connection()
                     
                     # If connected, monitor players
-                    if self.is_connected and self.is_running:
+                    if self.is_connected and self.connection_handler and self.is_running:
+                        logger.debug("🔍 Connected - monitoring players...")
                         self._monitor_players()
                         self.reconnect_attempts = 0  # Reset on successful operation
+                    else:
+                        logger.debug("🔍 Not connected - skipping player monitoring")
                     
                     # Wait for next cycle
                     self.stop_event.wait(self.MONITOR_INTERVAL)
                     
                 except Exception as e:
-                    logger.error(f"Exception in monitor loop: {e}")
+                    logger.error(f"Exception in monitor loop: {e}", exc_info=True)
                     
                     if self.is_running:  # Only handle error if we're still supposed to be running
                         self._handle_connection_error()
                         self.stop_event.wait(5)  # Brief pause before retry
             
         except Exception as e:
-            logger.error(f"Fatal error in monitor loop: {e}")
+            logger.error(f"Fatal error in monitor loop: {e}", exc_info=True)
         
         logger.info("🔍 Player monitoring loop stopped")
     
@@ -191,12 +209,12 @@ class BackgroundService:
                     self.stop_event.wait(30)
                     
                 except Exception as e:
-                    logger.error(f"Exception in scheduler loop: {e}")
+                    logger.error(f"Exception in scheduler loop: {e}", exc_info=True)
                     if self.is_running:  # Only pause if we're still supposed to be running
                         self.stop_event.wait(5)  # Brief pause before retry
             
         except Exception as e:
-            logger.error(f"Fatal error in scheduler loop: {e}")
+            logger.error(f"Fatal error in scheduler loop: {e}", exc_info=True)
         
         logger.info("📅 Message scheduler loop stopped")
     
@@ -212,19 +230,45 @@ class BackgroundService:
         try:
             self.last_connection_attempt = datetime.now().isoformat()
             
-            logger.info(f"🔌 Attempting connection to {self.config_manager.get('host')}:{self.config_manager.get('telnet_port')}")
+            # Get server config from database first
+            server_host = self.player_db.get_app_setting('server_host') or self.config_manager.get('host')
+            server_port = self.player_db.get_app_setting('server_port')
+            if server_port:
+                server_port = int(server_port)
+            else:
+                server_port = self.config_manager.get('telnet_port')
+            
+            logger.info(f"🔌 Attempting connection to {server_host}:{server_port}")
+            
+            # Clean up any existing connection
+            if self.connection_handler:
+                try:
+                    self.connection_handler.disconnect()
+                except:
+                    pass
             
             # Import here to avoid circular imports
             from connection import EmpyrionConnection
             
+            # Get RCON password
+            rcon_password = self.config_manager.get('telnet_password')
+            if not rcon_password:
+                logger.error("❌ No RCON password available")
+                self._handle_connection_error()
+                return False
+            
             # Create new connection
             self.connection_handler = EmpyrionConnection(
-                self.config_manager.get('host'),
-                self.config_manager.get('telnet_port'),
-                self.config_manager.get('telnet_password')
+                host=server_host,
+                port=server_port,
+                password=rcon_password,
+                timeout=10
             )
             
-            if self.connection_handler.connect():
+            # Attempt connection
+            connection_result = self.connection_handler.connect()
+            
+            if connection_result is True:
                 self.is_connected = True
                 self.reconnect_attempts = 0
                 
@@ -232,15 +276,15 @@ class BackgroundService:
                 if self.messaging_manager:
                     self.messaging_manager.set_connection_handler(self.connection_handler)
                 
-                logger.info("✅ Successfully connected to Empyrion server")
+                logger.info(f"✅ Successfully connected to Empyrion server at {server_host}:{server_port}")
                 return True
             else:
-                logger.error("❌ Failed to connect to Empyrion server")
+                logger.error(f"❌ Failed to connect to Empyrion server: {connection_result}")
                 self._handle_connection_error()
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ Connection attempt failed: {e}")
+            logger.error(f"❌ Connection attempt failed: {e}", exc_info=True)
             self._handle_connection_error()
             return False
     
@@ -294,6 +338,7 @@ class BackgroundService:
             
         try:
             if not self.connection_handler:
+                logger.warning("⚠️ No connection handler available for player monitoring")
                 return
             
             logger.debug("🔍 Checking player status...")
@@ -304,6 +349,13 @@ class BackgroundService:
             if current_players is None:
                 logger.warning("⚠️ Failed to get player list from server")
                 if self.is_running:  # Only handle error if service should be running
+                    self._handle_connection_error()
+                return
+            
+            # Handle error dictionary response
+            if isinstance(current_players, dict) and not current_players.get('success', True):
+                logger.warning("⚠️ Failed to get player list from server (error response)")
+                if self.is_running:
                     self._handle_connection_error()
                 return
             
@@ -370,7 +422,7 @@ class BackgroundService:
             self.previous_players = current_players_dict.copy()
             
         except Exception as e:
-            logger.error(f"❌ Error detecting status changes: {e}")
+            logger.error(f"❌ Error detecting status changes: {e}", exc_info=True)
     
     def _check_scheduled_messages(self):
         """
@@ -415,7 +467,7 @@ class BackgroundService:
                             logger.error(f"❌ Failed to send scheduled message {i+1}")
             
         except Exception as e:
-            logger.error(f"❌ Error checking scheduled messages: {e}")
+            logger.error(f"❌ Error checking scheduled messages: {e}", exc_info=True)
     
     def _should_send_scheduled_message(self, msg_index: int, schedule: str, current_time: datetime) -> bool:
         """

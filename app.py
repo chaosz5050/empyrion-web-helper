@@ -161,7 +161,6 @@ def cleanup_on_exit():
 atexit.register(cleanup_on_exit)
 
 @app.route('/')
-@app.route('/')
 def index():
     """
     Render the main page of the web interface.
@@ -187,7 +186,6 @@ def index():
                          service_status=connection_status)
 
 @app.route('/static/<path:filename>')
-@app.route('/static/<path:filename>')
 def serve_static(filename):
     """
     Serve static files such as images, CSS, or JavaScript.
@@ -201,7 +199,6 @@ def serve_static(filename):
     """Serve static files (like favicon)"""
     return send_from_directory('.', filename)
 
-@app.route('/status')
 @app.route('/status')
 def get_status():
     """
@@ -229,7 +226,6 @@ def get_status():
     })
 
 @app.route('/service/start', methods=['POST'])
-@app.route('/service/start', methods=['POST'])
 def start_service():
     """
     API endpoint to start the background service.
@@ -251,7 +247,6 @@ def start_service():
         return jsonify({'success': False, 'message': 'Failed to start background service - check credentials'})
 
 @app.route('/service/stop', methods=['POST'])
-@app.route('/service/stop', methods=['POST'])
 def stop_service():
     """
     API endpoint to stop the background service.
@@ -267,7 +262,6 @@ def stop_service():
     return jsonify({'success': True, 'message': 'Background service stopped'})
 
 # Legacy routes for backward compatibility (now just return status)
-@app.route('/connect', methods=['POST'])
 @app.route('/connect', methods=['POST'])
 def connect():
     """
@@ -286,7 +280,6 @@ def connect():
     else:
         return jsonify({'success': False, 'message': 'Connection managed by background service - check logs'})
 
-@app.route('/disconnect', methods=['POST'])
 @app.route('/disconnect', methods=['POST'])
 def disconnect():
     """
@@ -441,7 +434,6 @@ def get_logging_settings():
 
 # Simplified messaging and other routes - keeping them but focusing on the main issue
 @app.route('/messaging/send', methods=['POST'])
-@app.route('/messaging/send', methods=['POST'])
 def send_global_message():
     """
     Send a global message to all players via the messaging manager.
@@ -469,7 +461,6 @@ def send_global_message():
             return jsonify({'success': True, 'message': 'Global message sent successfully'})
         else:
             return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-            return jsonify({'success': False, 'message': 'Failed to send global message'})
             
     except Exception as e:
         logger.error(f"Error sending global message: {e}", exc_info=True)
@@ -496,6 +487,29 @@ def api_credential_status():
     }
     return jsonify(status)
 
+@app.route('/api/credentials/current', methods=['GET'])
+def api_get_current_credentials():
+    """
+    Returns current non-sensitive configuration values for pre-populating forms.
+    """
+    try:
+        ftp_creds = player_db.get_credential('ftp')
+        return jsonify({
+            'server_host': player_db.get_app_setting('server_host') or '',
+            'server_port': player_db.get_app_setting('server_port') or '30004',
+            'ftp_host': player_db.get_app_setting('ftp_host') or '',
+            'ftp_remote_log_path': player_db.get_app_setting('ftp_remote_log_path') or '',
+            'ftp_user': ftp_creds.get('username', '') if ftp_creds else ''
+        })
+    except Exception as e:
+        logger.error(f"Error getting current credentials: {e}", exc_info=True)
+        return jsonify({
+            'server_host': '',
+            'server_port': '30004',
+            'ftp_host': '',
+            'ftp_remote_log_path': '',
+            'ftp_user': ''
+        })
 
 @app.route('/api/credentials/set', methods=['POST'])
 def api_set_credentials():
@@ -505,6 +519,25 @@ def api_set_credentials():
     data = request.get_json(force=True)
     errors = {}
     updated = []
+
+    # Server Host/Port (NEW - this was missing!)
+    server_host = data.get('server_host')
+    server_port = data.get('server_port')
+    if server_host is not None:
+        if not isinstance(server_host, str) or not server_host.strip():
+            errors['server_host'] = 'Server host is required.'
+        else:
+            player_db.set_app_setting('server_host', server_host.strip())
+            updated.append('server_host')
+    if server_port is not None:
+        try:
+            port_val = int(server_port)
+            if not (1 <= port_val <= 65535):
+                raise ValueError
+            player_db.set_app_setting('server_port', str(port_val))
+            updated.append('server_port')
+        except Exception:
+            errors['server_port'] = 'Server port must be a number between 1 and 65535.'
 
     # RCON
     rcon_pw = data.get('rcon_password')
@@ -527,25 +560,6 @@ def api_set_credentials():
             player_db.store_credential('ftp', username=ftp_user.strip(), password=ftp_pw.strip())
             updated.append('ftp')
 
-    # SERVER HOST/PORT
-    server_host = data.get('server_host')
-    server_port = data.get('server_port')
-    if server_host is not None:
-        if not isinstance(server_host, str) or not server_host.strip():
-            errors['server_host'] = 'Server host is required.'
-        else:
-            player_db.set_app_setting('server_host', server_host.strip())
-            updated.append('server_host')
-    if server_port is not None:
-        try:
-            port_val = int(server_port)
-            if not (1 <= port_val <= 65535):
-                raise ValueError
-            player_db.set_app_setting('server_port', str(port_val))
-            updated.append('server_port')
-        except Exception:
-            errors['server_port'] = 'Server port must be a number between 1 and 65535.'
-
     # FTP HOST/REMOTE LOG PATH
     ftp_host = data.get('ftp_host')
     ftp_remote_log_path = data.get('ftp_remote_log_path')
@@ -564,6 +578,8 @@ def api_set_credentials():
 
     if errors:
         return jsonify({'success': False, 'errors': errors}), 400
+    
+    logger.info(f"✅ Credentials updated: {updated}")
     return jsonify({'success': True, 'updated': updated})
 
 
