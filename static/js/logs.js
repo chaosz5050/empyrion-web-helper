@@ -1,7 +1,6 @@
 // FILE LOCATION: /static/js/logs.js
 /**
  * Log management functionality for Empyrion Web Helper
- * Enhanced with geolocation management
  * Copyright (c) 2025 Chaosz Software
  */
 
@@ -225,140 +224,11 @@ window.LogsManager = {
     },
 
     downloadCurrentLog() {
-        // Simple download by opening the log file
-        // For a better download experience, we could add a dedicated download endpoint
-        showToast('Log download feature - use "Refresh Logs" and copy the content for now', 'info');
-    },
-
-    // ============================================================================
-    // GEOLOCATION MANAGEMENT METHODS
-    // ============================================================================
-
-    async refreshGeoStats() {
-        debugLog('DEBUG: refreshGeoStats() called');
+        // Simple download feature - for now just show a message
+        showToast('Download feature: Copy log content from the viewer above', 'info');
         
-        try {
-            const data = await apiCall('/geolocation/stats');
-            debugLog('DEBUG: Geolocation stats response:', data);
-            
-            if (data.success && data.stats) {
-                this.updateGeoStatsDisplay(data.stats);
-            } else {
-                showToast(data.message || 'Failed to load geolocation statistics', 'error');
-            }
-        } catch (error) {
-            console.error('Error loading geolocation stats:', error);
-            showToast('Error loading geolocation statistics: ' + error, 'error');
-        }
-    },
-
-    updateGeoStatsDisplay(stats) {
-        debugLog('DEBUG: Updating geolocation stats display:', stats);
-        
-        const playersWithGeo = document.getElementById('playersWithGeo');
-        const playersWithoutGeo = document.getElementById('playersWithoutGeo');
-        const geoCacheSize = document.getElementById('geoCacheSize');
-        const topCountry = document.getElementById('topCountry');
-        const countryList = document.getElementById('countryList');
-        
-        if (playersWithGeo) playersWithGeo.textContent = stats.with_geolocation || 0;
-        if (playersWithoutGeo) playersWithoutGeo.textContent = stats.without_geolocation || 0;
-        if (geoCacheSize) geoCacheSize.textContent = stats.cache_size || 0;
-        
-        // Find top country
-        let topCountryName = 'None';
-        let maxCount = 0;
-        
-        if (stats.country_breakdown && Object.keys(stats.country_breakdown).length > 0) {
-            for (const [country, count] of Object.entries(stats.country_breakdown)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    topCountryName = country;
-                }
-            }
-            
-            if (topCountry) {
-                topCountry.textContent = `${topCountryName} (${maxCount})`;
-            }
-            
-            // Update country breakdown list
-            if (countryList) {
-                let html = '';
-                const sortedCountries = Object.entries(stats.country_breakdown)
-                    .sort(([,a], [,b]) => b - a) // Sort by count descending
-                    .slice(0, 10); // Show top 10
-                
-                sortedCountries.forEach(([country, count]) => {
-                    const percentage = ((count / (stats.with_geolocation + stats.without_geolocation)) * 100).toFixed(1);
-                    html += `
-                        <div class="country-item">
-                            <span class="country-name">${escapeHtml(country)}</span>
-                            <span class="country-count">${count} players (${percentage}%)</span>
-                        </div>
-                    `;
-                });
-                
-                countryList.innerHTML = html || '<p class="empty-state">No country data available</p>';
-            }
-        } else {
-            if (topCountry) topCountry.textContent = 'None';
-            if (countryList) countryList.innerHTML = '<p class="empty-state">No country data available</p>';
-        }
-    },
-
-    async clearGeoCache() {
-        if (!confirm('Are you sure you want to clear the geolocation cache? This will cause IP addresses to be re-looked up on next player update.')) {
-            return;
-        }
-        
-        try {
-            const data = await apiCall('/geolocation/clear_cache', { method: 'POST' });
-            
-            if (data.success) {
-                showToast('Geolocation cache cleared successfully', 'success');
-                this.refreshGeoStats();
-            } else {
-                showToast(data.message || 'Failed to clear geolocation cache', 'error');
-            }
-        } catch (error) {
-            console.error('Error clearing geolocation cache:', error);
-            showToast('Error clearing geolocation cache: ' + error, 'error');
-        }
-    },
-
-    async forceUpdateGeolocations() {
-        if (!confirm('Are you sure you want to force update all player geolocations? This will make many API calls and may take several minutes. Use sparingly to respect API limits.')) {
-            return;
-        }
-        
-        const button = event.target;
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = '🔄 Updating...';
-        
-        try {
-            showToast('Starting geolocation update... This may take several minutes.', 'info');
-            
-            const data = await apiCall('/geolocation/force_update', { method: 'POST' });
-            
-            if (data.success) {
-                showToast(`Geolocation update completed: ${data.updated_count} players updated`, 'success');
-                this.refreshGeoStats();
-                
-                // Also refresh player data if we're on the players tab
-                if (window.PlayersManager) {
-                    window.PlayersManager.loadPlayersFromDatabase();
-                }
-            } else {
-                showToast(data.message || 'Failed to update geolocations', 'error');
-            }
-        } catch (error) {
-            console.error('Error updating geolocations:', error);
-            showToast('Error updating geolocations: ' + error, 'error');
-        } finally {
-            button.disabled = false;
-            button.textContent = originalText;
-        }
+        // In future, could implement actual download:
+        // window.open('/logging/download', '_blank');
     }
 };
 
@@ -389,17 +259,4 @@ function clearAllLogs() {
 
 function downloadCurrentLog() {
     window.LogsManager.downloadCurrentLog();
-}
-
-// Geolocation management functions
-function refreshGeoStats() {
-    window.LogsManager.refreshGeoStats();
-}
-
-function clearGeoCache() {
-    window.LogsManager.clearGeoCache();
-}
-
-function forceUpdateGeolocations() {
-    window.LogsManager.forceUpdateGeolocations();
 }
