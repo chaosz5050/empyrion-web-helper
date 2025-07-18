@@ -4,13 +4,26 @@
         <img src="/static/ewh_icon.png" alt="Empyrion Web Helper" class="header-icon"> 
         Empyrion Web Helper
     </h1>
-    <p class="subtitle">v0.4.0</p>
+    <p class="subtitle">v0.4.1</p>
     
-    <div class="connection-panel">
-        <div class="status-indicator" id="statusIndicator"></div>
-        <span class="status-text" id="statusText">Disconnected</span>
-        <span class="server-info" id="serverInfo">{{ config.host }}:{{ config.telnet_port }}</span>
-        <button id="connectBtn" onclick="toggleConnection()">Connect</button>
-        <button id="refreshBtn" onclick="refreshPlayers()" disabled>Refresh Players</button>
+    <div class="header-controls">
+        <!-- Service Controls -->
+        <div class="control-group">
+            <label>Background Service:</label>
+            <button id="startServiceBtn" onclick="startService()">Start Service</button>
+            <button id="stopServiceBtn" onclick="stopService()" class="btn-danger" style="display: none;">Stop Service</button>
+            <span class="service-status-text" id="serviceStatusText">Stopped</span>
+        </div>
+        
+        <!-- Data Refresh -->
+        <div class="control-group">
+            <button id="refreshDataBtn" onclick="refreshAllData()" disabled>Refresh Data</button>
+        </div>
+        
+        <!-- Connection Info -->
+        <div class="control-group">
+            <span class="connection-info">{{ config.host }}:{{ config.telnet_port }}</span>
+            <span class="connection-status" id="connectionStatus">Disconnected</span>
+        </div>
     </div>
 </header>
