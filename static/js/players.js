@@ -358,51 +358,6 @@ window.PlayersManager = {
         } catch (error) {
             showToast('Unban failed: ' + error, 'error');
         }
-    },
-
-    // ============================================================================
-    // GEOLOCATION AND DATA FIX METHODS
-    // ============================================================================
-
-    async refreshGeolocation() {
-        if (!isConnected) {
-            showToast('Background service not connected to server', 'error');
-            return;
-        }
-
-        const refreshGeoBtn = document.getElementById('refreshGeoBtn');
-        const originalText = refreshGeoBtn.textContent;
-        refreshGeoBtn.disabled = true;
-        refreshGeoBtn.textContent = '🌍 Updating...';
-
-        try {
-            showToast('Refreshing geolocation data...', 'info');
-            
-            const data = await apiCall('/players/refresh_geolocation', { method: 'POST' });
-            
-            if (data.success) {
-                showToast(`Updated geolocation for ${data.updated_count} players`, 'success');
-                // Refresh from database to show new data
-                this.loadPlayersFromDatabase();
-            } else {
-                showToast(data.message || 'Failed to refresh geolocation', 'error');
-            }
-        } catch (error) {
-            console.error('Error refreshing geolocation:', error);
-            showToast('Error refreshing geolocation: ' + error, 'error');
-        } finally {
-            refreshGeoBtn.disabled = false;
-            refreshGeoBtn.textContent = originalText;
-        }
-    },
-
-    enablePlayerFeatures(enabled) {
-        // Note: We can always view database data, but actions require connection
-        const refreshGeoBtn = document.getElementById('refreshGeoBtn');
-        
-        if (refreshGeoBtn) refreshGeoBtn.disabled = !enabled;
-        
-        // Action buttons are handled in updatePlayersTable based on connection status
     }
 };
 
@@ -425,8 +380,4 @@ function cancelKick() {
 
 function executeKick() {
     window.PlayersManager.executeKick();
-}
-
-function refreshGeolocation() {
-    window.PlayersManager.refreshGeolocation();
 }
