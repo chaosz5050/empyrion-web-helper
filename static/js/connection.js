@@ -1,11 +1,11 @@
 // FILE LOCATION: /static/js/connection.js
 /**
  * Connection management for Empyrion Web Helper v0.4.1
- * Updated for background service architecture
+ * Frontend is now a pure database viewer - background service handles all server communication
  * Copyright (c) 2025 Chaosz Software
  */
 
-// Connection state
+// Connection state (for UI display only)
 let isConnected = false;
 let serviceRunning = false;
 let socket = null;
@@ -17,10 +17,16 @@ window.ConnectionManager = {
         socket = io();
         this.setupSocketHandlers();
         
-        // Initial status check
+        // Initial status check (less frequent)
         this.checkServiceStatus();
         
-        debugLog('Connection manager initialized for background service architecture');
+        // Start slow status monitoring (every 30 seconds)
+        this.startSlowStatusMonitoring();
+        
+        // Start lazy data refresh (every 60 seconds)
+        this.startLazyDataRefresh();
+        
+        debugLog('Frontend initialized - database-only mode');
     },
 
     setupSocketHandlers() {
@@ -55,20 +61,20 @@ window.ConnectionManager = {
                 
                 this.updateServiceStatus({ service_running: serviceRunning });
                 this.updateConnectionStatus(isConnected);
-                
-                if (serviceRunning) {
-                    this.startStatusMonitoring();
-                }
             }
         } catch (error) {
             debugLog('Error checking service status:', error);
+            // Don't spam on errors
+            serviceRunning = false;
+            isConnected = false;
+            this.updateServiceStatus({ service_running: false });
+            this.updateConnectionStatus(false);
         }
     },
 
     async startService() {
         showLoading(true);
         const startBtn = document.getElementById('startServiceBtn');
-        const stopBtn = document.getElementById('stopServiceBtn');
         
         if (startBtn) startBtn.disabled = true;
         
@@ -79,7 +85,9 @@ window.ConnectionManager = {
                 showToast(data.message, 'success');
                 serviceRunning = true;
                 this.updateServiceStatus({ service_running: true });
-                this.startStatusMonitoring();
+                
+                // Check status again in a few seconds
+                setTimeout(() => this.checkServiceStatus(), 3000);
             } else {
                 showToast(data.message, 'error');
             }
@@ -92,7 +100,6 @@ window.ConnectionManager = {
     },
 
     async stopService() {
-        const startBtn = document.getElementById('startServiceBtn');
         const stopBtn = document.getElementById('stopServiceBtn');
         
         if (stopBtn) stopBtn.disabled = true;
@@ -107,7 +114,6 @@ window.ConnectionManager = {
                 
                 this.updateServiceStatus({ service_running: false });
                 this.updateConnectionStatus(false);
-                this.stopStatusMonitoring();
             } else {
                 showToast(data.message, 'error');
             }
@@ -153,55 +159,22 @@ window.ConnectionManager = {
             }
             if (refreshDataBtn) refreshDataBtn.disabled = false;
             
-            // Enable features
-            this.enableFeatures(true);
-            
         } else {
             if (connectionStatus) {
                 connectionStatus.textContent = serviceRunning ? 'Connecting...' : 'Disconnected';
                 connectionStatus.style.color = serviceRunning ? 'var(--accent-orange)' : 'var(--accent-red)';
             }
-            if (refreshDataBtn) refreshDataBtn.disabled = true;
-            
-            // Disable features
-            this.enableFeatures(false);
+            if (refreshDataBtn) refreshDataBtn.disabled = !serviceRunning; // Can still refresh DB even if not connected
         }
     },
 
-    enableFeatures(enabled) {
-        // Enable messaging features
-        const messagingInputs = document.querySelectorAll('#globalMessageInput, .scheduled-message-text');
-        const messagingButtons = document.querySelectorAll('#sendGlobalBtn, .btn-test');
-        
-        messagingInputs.forEach(input => {
-            input.disabled = !enabled;
-        });
-        
-        messagingButtons.forEach(button => {
-            button.disabled = !enabled;
-        });
-        
-        // Enable entities features
-        if (window.EntitiesManager) {
-            window.EntitiesManager.enableEntitiesFeatures(enabled);
-        }
-        
-        // Enable player features
-        if (window.PlayersManager) {
-            window.PlayersManager.enablePlayerFeatures(enabled);
-        }
-    },
-
-    startStatusMonitoring() {
-        // Check status every 10 seconds while service is running
+    startSlowStatusMonitoring() {
+        // Check status every 30 seconds (much less frequent)
         this.statusInterval = setInterval(() => {
             this.checkServiceStatus();
-        }, 10000);
+        }, 30000); // 30 seconds
         
-        // Start auto-refresh for player data
-        this.startAutoRefresh();
-        
-        debugLog('Started status monitoring');
+        debugLog('Started slow status monitoring (30s intervals)');
     },
 
     stopStatusMonitoring() {
@@ -210,35 +183,38 @@ window.ConnectionManager = {
             this.statusInterval = null;
         }
         
-        this.stopAutoRefresh();
+        this.stopLazyDataRefresh();
         
         debugLog('Stopped status monitoring');
     },
 
-    startAutoRefresh() {
-        // Load initial data from database
+    startLazyDataRefresh() {
+        // Load initial data from database immediately
         if (window.PlayersManager) {
             window.PlayersManager.loadPlayersFromDatabase();
-            
-            // Set up interval for UI updates (background service handles server polling)
-            this.refreshInterval = setInterval(() => {
-                window.PlayersManager.loadPlayersFromDatabase();
-            }, 30000); // Every 30 seconds - just UI refresh
-            
-            debugLog('Auto-refresh started (UI updates every 30s)');
         }
+        
+        // Set up lazy refresh - only every 60 seconds
+        this.refreshInterval = setInterval(() => {
+            // Always refresh from database, regardless of connection status
+            if (window.PlayersManager) {
+                window.PlayersManager.loadPlayersFromDatabase();
+            }
+        }, 60000); // 60 seconds - very lazy
+        
+        debugLog('Started lazy data refresh (60s intervals, database only)');
     },
 
-    stopAutoRefresh() {
+    stopLazyDataRefresh() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
-            debugLog('Auto-refresh stopped');
+            debugLog('Stopped lazy data refresh');
         }
     },
 
     refreshAllData() {
-        // Refresh all data from database
+        // Manual refresh - always from database
         if (window.PlayersManager) {
             window.PlayersManager.loadPlayersFromDatabase();
         }
@@ -251,7 +227,7 @@ window.ConnectionManager = {
     },
 
     requestMessageHistoryUpdate() {
-        if (socket && isConnected) {
+        if (socket) {
             socket.emit('request_message_history');
         }
     }
@@ -270,7 +246,7 @@ function refreshAllData() {
     window.ConnectionManager.refreshAllData();
 }
 
-// Legacy functions for backward compatibility
+// Legacy functions for backward compatibility - now just database operations
 function toggleConnection() {
     if (serviceRunning) {
         stopService();

@@ -1,7 +1,7 @@
 // FILE LOCATION: /static/js/players.js
 /**
  * Player management functionality for Empyrion Web Helper
- * Enhanced with geolocation support
+ * Frontend now only reads from database - background service handles server communication
  * Copyright (c) 2025 Chaosz Software
  */
 
@@ -30,51 +30,13 @@ window.PlayersManager = {
             }
         }
 
-        debugLog('Players manager initialized with geolocation support');
+        debugLog('Players manager initialized - database-only mode');
     },
 
     async refreshPlayers() {
-        debugLog('refreshPlayers() called, isConnected:', isConnected);
-        
-        if (isConnected) {
-            debugLog('Connected - updating server data then loading from database');
-            showLoading(true);
-            
-            try {
-                // First: Update database with fresh server data
-                const serverData = await apiCall('/players');
-                debugLog('Server update response:', serverData);
-                
-                if (serverData.success) {
-                    // Second: Load from database (which now has the updated data)
-                    const dbData = await apiCall('/players/all?' + this.getFilterParams());
-                    debugLog('Database response:', dbData);
-                    
-                    if (dbData.success) {
-                        this.allPlayers = dbData.players;
-                        this.updatePlayersTable();
-                        this.updatePlayerStats(dbData.stats);
-                    } else {
-                        showToast(dbData.message, 'error');
-                    }
-                } else {
-                    throw new Error(serverData.message);
-                }
-            } catch (error) {
-                console.error('Refresh error:', error);
-                showToast('Failed to refresh: ' + error, 'error');
-            } finally {
-                showLoading(false);
-            }
-        } else {
-            // Not connected - load from database only
-            this.loadPlayersFromDatabase();
-        }
-        
-        // Also refresh message history when players are refreshed
-        if (document.getElementById('messagingPanel').style.display !== 'none' && window.MessagingManager) {
-            window.MessagingManager.loadMessageHistory();
-        }
+        // ALWAYS load from database - background service handles server updates
+        debugLog('refreshPlayers() called - loading from database only');
+        this.loadPlayersFromDatabase();
     },
 
     async loadPlayersFromDatabase() {
@@ -90,9 +52,11 @@ window.PlayersManager = {
                 this.updatePlayerStats(data.stats);
             } else {
                 debugLog('Database load failed:', data.message);
+                showToast('Failed to load player data', 'error');
             }
         } catch (error) {
             debugLog('Database load error:', error);
+            showToast('Error loading player data', 'error');
         }
     },
 
@@ -107,8 +71,7 @@ window.PlayersManager = {
     },
 
     async applyFilters() {
-        if (!isConnected) return;
-        
+        // Filters always work on database data
         showLoading(true);
         
         try {
@@ -119,10 +82,10 @@ window.PlayersManager = {
                 this.updatePlayersTable();
                 this.updatePlayerStats(data.stats);
             } else {
-                showToast(data.message, 'error');
+                showToast('Failed to apply filters', 'error');
             }
         } catch (error) {
-            showToast('Failed to apply filters: ' + error, 'error');
+            showToast('Error applying filters: ' + error, 'error');
         } finally {
             showLoading(false);
         }
@@ -134,9 +97,8 @@ window.PlayersManager = {
                 element.value = '';
             }
         }
-        if (isConnected) {
-            this.applyFilters();
-        }
+        // Reload all players from database
+        this.loadPlayersFromDatabase();
     },
 
     updatePlayersTable() {
@@ -144,7 +106,7 @@ window.PlayersManager = {
         if (!playersTableBody) return;
 
         if (this.allPlayers.length === 0) {
-            const message = isConnected ? 'No players found' : 'Connect to server to view players';
+            const message = 'No players found in database';
             playersTableBody.innerHTML = `
                 <tr>
                     <td colspan="9" class="empty-state">${message}</td>
@@ -282,7 +244,7 @@ window.PlayersManager = {
         }
     },
 
-    // Player action methods (unchanged)
+    // Player action methods - these still need server connection for commands
     currentKickData: null,
 
     showKickModal(playerName, steamId) {
@@ -317,7 +279,7 @@ window.PlayersManager = {
 
     async kickPlayer(playerName, message) {
         if (!isConnected) {
-            showToast('Not connected to server', 'error');
+            showToast('Background service not connected to server', 'error');
             return;
         }
         
@@ -333,7 +295,8 @@ window.PlayersManager = {
             
             if (data.success) {
                 showToast(`${playerName} has been kicked`, 'success');
-                this.refreshPlayers();
+                // Refresh from database after action
+                setTimeout(() => this.loadPlayersFromDatabase(), 2000);
             } else {
                 showToast(data.message, 'error');
             }
@@ -344,7 +307,7 @@ window.PlayersManager = {
 
     async banPlayer(steamId, playerName) {
         if (!isConnected) {
-            showToast('Not connected to server', 'error');
+            showToast('Background service not connected to server', 'error');
             return;
         }
         
@@ -360,7 +323,8 @@ window.PlayersManager = {
             
             if (data.success) {
                 showToast(`${playerName} has been banned for 1 day`, 'success');
-                this.refreshPlayers();
+                // Refresh from database after action
+                setTimeout(() => this.loadPlayersFromDatabase(), 2000);
             } else {
                 showToast(data.message, 'error');
             }
@@ -371,7 +335,7 @@ window.PlayersManager = {
 
     async unbanPlayer(steamId, playerName) {
         if (!isConnected) {
-            showToast('Not connected to server', 'error');
+            showToast('Background service not connected to server', 'error');
             return;
         }
         
@@ -386,7 +350,8 @@ window.PlayersManager = {
             
             if (data.success) {
                 showToast(`${playerName} has been unbanned`, 'success');
-                this.refreshPlayers();
+                // Refresh from database after action
+                setTimeout(() => this.loadPlayersFromDatabase(), 2000);
             } else {
                 showToast(data.message, 'error');
             }
@@ -401,7 +366,7 @@ window.PlayersManager = {
 
     async refreshGeolocation() {
         if (!isConnected) {
-            showToast('Not connected to server', 'error');
+            showToast('Background service not connected to server', 'error');
             return;
         }
 
@@ -417,7 +382,8 @@ window.PlayersManager = {
             
             if (data.success) {
                 showToast(`Updated geolocation for ${data.updated_count} players`, 'success');
-                this.refreshPlayers(); // Refresh the player list to show new data
+                // Refresh from database to show new data
+                this.loadPlayersFromDatabase();
             } else {
                 showToast(data.message || 'Failed to refresh geolocation', 'error');
             }
@@ -431,11 +397,12 @@ window.PlayersManager = {
     },
 
     enablePlayerFeatures(enabled) {
-        const refreshPlayersBtn = document.getElementById('refreshPlayersBtn');
+        // Note: We can always view database data, but actions require connection
         const refreshGeoBtn = document.getElementById('refreshGeoBtn');
         
-        if (refreshPlayersBtn) refreshPlayersBtn.disabled = !enabled;
         if (refreshGeoBtn) refreshGeoBtn.disabled = !enabled;
+        
+        // Action buttons are handled in updatePlayersTable based on connection status
     }
 };
 
