@@ -215,10 +215,8 @@ window.SettingsManager = {
             rconStatus.style.color = this.settingsData.rcon?.configured ? 'var(--accent-green)' : 'var(--accent-red)';
         }
 
-        if (ftpStatus) {
-            ftpStatus.textContent = this.settingsData.ftp?.configured ? '✅ Configured' : '❌ Not configured';
-            ftpStatus.style.color = this.settingsData.ftp?.configured ? 'var(--accent-green)' : 'var(--accent-red)';
-        }
+        // DON'T update FTP status here - let header.html handle connection status
+        // The header shows actual connection status, not just configuration status
 
         if (lastSaved) {
             lastSaved.textContent = new Date().toLocaleString();

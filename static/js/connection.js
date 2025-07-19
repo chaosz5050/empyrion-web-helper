@@ -149,22 +149,27 @@ window.ConnectionManager = {
     updateConnectionStatus(connected) {
         isConnected = connected;
         
-        const connectionStatus = document.getElementById('connectionStatus');
+        // Only update RCON status - let header.html handle FTP status separately
+        const rconStatus = document.getElementById('rconStatus');
         const refreshDataBtn = document.getElementById('refreshDataBtn');
         
-        if (connected) {
-            if (connectionStatus) {
-                connectionStatus.textContent = 'Connected';
-                connectionStatus.style.color = 'var(--accent-green)';
+        if (rconStatus) {
+            if (connected) {
+                rconStatus.textContent = 'RCON: ✅ Connected';
+                rconStatus.style.color = 'var(--accent-green)';
+            } else {
+                if (serviceRunning) {
+                    rconStatus.textContent = 'RCON: 🔄 Connecting...';
+                    rconStatus.style.color = 'var(--accent-orange)';
+                } else {
+                    rconStatus.textContent = 'RCON: ❌ Disconnected';
+                    rconStatus.style.color = 'var(--accent-red)';
+                }
             }
-            if (refreshDataBtn) refreshDataBtn.disabled = false;
-            
-        } else {
-            if (connectionStatus) {
-                connectionStatus.textContent = serviceRunning ? 'Connecting...' : 'Disconnected';
-                connectionStatus.style.color = serviceRunning ? 'var(--accent-orange)' : 'var(--accent-red)';
-            }
-            if (refreshDataBtn) refreshDataBtn.disabled = !serviceRunning; // Can still refresh DB even if not connected
+        }
+        
+        if (refreshDataBtn) {
+            refreshDataBtn.disabled = !serviceRunning; // Can still refresh DB even if not connected
         }
     },
 
