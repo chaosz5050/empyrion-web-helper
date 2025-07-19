@@ -69,6 +69,7 @@ class ConfigManager:
         """
         if not os.path.exists(self.config_file):
             logger.warning(f"Config file {self.config_file} not found, using defaults")
+            self._load_from_database()  # Load from database if no config file
             return False
         
         try:
@@ -137,19 +138,11 @@ class ConfigManager:
             # Load general settings
             if parser.has_section('general'):
                 self.config.update({
-                    'autoconnect': parser.getboolean('general', 'autoconnect', fallback=self.config['autoconnect'])
+                    'autoconnect': parser.getboolean('general', 'autoconnect', fallback=True)
                 })
             
-            # After loading config from file, prefer DB for update_interval
-            if self.player_db:
-                db_update_interval = self.player_db.get_app_setting('update_interval')
-                if db_update_interval is not None:
-                    self.config['update_interval'] = self.player_db.validate_update_interval(db_update_interval)
-                else:
-                    # If not present, validate and store default
-                    valid_val = self.player_db.validate_update_interval(self.config['update_interval'])
-                    self.config['update_interval'] = valid_val
-                    self.player_db.set_app_setting('update_interval', str(valid_val))
+            # IMPORTANT: Override with database values if they exist
+            self._load_from_database()
             
             logger.info(f"Configuration loaded from {self.config_file}")
             return True
@@ -157,6 +150,45 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Error loading config: {e}")
             return False
+    
+    def _load_from_database(self):
+        """
+        Load configuration values from database, overriding config file values.
+        This ensures the header shows the REAL values that are being used.
+        """
+        if not self.player_db:
+            return
+            
+        # Load server settings from database (these are the REAL values being used)
+        server_host = self.player_db.get_app_setting('server_host')
+        server_port = self.player_db.get_app_setting('server_port')
+        ftp_host = self.player_db.get_app_setting('ftp_host')
+        ftp_remote_log_path = self.player_db.get_app_setting('ftp_remote_log_path')
+        update_interval = self.player_db.get_app_setting('update_interval')
+        
+        # Override config with database values if they exist
+        if server_host:
+            self.config['host'] = server_host
+            logger.debug(f"Using server host from database: {server_host}")
+        
+        if server_port:
+            try:
+                self.config['telnet_port'] = int(server_port)
+                logger.debug(f"Using server port from database: {server_port}")
+            except:
+                pass
+        
+        if ftp_host:
+            self.config['ftp_host'] = ftp_host
+            
+        if ftp_remote_log_path:
+            self.config['remote_log_path'] = ftp_remote_log_path
+            
+        if update_interval:
+            try:
+                self.config['update_interval'] = int(update_interval)
+            except:
+                pass
     
     def get(self, key: str, default=None):
         """
@@ -210,10 +242,12 @@ class ConfigManager:
     def get_all(self) -> dict:
         """
         Get all configuration values, with credentials marked as stored securely.
+        NOW RETURNS REAL VALUES from database for header display.
 
         Returns:
             dict: Dictionary of all configuration values, with credential fields replaced by status markers.
         """
+        # Start with current config (which now includes database overrides)
         config_copy = self.config.copy()
         
         # Add credential status indicators
@@ -222,19 +256,25 @@ class ConfigManager:
             
             if 'rcon' in stored_creds:
                 config_copy['telnet_password'] = '[STORED SECURELY]'
+                config_copy['rcon_status'] = 'Configured'
             else:
                 config_copy['telnet_password'] = '[NOT CONFIGURED]'
+                config_copy['rcon_status'] = 'Not configured'
             
             if 'ftp' in stored_creds:
                 config_copy['ftp_password'] = '[STORED SECURELY]'
                 config_copy['ftp_user'] = '[STORED SECURELY]'
+                config_copy['ftp_status'] = 'Configured'
             else:
                 config_copy['ftp_password'] = '[NOT CONFIGURED]'
                 config_copy['ftp_user'] = '[NOT CONFIGURED]'
+                config_copy['ftp_status'] = 'Not configured'
         else:
             config_copy['telnet_password'] = '[DATABASE NOT AVAILABLE]'
             config_copy['ftp_password'] = '[DATABASE NOT AVAILABLE]'
             config_copy['ftp_user'] = '[DATABASE NOT AVAILABLE]'
+            config_copy['rcon_status'] = 'Database error'
+            config_copy['ftp_status'] = 'Database error'
         
         return config_copy
     

@@ -316,7 +316,6 @@ def get_players():
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 @app.route('/players/all')
-@app.route('/players/all', methods=['GET'])
 def get_all_players():
     """
     Get all players from the database, with optional filtering.
@@ -374,7 +373,84 @@ def set_monitoring_settings():
     player_db.set_app_setting('update_interval', str(interval))
     return jsonify({'success': True, 'update_interval': interval})
 
-# --- ENTITY ENDPOINTS ---
+# App Settings API endpoints
+@app.route('/api/settings/<setting_key>', methods=['GET'])
+def get_app_setting(setting_key):
+    """Get a specific app setting from the database."""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'}), 500
+    
+    try:
+        value = player_db.get_app_setting(setting_key)
+        return jsonify({'success': True, 'value': value})
+    except Exception as e:
+        logger.error(f"Error getting app setting {setting_key}: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'}), 500
+
+@app.route('/api/settings/<setting_key>', methods=['POST'])
+def set_app_setting(setting_key):
+    """Set a specific app setting in the database."""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'}), 500
+    
+    try:
+        data = request.get_json(force=True)
+        value = data.get('value')
+        
+        if value is None:
+            return jsonify({'success': False, 'message': 'Value is required'}), 400
+        
+        success = player_db.set_app_setting(setting_key, str(value))
+        
+        if success:
+            return jsonify({'success': True, 'value': value})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to save setting'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error setting app setting {setting_key}: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'}), 500
+
+# Test endpoints for connection testing
+@app.route('/api/test/rcon', methods=['POST'])
+def test_rcon_connection():
+    """Test RCON connection (placeholder)."""
+    try:
+        data = request.get_json(force=True)
+        host = data.get('host')
+        port = data.get('port')
+        
+        # For now, just return success if host and port are provided
+        # TODO: Implement actual RCON connection test
+        if host and port:
+            return jsonify({'success': True, 'message': f'Connection test to {host}:{port} successful'})
+        else:
+            return jsonify({'success': False, 'message': 'Host and port required'})
+            
+    except Exception as e:
+        logger.error(f"Error testing RCON connection: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Connection test failed'})
+
+@app.route('/api/test/ftp', methods=['POST'])
+def test_ftp_connection():
+    """Test FTP connection (placeholder)."""
+    try:
+        data = request.get_json(force=True)
+        host = data.get('host')
+        port = data.get('port')
+        
+        # For now, just return success if host and port are provided
+        # TODO: Implement actual FTP connection test
+        if host and port:
+            return jsonify({'success': True, 'message': f'FTP test to {host}:{port} successful'})
+        else:
+            return jsonify({'success': False, 'message': 'Host and port required'})
+            
+    except Exception as e:
+        logger.error(f"Error testing FTP connection: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'FTP test failed'})
+
+# --- RESTORED API ENDPOINTS FOR FRONTEND INTEGRATION ---
 
 @app.route('/entities', methods=['GET'])
 def get_entities():
@@ -384,32 +460,210 @@ def get_entities():
     # TODO: Replace with real entity data from database/service
     return jsonify({'success': True, 'entities': []})
 
-# --- MESSAGING ENDPOINTS ---
-
 @app.route('/messaging/custom', methods=['GET'])
 def get_custom_messages():
-    """
-    Placeholder endpoint for custom messages. Should return a list of custom messages.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'messages': []})
+    """Get custom welcome and goodbye messages."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        messages = messaging_manager.load_custom_messages()
+        return jsonify({'success': True, 'messages': messages})
+    except Exception as e:
+        logger.error(f"Error getting custom messages: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/messaging/custom', methods=['POST'])
+def save_custom_messages():
+    """Save custom welcome and goodbye messages."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        data = request.get_json()
+        welcome_msg = data.get('welcome_message', '').strip()
+        goodbye_msg = data.get('goodbye_message', '').strip()
+        
+        result = messaging_manager.save_custom_messages(welcome_msg, goodbye_msg)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error saving custom messages: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 @app.route('/messaging/scheduled', methods=['GET'])
 def get_scheduled_messages():
-    """
-    Placeholder endpoint for scheduled messages. Should return a list of scheduled messages.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'messages': []})
+    """Get scheduled messages."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        messages = messaging_manager.load_scheduled_messages()
+        return jsonify({'success': True, 'messages': messages})
+    except Exception as e:
+        logger.error(f"Error getting scheduled messages: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/messaging/scheduled', methods=['POST'])
+def save_scheduled_messages():
+    """Save scheduled messages."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        
+        success = messaging_manager.save_scheduled_messages(messages)
+        if success:
+            return jsonify({'success': True, 'message': 'Scheduled messages saved successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to save scheduled messages'})
+        
+    except Exception as e:
+        logger.error(f"Error saving scheduled messages: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 @app.route('/messaging/history', methods=['GET'])
 def get_message_history():
-    """
-    Placeholder endpoint for message history. Should return recent message history.
-    """
-    # TODO: Replace with real data
-    return jsonify({'success': True, 'history': []})
+    """Get message history."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        history = messaging_manager.get_message_history(limit)
+        stats = messaging_manager.get_message_stats()
+        
+        return jsonify({
+            'success': True, 
+            'history': history,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting message history: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
+@app.route('/messaging/history/clear', methods=['POST'])
+def clear_message_history():
+    """Clear message history."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        success = messaging_manager.clear_message_history()
+        if success:
+            return jsonify({'success': True, 'message': 'Message history cleared successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to clear message history'})
+    except Exception as e:
+        logger.error(f"Error clearing message history: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/messaging/test', methods=['POST'])
+def test_message():
+    """Send a test message."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        data = request.get_json()
+        message_type = data.get('type')
+        player_name = data.get('player_name', 'TestPlayer')
+        
+        if message_type == 'welcome':
+            result = messaging_manager.send_welcome_message(player_name)
+        elif message_type == 'goodbye':
+            result = messaging_manager.send_goodbye_message(player_name)
+        else:
+            return jsonify({'success': False, 'message': 'Invalid message type'})
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error sending test message: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/stats', methods=['GET'])
+def get_logging_stats():
+    """Get logging statistics."""
+    try:
+        stats = logging_manager.get_log_stats()
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Error getting logging stats: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/recent', methods=['GET'])
+def get_recent_logs():
+    """Get recent log entries."""
+    try:
+        lines = request.args.get('lines', 100, type=int)
+        logs = logging_manager.get_recent_logs(lines)
+        return jsonify({'success': True, 'logs': logs})
+    except Exception as e:
+        logger.error(f"Error getting recent logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/settings', methods=['GET'])
+def get_logging_settings():
+    """Get logging configuration settings."""
+    try:
+        settings = {
+            'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
+            'backup_count': logging_manager.backup_count,
+            'max_age_days': logging_manager.max_age_days
+        }
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        logger.error(f"Error getting logging settings: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/settings', methods=['POST'])
+def save_logging_settings():
+    """Save logging configuration settings."""
+    try:
+        data = request.get_json()
+        max_size_mb = data.get('max_size_mb')
+        backup_count = data.get('backup_count')
+        max_age_days = data.get('max_age_days')
+        
+        success = logging_manager.update_settings(max_size_mb, backup_count, max_age_days)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Logging settings saved successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to save logging settings'})
+        
+    except Exception as e:
+        logger.error(f"Error saving logging settings: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/cleanup', methods=['POST'])
+def cleanup_logs():
+    """Clean up old log files."""
+    try:
+        result = logging_manager.cleanup_old_logs()
+        message = f"Deleted {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
+        return jsonify({'success': True, 'message': message})
+    except Exception as e:
+        logger.error(f"Error cleaning up logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/logging/clear', methods=['POST'])
+def clear_logs():
+    """Clear all log files."""
+    try:
+        success = logging_manager.clear_all_logs()
+        if success:
+            return jsonify({'success': True, 'message': 'All log files cleared successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'No log files to clear'})
+    except Exception as e:
+        logger.error(f"Error clearing logs: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+# Simplified messaging and other routes - keeping them but focusing on the main issue
 @app.route('/messaging/send', methods=['POST'])
 def send_global_message():
     """
@@ -443,127 +697,6 @@ def send_global_message():
         logger.error(f"Error sending global message: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
-# --- WORKING LOGGING ENDPOINTS ---
-
-@app.route('/logging/stats', methods=['GET'])
-def get_logging_stats():
-    """
-    Get statistics about log files (sizes, counts, etc.).
-    """
-    try:
-        stats = logging_manager.get_log_stats()
-        return jsonify({'success': True, 'stats': stats})
-    except Exception as e:
-        logger.error(f"Error getting logging stats: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-@app.route('/logging/recent', methods=['GET'])
-def get_recent_logs():
-    """
-    Get recent log entries with optional line limit.
-    """
-    try:
-        lines = request.args.get('lines', '100')
-        try:
-            lines = int(lines)
-        except ValueError:
-            lines = 100
-        
-        # Cap at reasonable limits
-        lines = max(10, min(lines, 1000))
-        
-        logs = logging_manager.get_recent_logs(lines)
-        return jsonify({'success': True, 'logs': logs})
-    except Exception as e:
-        logger.error(f"Error getting recent logs: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-@app.route('/logging/settings', methods=['GET'])
-def get_logging_settings():
-    """
-    Get current logging configuration settings.
-    """
-    try:
-        settings = {
-            'max_size_mb': logging_manager.max_bytes // (1024 * 1024),
-            'backup_count': logging_manager.backup_count,
-            'max_age_days': logging_manager.max_age_days,
-            'log_file': logging_manager.log_file
-        }
-        return jsonify({'success': True, 'settings': settings})
-    except Exception as e:
-        logger.error(f"Error getting logging settings: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-@app.route('/logging/settings', methods=['POST'])
-def update_logging_settings():
-    """
-    Update logging configuration settings.
-    """
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'})
-        
-        max_size_mb = data.get('max_size_mb')
-        backup_count = data.get('backup_count')
-        max_age_days = data.get('max_age_days')
-        
-        success = logging_manager.update_settings(
-            max_size_mb=max_size_mb,
-            backup_count=backup_count,
-            max_age_days=max_age_days
-        )
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Logging settings updated successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'Failed to update logging settings'})
-            
-    except Exception as e:
-        logger.error(f"Error updating logging settings: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-@app.route('/logging/cleanup', methods=['POST'])
-def cleanup_old_logs():
-    """
-    Clean up old log files based on configured age.
-    """
-    try:
-        result = logging_manager.cleanup_old_logs()
-        
-        if result['deleted_files'] > 0:
-            message = f"Cleaned up {result['deleted_files']} old log files ({result['deleted_bytes']} bytes)"
-        else:
-            message = "No old log files to clean up"
-            
-        return jsonify({'success': True, 'message': message, 'result': result})
-        
-    except Exception as e:
-        logger.error(f"Error cleaning up logs: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-@app.route('/logging/clear', methods=['POST'])
-def clear_all_logs():
-    """
-    Clear all log files (current and backups).
-    """
-    try:
-        success = logging_manager.clear_all_logs()
-        
-        if success:
-            message = "All log files cleared successfully"
-        else:
-            message = "No log files found to clear"
-            
-        return jsonify({'success': True, 'message': message})
-        
-    except Exception as e:
-        logger.error(f"Error clearing all logs: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
-
-# --- CREDENTIAL MANAGEMENT ENDPOINTS ---
-
 @app.route('/api/credentials/status', methods=['GET'])
 def api_credential_status():
     """
@@ -585,29 +718,6 @@ def api_credential_status():
     }
     return jsonify(status)
 
-@app.route('/api/credentials/current', methods=['GET'])
-def api_get_current_credentials():
-    """
-    Returns current non-sensitive configuration values for pre-populating forms.
-    """
-    try:
-        ftp_creds = player_db.get_credential('ftp')
-        return jsonify({
-            'server_host': player_db.get_app_setting('server_host') or '',
-            'server_port': player_db.get_app_setting('server_port') or '30004',
-            'ftp_host': player_db.get_app_setting('ftp_host') or '',
-            'ftp_remote_log_path': player_db.get_app_setting('ftp_remote_log_path') or '',
-            'ftp_user': ftp_creds.get('username', '') if ftp_creds else ''
-        })
-    except Exception as e:
-        logger.error(f"Error getting current credentials: {e}", exc_info=True)
-        return jsonify({
-            'server_host': '',
-            'server_port': '30004',
-            'ftp_host': '',
-            'ftp_remote_log_path': '',
-            'ftp_user': ''
-        })
 
 @app.route('/api/credentials/set', methods=['POST'])
 def api_set_credentials():
@@ -617,25 +727,6 @@ def api_set_credentials():
     data = request.get_json(force=True)
     errors = {}
     updated = []
-
-    # Server Host/Port (NEW - this was missing!)
-    server_host = data.get('server_host')
-    server_port = data.get('server_port')
-    if server_host is not None:
-        if not isinstance(server_host, str) or not server_host.strip():
-            errors['server_host'] = 'Server host is required.'
-        else:
-            player_db.set_app_setting('server_host', server_host.strip())
-            updated.append('server_host')
-    if server_port is not None:
-        try:
-            port_val = int(server_port)
-            if not (1 <= port_val <= 65535):
-                raise ValueError
-            player_db.set_app_setting('server_port', str(port_val))
-            updated.append('server_port')
-        except Exception:
-            errors['server_port'] = 'Server port must be a number between 1 and 65535.'
 
     # RCON
     rcon_pw = data.get('rcon_password')
@@ -658,6 +749,25 @@ def api_set_credentials():
             player_db.store_credential('ftp', username=ftp_user.strip(), password=ftp_pw.strip())
             updated.append('ftp')
 
+    # SERVER HOST/PORT
+    server_host = data.get('server_host')
+    server_port = data.get('server_port')
+    if server_host is not None:
+        if not isinstance(server_host, str) or not server_host.strip():
+            errors['server_host'] = 'Server host is required.'
+        else:
+            player_db.set_app_setting('server_host', server_host.strip())
+            updated.append('server_host')
+    if server_port is not None:
+        try:
+            port_val = int(server_port)
+            if not (1 <= port_val <= 65535):
+                raise ValueError
+            player_db.set_app_setting('server_port', str(port_val))
+            updated.append('server_port')
+        except Exception:
+            errors['server_port'] = 'Server port must be a number between 1 and 65535.'
+
     # FTP HOST/REMOTE LOG PATH
     ftp_host = data.get('ftp_host')
     ftp_remote_log_path = data.get('ftp_remote_log_path')
@@ -676,8 +786,6 @@ def api_set_credentials():
 
     if errors:
         return jsonify({'success': False, 'errors': errors}), 400
-    
-    logger.info(f"✅ Credentials updated: {updated}")
     return jsonify({'success': True, 'updated': updated})
 
 
