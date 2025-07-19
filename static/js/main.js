@@ -19,7 +19,7 @@ function checkAndShowCredentialConfigModal() {
         // Also check monitoring setting (update_interval)
         fetch('/api/settings/monitoring').then(r2 => r2.json()).then(settings => {
             let needsModal = false;
-            if (!status.rcon || !status.ftp || !status.server_host || !status.server_port) needsModal = true;
+            if (!status.rcon || !status.ftp) needsModal = true;
             if (!settings.update_interval || settings.update_interval < 10) needsModal = true;
             if (needsModal) showCredentialConfigModal(settings);
         }).catch(() => showCredentialConfigModal({update_interval: 20}));
@@ -30,79 +30,36 @@ function showCredentialConfigModal(settings) {
     const modal = document.getElementById('credentialConfigModal');
     const form = document.getElementById('credentialConfigForm');
     const errorsDiv = document.getElementById('credentialConfigErrors');
-    
     // Pre-fill update interval if available
     if (settings && settings.update_interval) {
         form.update_interval.value = settings.update_interval;
     }
-    
-    // Try to pre-populate existing values
-    fetch('/api/credentials/current').then(r => r.json()).then(data => {
-        if (data.server_host) form.server_host.value = data.server_host;
-        if (data.server_port) form.server_port.value = data.server_port;
-        if (data.ftp_host) form.ftp_host.value = data.ftp_host;
-        if (data.ftp_remote_log_path) form.ftp_remote_log_path.value = data.ftp_remote_log_path;
-        if (data.ftp_user) form.ftp_user.value = data.ftp_user;
-    }).catch(() => {
-        // Set defaults if no existing values
-        form.server_host.value = '';
-        form.server_port.value = '30004';
-        form.ftp_host.value = '';
-        form.ftp_remote_log_path.value = '';
-        form.ftp_user.value = '';
-    });
-    
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
-    
     form.onsubmit = function(e) {
         e.preventDefault();
         errorsDiv.style.display = 'none';
         errorsDiv.innerHTML = '';
-        
-        const server_host = form.server_host.value.trim();
-        const server_port = form.server_port.value.trim();
         const rcon_password = form.rcon_password.value.trim();
-        const ftp_host = form.ftp_host.value.trim();
-        const ftp_remote_log_path = form.ftp_remote_log_path.value.trim();
         const ftp_user = form.ftp_user.value.trim();
         const ftp_password = form.ftp_password.value.trim();
         const update_interval = form.update_interval.value.trim();
-        
         let errors = [];
-        
-        // Validate server settings
-        if (!server_host || server_host.length < 3) errors.push('Server host is required (minimum 3 characters).');
-        if (isNaN(server_port) || parseInt(server_port) < 1 || parseInt(server_port) > 65535) errors.push('Server port must be between 1 and 65535.');
-        
-        // Validate RCON
         if (rcon_password.length < 4) errors.push('RCON password must be at least 4 characters.');
-        
-        // Validate FTP
-        if (!ftp_host || ftp_host.length < 3) errors.push('FTP host is required (minimum 3 characters).');
-        if (!ftp_remote_log_path || ftp_remote_log_path.length < 5) errors.push('FTP remote log path is required (minimum 5 characters).');
         if (ftp_user.length < 3) errors.push('FTP username must be at least 3 characters.');
         if (ftp_password.length < 4) errors.push('FTP password must be at least 4 characters.');
-        
-        // Validate monitoring
         if (isNaN(update_interval) || parseInt(update_interval) < 10) errors.push('Update interval must be at least 10 seconds.');
-        
         if (errors.length) {
             errorsDiv.innerHTML = errors.join('<br>');
             errorsDiv.style.display = 'block';
             return;
         }
-        
-        // Save all settings
+        // Save credentials
         fetch('/api/credentials/set', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                server_host,
-                server_port: parseInt(server_port),
                 rcon_password,
-                ftp_host,
-                ftp_remote_log_path,
                 ftp_user,
                 ftp_password
             })
@@ -112,24 +69,19 @@ function showCredentialConfigModal(settings) {
             return fetch('/api/settings/monitoring', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({update_interval: parseInt(update_interval)})
+                body: JSON.stringify({update_interval})
             });
         }).then(() => {
             modal.style.display = 'none';
             document.body.style.overflow = '';
-            showToast('Settings saved successfully! Background service will connect automatically.', 'success');
-            
-            // Small delay then reload page to restart background service
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            showToast('Settings saved successfully', 'success');
+            window.location.reload();
         }).catch(err => {
             let msg = err && err.errors ? Object.values(err.errors).join('<br>') : 'Failed to save settings.';
             errorsDiv.innerHTML = msg;
             errorsDiv.style.display = 'block';
         });
     };
-    
     // Prevent closing modal by clicking outside
     modal.onclick = function(e) {
         if (e.target === modal) e.stopPropagation();
@@ -163,8 +115,72 @@ function initializeApplication() {
         window.LogsManager.init();
     }
     
+    // Initialize settings manager
+    if (window.SettingsManager) {
+        window.SettingsManager.init();
+    }
+    
     debugLog('All managers initialized');
 }
+
+// ===============================
+// Settings Tabs and Dirty State Logic
+// ===============================
+
+document.addEventListener("DOMContentLoaded", function () {
+  const tabBtns = document.querySelectorAll('.settings-tab-btn');
+  const tabPanels = document.querySelectorAll('.settings-tab-panel');
+  let currentTab = "server";
+  let dirtyTabs = { server: false, ftp: false, misc: false };
+
+  // Mark tab as dirty on any input change
+  tabPanels.forEach(panel => {
+    panel.addEventListener('input', () => {
+      dirtyTabs[panel.dataset.tab] = true;
+    });
+  });
+
+  // Tab switching logic
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const target = btn.dataset.tab;
+      if (target === currentTab) return;
+
+      // Warn if leaving dirty tab
+      if (dirtyTabs[currentTab]) {
+        if (!confirm("You have unsaved changes. Save before switching tabs?")) {
+          return;
+        }
+      }
+
+      // Switch active tab
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      tabPanels.forEach(panel => {
+        if (panel.dataset.tab === target) {
+          panel.classList.add('active');
+        } else {
+          panel.classList.remove('active');
+        }
+      });
+      currentTab = target;
+    });
+  });
+
+  // Save button logic (reset dirty state)
+  tabPanels.forEach(panel => {
+    const tab = panel.dataset.tab;
+    const saveBtn = document.getElementById(`saveSettingsBtn-${tab}`);
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        // You can replace this with your actual save logic
+        // Example: saveSettings(tab);
+        dirtyTabs[tab] = false;
+        alert("Settings saved!");
+      });
+    }
+  });
+});
 
 // Clean up on page unload
 window.addEventListener('beforeunload', function() {

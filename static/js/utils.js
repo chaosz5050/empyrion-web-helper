@@ -46,7 +46,7 @@ function escapeHtml(text) {
 // Tab navigation system
 function showTab(tabName) {
     // Hide all panels
-    const panels = ['playersPanel', 'entitiesPanel', 'messagingPanel', 'logsPanel'];
+    const panels = ['playersPanel', 'entitiesPanel', 'messagingPanel', 'logsPanel', 'settingsPanel'];
     panels.forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (panel) {
@@ -85,6 +85,13 @@ function showTab(tabName) {
         // Just enable the refresh button if connected
         if (window.EntitiesManager && isConnected) {
             window.EntitiesManager.enableEntitiesFeatures(true);
+        }
+    } else if (tabName === 'settings') {
+        // Initialize settings manager if it exists
+        if (window.SettingsManager && typeof window.SettingsManager.loadCurrentSettings === 'function') {
+            window.SettingsManager.loadCurrentSettings();
+        } else if (window.SettingsManager && typeof window.SettingsManager.loadAllSettings === 'function') {
+            window.SettingsManager.loadAllSettings();
         }
     }
 }
