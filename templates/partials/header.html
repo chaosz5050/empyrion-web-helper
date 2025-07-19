@@ -20,10 +20,21 @@
             <button id="refreshDataBtn" onclick="refreshAllData()" disabled>Refresh Data</button>
         </div>
         
-        <!-- Connection Info -->
+        <!-- Connection Status -->
         <div class="control-group">
-            <span class="connection-info">{{ config.host }}:{{ config.telnet_port }}</span>
-            <span class="connection-status" id="connectionStatus">Disconnected</span>
+            <div class="connection-status-container">
+                <div class="connection-info">{{ config.host }}:{{ config.telnet_port }}</div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-label">RCON:</span>
+                        <span class="connection-status" id="rconConnectionStatus">Disconnected</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">FTP:</span>
+                        <span class="connection-status" id="ftpConnectionStatus">Not configured</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </header>
