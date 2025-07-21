@@ -1,0 +1,20 @@
+<!-- FILE LOCATION: /templates/partials/modals.html -->
+<!-- Kick Player Modal -->
+<div class="modal" id="kickModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            Kick Player
+        </div>
+        <div class="modal-body">
+            <label for="kickPlayerName">Player:</label>
+            <input type="text" id="kickPlayerName" readonly>
+            <br><br>
+            <label for="kickMessage">Kick Message:</label>
+            <input type="text" id="kickMessage" value="Kicked by Admin" placeholder="Enter kick message...">
+        </div>
+        <div class="modal-footer">
+            <button onclick="cancelKick()">Cancel</button>
+            <button onclick="executeKick()" class="btn-danger">Kick Player</button>
+        </div>
+    </div>
+</div>

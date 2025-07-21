@@ -1,0 +1,116 @@
+<!-- FILE LOCATION: /templates/tabs/messaging.html -->
+<div class="panel" id="messagingPanel" style="display: none;">
+    <h2>📢 Messaging System</h2>
+    
+    <!-- Global Message Section -->
+    <div class="message-section">
+        <h3>Send Global Message</h3>
+        <div class="global-message-panel">
+            <div class="message-input-container">
+                <input type="text" id="globalMessageInput" class="message-input" 
+                       placeholder="Type your message to all players..." maxlength="200">
+                <button id="sendGlobalBtn" onclick="sendGlobalMessage()" class="btn-primary">
+                    Send Message
+                </button>
+            </div>
+            <div class="message-help">
+                <small>Send an immediate message to all online players</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Player Status Messages Section -->
+    <div class="message-section">
+        <h3>Player Status Messages</h3>
+        <div class="custom-messages-panel">
+            <div class="message-help">
+                <p>Automatic messages sent when players join or leave the server. 
+                   Use <code>&lt;playername&gt;</code> where you want the player's name to appear.</p>
+            </div>
+            
+            <div class="custom-message-row">
+                <div class="message-header">
+                    <input type="checkbox" id="welcomeMessageEnabled" checked>
+                    <label for="welcomeMessageInput">Welcome Message:</label>
+                </div>
+                <div class="message-input-container">
+                    <input type="text" id="welcomeMessageInput" class="message-input" 
+                           placeholder="Welcome to Space Cowboys, <playername>!" maxlength="200">
+                    <button onclick="testMessage('welcome')" class="btn-test">Test</button>
+                </div>
+            </div>
+            
+            <div class="custom-message-row">
+                <div class="message-header">
+                    <input type="checkbox" id="goodbyeMessageEnabled" checked>
+                    <label for="goodbyeMessageInput">Goodbye Message:</label>
+                </div>
+                <div class="message-input-container">
+                    <input type="text" id="goodbyeMessageInput" class="message-input" 
+                           placeholder="Player <playername> has left our galaxy" maxlength="200">
+                    <button onclick="testMessage('goodbye')" class="btn-test">Test</button>
+                </div>
+            </div>
+            
+            <div class="custom-message-controls">
+                <button onclick="saveCustomMessages()" class="btn-primary">Save Custom Messages</button>
+                <button onclick="loadCustomMessages()" class="btn-secondary">Load Saved Messages</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scheduled Messages Section -->
+    <div class="message-section">
+        <h3>Scheduled Messages</h3>
+        <div class="scheduled-messages-panel">
+            <div class="message-help">
+                <p>Send recurring messages at specified intervals. Messages are sent automatically when enabled.</p>
+            </div>
+            
+            <div class="scheduled-messages-list" id="scheduledMessagesList">
+                <!-- Scheduled messages will be dynamically generated here -->
+            </div>
+            
+            <div class="scheduled-message-controls">
+                <button onclick="saveScheduledMessages()" class="btn-primary">Save Schedule</button>
+                <button onclick="loadScheduledMessages()" class="btn-secondary">Load Schedule</button>
+                <button onclick="addScheduledMessage()" class="btn-add">Add New Message</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message History Section -->
+    <div class="message-section">
+        <h3>Message History</h3>
+        <div class="message-history-panel">
+            <div class="history-controls">
+                <button onclick="loadMessageHistory()" class="btn-secondary">Refresh History</button>
+                <button onclick="clearMessageHistory()" class="btn-danger">Clear History</button>
+                <div class="history-stats" id="messageStats">
+                    <span>Total: <span id="totalMessages">0</span></span>
+                    <span>Successful: <span id="successfulMessages">0</span></span>
+                    <span>Failed: <span id="failedMessages">0</span></span>
+                </div>
+            </div>
+            
+            <div class="message-history-container">
+                <table class="message-history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Message</th>
+                            <th>Player</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="messageHistoryBody">
+                        <tr>
+                            <td colspan="5" class="empty-state">Click "Refresh History" to load message history</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

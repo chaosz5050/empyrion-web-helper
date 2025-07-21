@@ -1,0 +1,124 @@
+<!-- FILE LOCATION: /templates/tabs/entities.html -->
+<div class="panel" id="entitiesPanel" style="display: none;">
+    <h2>🌌 Entities (Galaxy Objects)</h2>
+    
+    <!-- Last Refresh Info -->
+    <div class="entity-refresh-info" id="entityRefreshInfo">
+        <span id="entitiesLastRefresh">Loading...</span>
+    </div>
+    
+    <div class="entity-stats" id="entityStats">
+        <div class="stat-item">Total: <span class="stat-value" id="totalEntities">0</span></div>
+        <div class="stat-item">Asteroids: <span class="stat-value" id="asteroidEntities">0</span></div>
+        <div class="stat-item">Bases: <span class="stat-value" id="baseEntities">0</span></div>
+        <div class="stat-item">Ships: <span class="stat-value" id="shipEntities">0</span></div>
+        <div class="stat-item">Wrecks: <span class="stat-value" id="wreckEntities">0</span></div>
+    </div>
+    
+    <div class="filters-panel">
+        <input type="text" class="filter-input" id="filterEntityId" placeholder="Filter Entity ID...">
+        <select class="filter-input" id="filterEntityType">
+            <option value="">Filter Type...</option>
+            <option value="AstVoxel">Asteroid</option>
+            <option value="BA">Base</option>
+            <option value="CV">Capital Vessel</option>
+            <option value="SV">Small Vessel</option>
+        </select>
+        <input type="text" class="filter-input" id="filterEntityFaction" placeholder="Filter Faction...">
+        <input type="text" class="filter-input" id="filterEntityName" placeholder="Filter Name...">
+        <input type="text" class="filter-input" id="filterEntityPlayfield" placeholder="Filter Playfield...">
+        <button onclick="clearEntityFilters()">Clear Filters</button>
+    </div>
+    
+    <div class="entity-actions-panel">
+        <div class="entity-actions-row">
+            <button onclick="refreshEntitiesFromServer()" id="refreshEntitiesBtn" disabled>
+                🔄 Refresh from Server
+            </button>
+            <button onclick="loadEntitiesFromDatabase()" class="btn-secondary">
+                📄 Load from Database
+            </button>
+            <button onclick="exportEntitiesData()" class="btn-secondary">
+                📄 Export Raw Data
+            </button>
+            <button onclick="clearAllEntities()" class="btn-danger">
+                🗑️ Clear Database
+            </button>
+        </div>
+        <div class="refresh-warning">
+            <strong>⚠️ Server Refresh:</strong> Can take 10-30 seconds. Database loads instantly.
+        </div>
+    </div>
+    
+    <div class="entity-table-container">
+        <!-- Pagination Controls (Top) -->
+        <div class="pagination-controls" id="entitiesPaginationTop">
+            <div class="pagination-info">
+                <span id="entitiesPageInfo">Page 1 of 1 (0 entities)</span>
+            </div>
+            <div class="pagination-size">
+                <label for="entitiesPageSize">Rows per page:</label>
+                <select id="entitiesPageSize" onchange="EntitiesManager.changePageSize()">
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="250">250</option>
+                    <option value="500">500</option>
+                </select>
+            </div>
+            <div class="pagination-buttons">
+                <button id="entitiesFirstBtn" onclick="EntitiesManager.goToPage(1)" disabled>⏮️ First</button>
+                <button id="entitiesPrevBtn" onclick="EntitiesManager.previousPage()" disabled>⬅️ Prev</button>
+                <button id="entitiesNextBtn" onclick="EntitiesManager.nextPage()" disabled>Next ➡️</button>
+                <button id="entitiesLastBtn" onclick="EntitiesManager.goToLastPage()" disabled>Last ⏭️</button>
+            </div>
+        </div>
+        
+        <table class="entity-table">
+            <thead>
+                <tr>
+                    <th>Entity ID</th>
+                    <th>Type</th>
+                    <th>Faction</th>
+                    <th>Name</th>
+                    <th>Playfield</th>
+                    <th>Category</th>
+                </tr>
+            </thead>
+            <tbody id="entitiesTableBody">
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        Loading entities from database...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Pagination Controls (Bottom) -->
+        <div class="pagination-controls" id="entitiesPaginationBottom">
+            <div class="pagination-info">
+                <span id="entitiesPageInfoBottom">Page 1 of 1 (0 entities)</span>
+            </div>
+            <div class="pagination-buttons">
+                <button id="entitiesFirstBtnBottom" onclick="EntitiesManager.goToPage(1)" disabled>⏮️ First</button>
+                <button id="entitiesPrevBtnBottom" onclick="EntitiesManager.previousPage()" disabled>⬅️ Prev</button>
+                <button id="entitiesNextBtnBottom" onclick="EntitiesManager.nextPage()" disabled>Next ➡️</button>
+                <button id="entitiesLastBtnBottom" onclick="EntitiesManager.goToLastPage()" disabled>Last ⏭️</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="entity-info-panel">
+        <div class="entity-info-item">
+            <strong>🎯 Entity Categories:</strong>
+            <span class="entity-category asteroid">Asteroids</span>
+            <span class="entity-category structure">Structures</span>
+            <span class="entity-category ship">Ships</span>
+            <span class="entity-category wreck">Wrecks</span>
+            <span class="entity-category other">Other</span>
+        </div>
+    </div>
+    
+    <div class="loading" id="entitiesLoadingIndicator">
+        <p>⏳ Refreshing entities from server... This may take 10-30 seconds...</p>
+    </div>
+</div>

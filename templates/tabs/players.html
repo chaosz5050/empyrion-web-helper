@@ -1,0 +1,64 @@
+<!-- FILE LOCATION: /templates/tabs/players.html -->
+<div class="panel" id="playersPanel">
+    <h2>👥 Players (All Known Players)</h2>
+    
+    <div class="player-stats" id="playerStats">
+        <div class="stat-item">Total: <span class="stat-value" id="totalPlayers">0</span></div>
+        <div class="stat-item">Online: <span class="stat-value" id="onlinePlayers">0</span></div>
+        <div class="stat-item">Offline: <span class="stat-value" id="offlinePlayers">0</span></div>
+    </div>
+    
+    <div class="player-actions-panel">
+        <button onclick="refreshPlayers()" id="refreshPlayersBtn" disabled>🔄 Refresh Players</button>
+
+    </div>
+    
+    <div class="filters-panel">
+        <input type="text" class="filter-input" id="filterSteamId" placeholder="Filter Steam ID...">
+        <input type="text" class="filter-input" id="filterName" placeholder="Filter Name...">
+        <select class="filter-input" id="filterStatus">
+            <option value="">Filter Status...</option>
+            <option value="Online">Online</option>
+            <option value="Offline">Offline</option>
+        </select>
+        <input type="text" class="filter-input" id="filterFaction" placeholder="Filter Faction...">
+        <input type="text" class="filter-input" id="filterIp" placeholder="Filter IP Address...">
+        <input type="text" class="filter-input" id="filterCountry" placeholder="Filter Country...">
+        <input type="text" class="filter-input" id="filterPlayfield" placeholder="Filter Playfield...">
+        <input type="text" class="filter-input" id="filterLastSeen" placeholder="Filter Last Seen...">
+        <button onclick="clearFilters()">Clear Filters</button>
+    </div>
+    
+    <div class="player-table-container">
+        <table class="player-table">
+            <thead>
+                <tr>
+                    <th>Steam ID</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Faction</th>
+                    <th>IP Address</th>
+                    <th>Country</th>
+                    <th>Playfield</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="playersTableBody">
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        Connect to server to view players
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="refresh-info" id="refreshInfo">
+        Auto-refresh: Every {{ config.update_interval }} seconds when connected
+    </div>
+    
+    <div class="loading" id="loadingIndicator">
+        <p>Loading players...</p>
+    </div>
+</div>

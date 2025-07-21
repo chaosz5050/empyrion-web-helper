@@ -1,0 +1,136 @@
+# FILE LOCATION: /config_template.txt (root directory)
+# Empyrion Web Helper Configuration Template v0.4.1+
+# Copy this file to 'empyrion_helper.conf' 
+#
+# 🔒 SECURITY NOTICE: 
+# Server hosts, ports, and ALL credentials are now stored securely in the database.
+# This config file only contains messaging settings and intervals.
+#
+# Configure server connection via the web interface Settings tab.
+
+# NOTE: Server connection settings (IP, port, passwords) are configured via web interface
+# Go to Settings tab -> Server Configuration to set these securely
+
+[monitoring]
+# How often to refresh player list (seconds)
+update_interval = 30
+
+[logging]
+# Log file name
+log_file = empyrion_helper.log
+
+# Maximum size per log file (MB) before rotation
+max_size_mb = 1
+
+# Number of backup log files to keep
+backup_count = 3
+
+# Maximum age of log files (days) before deletion
+max_age_days = 7
+
+# NOTE: FTP settings are configured via web interface Settings tab
+# This includes FTP host, credentials, and paths
+
+[messaging]
+# Welcome message template (use <playername> as placeholder)
+welcome_message = Welcome to Space Cowboys, <playername>!
+
+# Goodbye message template (use <playername> as placeholder)
+goodbye_message = Player <playername> has left our galaxy
+
+# Scheduled messages (JSON format - do not edit manually, use the web interface)
+scheduled_messages = [
+  {
+    "id": 1,
+    "enabled": false,
+    "text": "Welcome to our server! Type /help for commands.",
+    "schedule": "Every 10 minutes"
+  },
+  {
+    "id": 2,
+    "enabled": false,
+    "text": "Remember to save your progress regularly!",
+    "schedule": "Every 30 minutes"
+  },
+  {
+    "id": 3,
+    "enabled": false,
+    "text": "Check out our discord server for updates and support.",
+    "schedule": "Every 1 hour"
+  },
+  {
+    "id": 4,
+    "enabled": false,
+    "text": "",
+    "schedule": "Every 5 minutes"
+  },
+  {
+    "id": 5,
+    "enabled": false,
+    "text": "",
+    "schedule": "Every 5 minutes"
+  }
+]
+
+# General App Settings
+[general]
+# Automatically connect to server when app starts
+autoconnect = false
+
+# ============================================================================
+# SETUP INSTRUCTIONS:
+# ============================================================================
+# 
+# 🚀 QUICK SETUP GUIDE:
+# ============================================================================
+# 
+# 1. COPY CONFIG FILE:
+#    cp config_template.txt empyrion_helper.conf
+#
+# 2. START THE APP:
+#    python3 app.py
+#
+# 3. OPEN WEB INTERFACE:
+#    http://localhost:5001 (local) or http://your-ip:5001 (network)
+#
+# 4. CONFIGURE SERVER CONNECTION:
+#    - Go to Settings tab
+#    - Enter Server Host/IP and RCON Port
+#    - Enter RCON Password
+#    - Configure FTP settings (optional)
+#    - Save settings
+#
+# 5. CUSTOMIZE MESSAGES:
+#    - Edit welcome_message and goodbye_message in this file
+#    - Configure scheduled messages via web interface
+#    - Messages support <playername> placeholder
+#
+# 6. ADJUST MONITORING:
+#    - Default: 30 seconds (good for most servers)
+#    - Busy servers (50+ players): 45-60 seconds
+#    - Quiet servers (<20 players): 20 seconds
+#
+# ============================================================================
+# 🔐 SECURITY FEATURES:
+# ============================================================================
+#
+# ✅ ALL CREDENTIALS stored in encrypted database (AES-256)
+# ✅ NO sensitive data in config files
+# ✅ Automatic RCON provider detection (works with any host)
+# ✅ Real connection health monitoring
+# ✅ Environment variable support for automation
+#
+# ============================================================================
+# OPTIONAL: ENVIRONMENT VARIABLES (For Automation)
+# ============================================================================
+#
+# For automated deployments, you can set these environment variables:
+# 
+# export EMPYRION_RCON_PASSWORD="your_rcon_password"
+# export EMPYRION_FTP_USER="your_ftp_username"       
+# export EMPYRION_FTP_PASSWORD="your_ftp_password"   
+# export EMPYRION_FTP_HOST="192.168.1.100:21"
+#
+# App will use these automatically without prompting.
+#
+# ============================================================================

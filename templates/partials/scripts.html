@@ -1,0 +1,42 @@
+<!-- FILE LOCATION: /templates/partials/scripts.html -->
+<!-- JavaScript Modules -->
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/connection.js"></script>
+<script src="/static/js/players.js"></script>
+<script src="/static/js/entities.js"></script>
+<script src="/static/js/messaging.js"></script>
+<script src="/static/js/logs.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/main.js"></script>
+
+<script>
+    // DEBUG: Print rendered config block to console and page
+    try {
+        window.CONFIG = {
+            host: '{{ config.host if config.host is defined else "MISSING" }}',
+            telnet_port: {{ config.telnet_port if config.telnet_port is defined else 0 }},
+            update_interval: {{ config.update_interval if config.update_interval is defined else 20 }},
+            autoconnect: {{ config.autoconnect|lower if config.autoconnect is defined else 'false' }}
+        };
+        console.log('DEBUG: window.CONFIG =', window.CONFIG);
+        var debugDiv = document.createElement('div');
+        debugDiv.style = 'background:#222;color:#fff;padding:10px;z-index:9999;position:fixed;bottom:0;left:0;font-size:14px;max-width:100vw;overflow-x:auto;';
+        debugDiv.innerText = 'window.CONFIG = ' + JSON.stringify(window.CONFIG);
+        document.body.appendChild(debugDiv);
+    } catch (e) {
+        var errDiv = document.createElement('div');
+        errDiv.style = 'background:#a00;color:#fff;padding:10px;z-index:9999;position:fixed;bottom:0;left:0;font-size:14px;max-width:100vw;overflow-x:auto;';
+        errDiv.innerText = 'CONFIG BLOCK ERROR: ' + e;
+        document.body.appendChild(errDiv);
+        console.error('CONFIG BLOCK ERROR:', e);
+    }
+    
+    // Global JS error catcher for debug
+    window.addEventListener('error', function(event) {
+        var jsErrDiv = document.createElement('div');
+        jsErrDiv.style = 'background:#a00;color:#fff;padding:10px;z-index:9999;position:fixed;bottom:40px;left:0;font-size:14px;max-width:100vw;overflow-x:auto;';
+        jsErrDiv.innerText = 'JS ERROR: ' + event.message + ' at ' + event.filename + ':' + event.lineno;
+        document.body.appendChild(jsErrDiv);
+        console.error('JS ERROR:', event);
+    });
+</script>

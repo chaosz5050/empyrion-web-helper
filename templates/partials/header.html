@@ -1,0 +1,167 @@
+<!-- FILE LOCATION: /templates/partials/header.html -->
+<header>
+    <h1>
+        <img src="/static/ewh_icon.png" alt="Empyrion Web Helper" class="header-icon"> 
+        Empyrion Web Helper
+    </h1>
+    <p class="subtitle">v0.4.1</p>
+    
+    <div class="header-controls">
+        <!-- Service Controls -->
+        <div class="control-group">
+            <label>Background Service:</label>
+            <button id="startServiceBtn" onclick="startService()">Start Service</button>
+            <button id="stopServiceBtn" onclick="stopService()" class="btn-danger" style="display: none;">Stop Service</button>
+            <span class="service-status-text" id="serviceStatusText">Stopped</span>
+        </div>
+        
+        <!-- Data Refresh -->
+        <div class="control-group">
+            <button id="refreshDataBtn" onclick="refreshAllData()" disabled>Refresh Data</button>
+        </div>
+        
+        <!-- Connection Status with Tooltips -->
+        <div class="control-group">
+            <span class="connection-status" id="rconStatus" title="Click to see RCON details">RCON: Checking...</span>
+            <span class="connection-status" id="ftpStatus" title="Click to see FTP details">FTP: Checking...</span>
+        </div>
+    </div>
+</header>
+
+<script>
+// Enhanced connection status management
+let statusUpdateInProgress = false;
+
+function updateConnectionStatus() {
+    if (statusUpdateInProgress) return; // Prevent multiple simultaneous updates
+    statusUpdateInProgress = true;
+    
+    fetch('/status')
+        .then(response => response.json())
+        .then(data => {
+            const rconStatusEl = document.getElementById('rconStatus');
+            const serviceStatusEl = document.getElementById('serviceStatusText');
+            const startBtn = document.getElementById('startServiceBtn');
+            const stopBtn = document.getElementById('stopServiceBtn');
+            const refreshBtn = document.getElementById('refreshDataBtn');
+
+            // Update service status
+            if (data.service_running) {
+                serviceStatusEl.textContent = 'Running';
+                serviceStatusEl.style.color = 'var(--accent-green)';
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                refreshBtn.disabled = false;
+            } else {
+                serviceStatusEl.textContent = 'Stopped';
+                serviceStatusEl.style.color = 'var(--accent-red)';
+                startBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'none';
+                refreshBtn.disabled = true;
+            }
+
+            // Update RCON status
+            if (data.connected) {
+                rconStatusEl.textContent = 'RCON: ✅ Connected';
+                rconStatusEl.style.color = 'var(--accent-green)';
+                rconStatusEl.title = 'RCON Connected to {{ config.host }}:{{ config.telnet_port }}';
+            } else if (data.service_running) {
+                rconStatusEl.textContent = 'RCON: 🔄 Connecting...';
+                rconStatusEl.style.color = 'var(--accent-orange)';
+                rconStatusEl.title = 'RCON Attempting connection to {{ config.host }}:{{ config.telnet_port }}';
+            } else {
+                rconStatusEl.textContent = 'RCON: ❌ Disconnected';
+                rconStatusEl.style.color = 'var(--accent-red)';
+                rconStatusEl.title = 'RCON Not connected to {{ config.host }}:{{ config.telnet_port }}';
+            }
+        })
+        .catch(error => {
+            console.error('Error updating connection status:', error);
+        })
+        .finally(() => {
+            statusUpdateInProgress = false;
+        });
+}
+
+// Dedicated FTP status updater - completely separate from other code
+function updateFtpConnectionStatus() {
+    const ftpStatusEl = document.getElementById('ftpStatus');
+    
+    // Force override any other status updates
+    setTimeout(() => {
+        ftpStatusEl.textContent = 'FTP: 🔄 Testing...';
+        ftpStatusEl.style.color = 'var(--accent-orange)';
+        ftpStatusEl.title = 'Testing FTP connection...';
+        
+        // Check credentials first
+        fetch('/api/credentials/status')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.ftp) {
+                    // Not configured
+                    ftpStatusEl.textContent = 'FTP: ❌ Not configured';
+                    ftpStatusEl.style.color = 'var(--accent-red)';
+                    ftpStatusEl.title = 'FTP credentials not configured';
+                    return;
+                }
+                
+                // Get FTP host for tooltip
+                fetch('/api/settings/ftp_host')
+                    .then(r => r.json())
+                    .then(hostData => {
+                        const ftpHost = hostData.success && hostData.value ? hostData.value : 'Unknown';
+                        
+                        // Test actual connection
+                        fetch('/api/test/ftp', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ host: 'test', port: '21' })
+                        })
+                        .then(r => r.json())
+                        .then(testResult => {
+                            if (testResult.success) {
+                                ftpStatusEl.textContent = 'FTP: ✅ Connected';
+                                ftpStatusEl.style.color = 'var(--accent-green)';
+                                ftpStatusEl.title = `FTP Connected to ${ftpHost}`;
+                            } else {
+                                ftpStatusEl.textContent = 'FTP: ❌ Disconnected';
+                                ftpStatusEl.style.color = 'var(--accent-red)';
+                                ftpStatusEl.title = `FTP Disconnected from ${ftpHost}`;
+                            }
+                        })
+                        .catch(() => {
+                            ftpStatusEl.textContent = 'FTP: ❌ Disconnected';
+                            ftpStatusEl.style.color = 'var(--accent-red)';
+                            ftpStatusEl.title = `FTP Disconnected from ${ftpHost}`;
+                        });
+                    })
+                    .catch(() => {
+                        // Fallback without host info
+                        ftpStatusEl.textContent = 'FTP: ❌ Disconnected';
+                        ftpStatusEl.style.color = 'var(--accent-red)';
+                        ftpStatusEl.title = 'FTP Disconnected';
+                    });
+            })
+            .catch(() => {
+                ftpStatusEl.textContent = 'FTP: ❓ Error';
+                ftpStatusEl.style.color = 'var(--text-secondary)';
+                ftpStatusEl.title = 'Unable to check FTP status';
+            });
+    }, 100); // Small delay to ensure we override other updates
+}
+
+// Update status on page load and periodically
+document.addEventListener('DOMContentLoaded', function() {
+    updateConnectionStatus();
+    updateFtpConnectionStatus();
+    
+    // Update every 30 seconds, but stagger the calls
+    setInterval(() => {
+        updateConnectionStatus();
+    }, 30000);
+    
+    setInterval(() => {
+        updateFtpConnectionStatus();
+    }, 31000); // Slightly offset to avoid conflicts
+});
+</script>
