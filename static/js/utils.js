@@ -46,7 +46,7 @@ function escapeHtml(text) {
 // Tab navigation system
 function showTab(tabName) {
     // Hide all panels
-    const panels = ['playersPanel', 'entitiesPanel', 'messagingPanel', 'logsPanel', 'settingsPanel'];
+    const panels = ['playersPanel', 'entitiesPanel', 'itemsconfigPanel', 'messagingPanel', 'logsPanel', 'settingsPanel'];
     panels.forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (panel) {

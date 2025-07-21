@@ -6,7 +6,7 @@
 
 // Application initialization
 document.addEventListener('DOMContentLoaded', function() {
-    debugLog('Empyrion Web Helper v0.4.1 - Background Service Architecture');
+    debugLog('Empyrion Web Helper v0.5.0 - Background Service Architecture');
     checkAndShowCredentialConfigModal();
     // Initialize all managers
     initializeApplication();
@@ -103,6 +103,11 @@ function initializeApplication() {
     // Initialize entities manager
     if (window.EntitiesManager) {
         window.EntitiesManager.init();
+    }
+    
+    // Initialize items config manager
+    if (window.ItemsConfigManager) {
+        window.ItemsConfigManager.init();
     }
     
     // Initialize messaging manager

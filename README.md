@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.4.1
+# 🚀 Empyrion Web Helper v0.5.0
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.4.1-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.5.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -32,6 +32,15 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **Persistent Storage** - Entity data survives app restarts and server downtime
 - **Advanced Search** - Find specific entities by ID, type, faction, name, or playfield
 - **Admin Integration** - Entity IDs prominently displayed for destroy/teleport commands
+
+### 🛠️ **ItemsConfig.ecf Management**
+- **Live Server Integration** - Direct FTP download and parsing of ItemsConfig.ecf from your server
+- **Professional Editor Interface** - Browse and edit 1,100+ game items in a responsive table
+- **Safe Property Editing** - Modify StackSize, Mass, Volume, and MarketPrice with validation
+- **Template System Support** - Automatic resolution of template inheritance and item relationships
+- **Advanced ECF Parser** - Handles complex Empyrion Configuration File format with nested properties
+- **Comprehensive Pagination** - Configurable display options (50/100/250/500 items per page)
+- **Real-time Connection Testing** - Verify FTP connectivity and file availability before editing
 
 ### 📢 **Independent Messaging System**
 - **24/7 Operation** - Messages work without web browser open (background service)
@@ -152,6 +161,7 @@ Empyrion Web Helper features a revolutionary **dual-architecture design**:
 - **📊 Dashboard** - Service status, connection monitoring, quick actions
 - **👥 Players** - Real-time player list, actions, filtering, geolocation
 - **🌌 Entities** - Galaxy-wide entity browser, search, admin tools
+- **🛠️ ItemsConfig** - Live ECF file management, item editing, template resolution
 - **💬 Messaging** - Message history, templates, scheduled announcements
 - **📋 Logs** - Real-time log viewer, rotation management, statistics
 - **⚙️ Settings** - Secure credential management, service configuration
@@ -385,4 +395,4 @@ For more details, see the [full license text](https://creativecommons.org/licens
 
 **Built with ❤️ for the Empyrion Galactic Survival community by Chaosz Software**
 
-*Empyrion Web Helper v0.4.1+ - Professional server management with universal compatibility and enterprise-grade security*
+*Empyrion Web Helper v0.5.0+ - Professional server management with universal compatibility and enterprise-grade security*

@@ -1,0 +1,138 @@
+<!-- FILE LOCATION: /templates/tabs/itemsconfig.html -->
+<div class="panel" id="itemsconfigPanel" style="display: none;">
+    <h2>🔧 Items Config (ItemsConfig.ecf)</h2>
+    
+    <!-- Connection Status -->
+    <div class="itemsconfig-status-panel">
+        <div class="status-info">
+            <span id="itemsconfigConnectionStatus">Disconnected</span> | 
+            <span id="itemsconfigFileStatus">File not found</span>
+        </div>
+        <div class="status-actions">
+            <button onclick="ItemsConfigManager.testConnection()" id="testConnectionBtn" class="btn-secondary">
+                🔍 Check Connection & File
+            </button>
+            <button onclick="ItemsConfigManager.downloadFile()" id="downloadFileBtn" disabled class="btn-primary">
+                📥 Download File
+            </button>
+        </div>
+    </div>
+    
+    <!-- File Info -->
+    <div class="itemsconfig-file-info" id="itemsconfigFileInfo" style="display: none;">
+        <div class="file-stats">
+            <span id="fileSize">Size: Unknown</span> | 
+            <span id="fileModified">Modified: Unknown</span> | 
+            <span id="itemCount">Items: Unknown</span>
+        </div>
+        <div class="backup-info">
+            <span id="backupStatus">No backup created yet</span>
+        </div>
+    </div>
+    
+    <!-- Filter and Controls -->
+    <div class="filters-panel" id="itemsconfigFilters" style="display: none;">
+        <input type="text" class="filter-input" id="filterItemId" placeholder="Filter Item ID...">
+        <input type="text" class="filter-input" id="filterItemName" placeholder="Filter Name...">
+        <select class="filter-input" id="filterItemTemplate">
+            <option value="">Filter Template...</option>
+            <option value="OreTemplate">Ore Template</option>
+            <option value="ComponentsTemplate">Components Template</option>
+            <option value="FoodTemplate">Food Template</option>
+            <option value="SuitPropsTemplate">Suit Props Template</option>
+            <option value="none">No Template</option>
+        </select>
+        <select class="filter-input" id="filterItemType">
+            <option value="">Filter Type...</option>
+            <option value="template">Templates</option>
+            <option value="item">Items</option>
+        </select>
+        <button onclick="ItemsConfigManager.clearFilters()">Clear Filters</button>
+    </div>
+    
+    <!-- Actions Panel -->
+    <div class="itemsconfig-actions-panel" id="itemsconfigActions" style="display: none;">
+        <div class="action-row">
+            <button onclick="ItemsConfigManager.saveChanges()" id="saveChangesBtn" disabled class="btn-primary">
+                💾 Save Changes
+            </button>
+            <button onclick="ItemsConfigManager.uploadFile()" id="uploadFileBtn" disabled class="btn-primary">
+                📤 Upload to Server
+            </button>
+            <button onclick="ItemsConfigManager.restoreFromBackup()" id="restoreBackupBtn" disabled class="btn-secondary">
+                🔄 Restore from Backup
+            </button>
+            <button onclick="ItemsConfigManager.restoreOriginal()" id="restoreOriginalBtn" disabled class="btn-danger">
+                ⚠️ Restore Original
+            </button>
+        </div>
+        <div class="action-warning">
+            <strong>⚠️ Safety:</strong> Automatic backups created before each upload. Original file preserved as .org
+        </div>
+    </div>
+    
+    <!-- Items Table -->
+    <div class="itemsconfig-table-container" id="itemsconfigTableContainer" style="display: none;">
+        <!-- Pagination Controls (Top) -->
+        <div class="pagination-controls" id="itemsconfigPaginationTop">
+            <div class="pagination-info">
+                <span id="itemsconfigPageInfo">Page 1 of 1 (0 items)</span>
+            </div>
+            <div class="pagination-size">
+                <label for="itemsconfigPageSize">Rows per page:</label>
+                <select id="itemsconfigPageSize" onchange="ItemsConfigManager.changePageSize()">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="250">250</option>
+                </select>
+            </div>
+            <div class="pagination-buttons">
+                <button id="itemsconfigFirstBtn" onclick="ItemsConfigManager.goToPage(1)" disabled>⏮️ First</button>
+                <button id="itemsconfigPrevBtn" onclick="ItemsConfigManager.previousPage()" disabled>⬅️ Prev</button>
+                <button id="itemsconfigNextBtn" onclick="ItemsConfigManager.nextPage()" disabled>Next ➡️</button>
+                <button id="itemsconfigLastBtn" onclick="ItemsConfigManager.goToLastPage()" disabled>Last ⏭️</button>
+            </div>
+        </div>
+        
+        <table class="itemsconfig-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>StackSize</th>
+                    <th>Mass</th>
+                    <th>Volume</th>
+                    <th>MarketPrice</th>
+                    <th>Template</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="itemsconfigTableBody">
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        Connect to server and check for ItemsConfig.ecf file
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Pagination Controls (Bottom) -->
+        <div class="pagination-controls" id="itemsconfigPaginationBottom">
+            <div class="pagination-info">
+                <span id="itemsconfigPageInfoBottom">Page 1 of 1 (0 items)</span>
+            </div>
+            <div class="pagination-buttons">
+                <button id="itemsconfigFirstBtnBottom" onclick="ItemsConfigManager.goToPage(1)" disabled>⏮️ First</button>
+                <button id="itemsconfigPrevBtnBottom" onclick="ItemsConfigManager.previousPage()" disabled>⬅️ Prev</button>
+                <button id="itemsconfigNextBtnBottom" onclick="ItemsConfigManager.nextPage()" disabled>Next ➡️</button>
+                <button id="itemsconfigLastBtnBottom" onclick="ItemsConfigManager.goToLastPage()" disabled>Last ⏭️</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading" id="itemsconfigLoadingIndicator">
+        <p>⏳ Processing ItemsConfig.ecf file... This may take a moment...</p>
+    </div>
+</div>

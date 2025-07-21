@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import atexit
+from datetime import datetime
 
 # Import our modules
 from config_manager import ConfigManager
@@ -1118,6 +1119,305 @@ def api_set_credentials():
     if errors:
         return jsonify({'success': False, 'errors': errors}), 400
     return jsonify({'success': True, 'updated': updated})
+
+# ===============================
+# Items Config API Endpoints
+# ===============================
+
+@app.route('/itemsconfig/test', methods=['POST'])
+def test_itemsconfig_connection():
+    """Test FTP connection and check for ItemsConfig.ecf file."""
+    logger.info("Testing ItemsConfig FTP connection")
+    
+    try:
+        import ftplib
+        import socket
+        from urllib.parse import urlparse
+        
+        # Get FTP credentials and configuration path
+        ftp_host = player_db.get_app_setting('ftp_host')
+        ftp_user = player_db.get_ftp_credentials().get('username')
+        ftp_password = player_db.get_ftp_credentials().get('password')
+        ftp_config_path = player_db.get_app_setting('ftp_remote_log_path')
+        
+        if not all([ftp_host, ftp_user, ftp_password]):
+            return jsonify({
+                'success': False, 
+                'connected': False,
+                'file_exists': False,
+                'message': 'FTP credentials not configured. Please check Settings.'
+            })
+        
+        if not ftp_config_path:
+            return jsonify({
+                'success': False, 
+                'connected': False,
+                'file_exists': False,
+                'message': 'FTP remote log path not set. Please configure it in FTP Settings.'
+            })
+        
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 21
+        else:
+            host = ftp_host
+            port = 21
+        
+        logger.info(f"Testing FTP connection to {host}:{port} for ItemsConfig.ecf")
+        
+        try:
+            # Test FTP connection
+            ftp = ftplib.FTP()
+            ftp.connect(host, port, timeout=10)
+            ftp.login(ftp_user, ftp_password)
+            
+            # Navigate to the configured path
+            config_path = ftp_config_path
+            ftp.cwd(config_path)
+            
+            # Check if ItemsConfig.ecf exists
+            files = ftp.nlst()
+            file_exists = 'ItemsConfig.ecf' in files
+            file_info = None
+            
+            if file_exists:
+                # Get file info
+                try:
+                    file_size = ftp.size('ItemsConfig.ecf')
+                    file_size_mb = round(file_size / 1024 / 1024, 1) if file_size else 0
+                    
+                    # Get modification time
+                    try:
+                        mdtm_response = ftp.sendcmd('MDTM ItemsConfig.ecf')
+                        # Parse MDTM response (format: 213 YYYYMMDDHHMMSS)
+                        if mdtm_response.startswith('213 '):
+                            time_str = mdtm_response[4:]
+                            from datetime import datetime
+                            mod_time = datetime.strptime(time_str, '%Y%m%d%H%M%S')
+                            file_modified = mod_time.strftime('%Y-%m-%d %H:%M:%S')
+                        else:
+                            file_modified = 'Unknown'
+                    except:
+                        file_modified = 'Unknown'
+                    
+                    file_info = {
+                        'size': f'{file_size_mb} MB',
+                        'modified': file_modified
+                    }
+                    
+                except Exception as e:
+                    logger.warning(f"Could not get file details for ItemsConfig.ecf: {e}")
+                    file_info = {
+                        'size': 'Unknown',
+                        'modified': 'Unknown'
+                    }
+            
+            ftp.quit()
+            
+            logger.info(f"✅ FTP test successful - ItemsConfig.ecf {'found' if file_exists else 'not found'}")
+            
+            return jsonify({
+                'success': True,
+                'connected': True,
+                'file_exists': file_exists,
+                'file_info': file_info,
+                'message': f'FTP connection successful. ItemsConfig.ecf {'found' if file_exists else 'not found'} in {config_path}'
+            })
+            
+        except ftplib.error_perm as e:
+            logger.warning(f"❌ FTP permission error: {e}")
+            return jsonify({
+                'success': False,
+                'connected': False,
+                'file_exists': False,
+                'message': f'FTP permission denied: {str(e)}'
+            })
+            
+        except (socket.timeout, socket.gaierror, ConnectionRefusedError) as e:
+            logger.warning(f"❌ FTP connection failed: {e}")
+            return jsonify({
+                'success': False,
+                'connected': False,
+                'file_exists': False,
+                'message': f'Cannot connect to FTP server: {str(e)}'
+            })
+        
+    except Exception as e:
+        logger.error(f"Error testing ItemsConfig connection: {e}", exc_info=True)
+        return jsonify({
+            'success': False, 
+            'connected': False,
+            'file_exists': False,
+            'message': 'An internal error occurred testing the connection.'
+        })
+
+@app.route('/itemsconfig/download', methods=['POST'])
+def download_itemsconfig():
+    """Download and parse ItemsConfig.ecf file via FTP."""
+    logger.info("Downloading ItemsConfig.ecf file via FTP")
+    
+    try:
+        import ftplib
+        import socket
+        import os
+        import tempfile
+        from ecf_parser import ECFParser
+        from urllib.parse import urlparse
+        
+        # Get FTP credentials and configuration path
+        ftp_host = player_db.get_app_setting('ftp_host')
+        ftp_user = player_db.get_ftp_credentials().get('username')
+        ftp_password = player_db.get_ftp_credentials().get('password')
+        ftp_config_path = player_db.get_app_setting('ftp_remote_log_path')
+        
+        if not all([ftp_host, ftp_user, ftp_password]):
+            return jsonify({
+                'success': False,
+                'message': 'FTP credentials not configured. Please check Settings.'
+            })
+        
+        if not ftp_config_path:
+            return jsonify({
+                'success': False,
+                'message': 'FTP remote log path not set. Please configure it in FTP Settings.'
+            })
+        
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 21
+        else:
+            host = ftp_host
+            port = 21
+        
+        logger.info(f"Downloading ItemsConfig.ecf from {host}:{port}")
+        
+        # Create temporary file for download
+        temp_file = None
+        try:
+            # Connect to FTP
+            ftp = ftplib.FTP()
+            ftp.connect(host, port, timeout=30)
+            ftp.login(ftp_user, ftp_password)
+            
+            # Navigate to the configured path
+            config_path = ftp_config_path
+            ftp.cwd(config_path)
+            
+            # Check if file exists
+            files = ftp.nlst()
+            if 'ItemsConfig.ecf' not in files:
+                ftp.quit()
+                return jsonify({
+                    'success': False,
+                    'message': f'ItemsConfig.ecf not found in {config_path}'
+                })
+            
+            # Create temporary file
+            temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.ecf', delete=False)
+            temp_file_path = temp_file.name
+            
+            # Download the file
+            logger.info(f"Downloading ItemsConfig.ecf to {temp_file_path}")
+            ftp.retrbinary('RETR ItemsConfig.ecf', temp_file.write)
+            temp_file.close()
+            
+            # Get file info for response
+            try:
+                file_size = ftp.size('ItemsConfig.ecf')
+                file_size_mb = round(file_size / 1024 / 1024, 1) if file_size else 0
+            except:
+                file_size_mb = round(os.path.getsize(temp_file_path) / 1024 / 1024, 1)
+            
+            ftp.quit()
+            
+            logger.info(f"Successfully downloaded ItemsConfig.ecf ({file_size_mb} MB)")
+            
+            # Parse the downloaded ECF file
+            parser = ECFParser()
+            parse_result = parser.parse_file(temp_file_path)
+            
+            # Convert parsed items to our frontend format
+            formatted_items = []
+            for item in parse_result['items']:
+                formatted_item = {
+                    'id': item['id'],
+                    'name': item['name'],
+                    'type': item['type'],
+                    'stacksize': item.get('stacksize', ''),
+                    'mass': item.get('mass', ''),
+                    'volume': item.get('volume', ''),
+                    'marketprice': item.get('marketprice', ''),
+                    'template': item.get('template', '')
+                }
+                formatted_items.append(formatted_item)
+            
+            # Get file stats from downloaded file
+            file_stats = os.stat(temp_file_path)
+            download_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            logger.info(f"Successfully parsed {len(formatted_items)} items from downloaded ItemsConfig.ecf")
+            logger.info(f"Templates: {parse_result['template_count']}, Items: {parse_result['item_count']}")
+            
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file_path)
+                logger.debug(f"Cleaned up temporary file: {temp_file_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Could not clean up temporary file {temp_file_path}: {cleanup_error}")
+            
+            return jsonify({
+                'success': True,
+                'items': formatted_items,
+                'file_info': {
+                    'size': f'{file_size_mb} MB',
+                    'item_count': len(formatted_items),
+                    'template_count': parse_result['template_count'],
+                    'regular_item_count': parse_result['item_count'],
+                    'downloaded': download_time,
+                    'parsed_at': datetime.now().isoformat()
+                },
+                'message': f'Successfully downloaded and parsed {len(formatted_items)} items ({parse_result["template_count"]} templates, {parse_result["item_count"]} items)'
+            })
+            
+        except ftplib.error_perm as e:
+            logger.error(f"FTP permission error downloading ItemsConfig: {e}")
+            return jsonify({
+                'success': False,
+                'message': f'FTP permission denied: {str(e)}'
+            })
+            
+        except (socket.timeout, socket.gaierror, ConnectionRefusedError) as e:
+            logger.error(f"FTP connection error downloading ItemsConfig: {e}")
+            return jsonify({
+                'success': False,
+                'message': f'Cannot connect to FTP server: {str(e)}'
+            })
+            
+        finally:
+            # Ensure temp file cleanup even if parsing fails
+            if temp_file and hasattr(temp_file, 'name') and os.path.exists(temp_file.name):
+                try:
+                    if not temp_file.closed:
+                        temp_file.close()
+                    os.unlink(temp_file.name)
+                    logger.debug(f"Cleaned up temporary file in finally block: {temp_file.name}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Could not clean up temporary file in finally block: {cleanup_error}")
+        
+    except Exception as e:
+        logger.error(f"Error downloading ItemsConfig: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'An internal error occurred downloading or parsing the file.'
+        })
 
 
 if __name__ == '__main__':

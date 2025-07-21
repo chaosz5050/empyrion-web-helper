@@ -1,6 +1,6 @@
 // FILE LOCATION: /static/js/connection.js
 /**
- * Connection management for Empyrion Web Helper v0.4.1
+ * Connection management for Empyrion Web Helper v0.5.0
  * Frontend is now a pure database viewer - background service handles all server communication
  * Copyright (c) 2025 Chaosz Software
  */
