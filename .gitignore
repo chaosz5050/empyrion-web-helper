@@ -30,6 +30,7 @@ venv.bak/
 
 # Application specific
 empyrion_helper.log*
+empyrion_helper.conf
 instance/*.db
 instance/*.db-journal
 instance/ewh_secret.key
