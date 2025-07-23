@@ -350,6 +350,43 @@ def get_all_players():
         logger.error(f"Error getting all players: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
+@app.route('/players/purge', methods=['POST'])
+def purge_old_players():
+    """
+    Purge old player data from the database.
+    
+    Removes players with no last_seen data or who haven't been seen in the last 14 days.
+    
+    Returns:
+        Response: JSON with success status and count of deleted players.
+    """
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        logger.info("Player data purge requested")
+        
+        # Call the database purge method with 14-day threshold
+        result = player_db.purge_old_players(days_threshold=14)
+        
+        if result['success']:
+            logger.info(f"Player purge completed: {result['deleted_count']} players removed")
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'deleted_count': result['deleted_count']
+            })
+        else:
+            logger.error(f"Player purge failed: {result['message']}")
+            return jsonify({
+                'success': False,
+                'message': result['message']
+            })
+            
+    except Exception as e:
+        logger.error(f"Error purging old players: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred while purging player data'})
+
 @app.route('/api/settings/monitoring', methods=['GET'])
 def get_monitoring_settings():
     """Return current monitoring settings (update_interval) from the database."""
@@ -861,6 +898,13 @@ def clear_message_history():
 @app.route('/messaging/test', methods=['POST'])
 def test_message():
     """Send a test message."""
+    if not background_service:
+        return jsonify({'success': False, 'message': 'Background service not available'})
+    
+    connection_handler = background_service.get_connection_handler()
+    if not connection_handler or not connection_handler.is_connection_alive():
+        return jsonify({'success': False, 'message': 'Not connected to server'})
+    
     if not messaging_manager:
         return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
     
@@ -974,8 +1018,11 @@ def send_global_message():
         return jsonify({'success': False, 'message': 'Background service not available'})
     
     connection_handler = background_service.get_connection_handler()
-    if not connection_handler or not messaging_manager:
-        return jsonify({'success': False, 'message': 'Not connected to server or messaging not available'})
+    if not connection_handler or not connection_handler.is_connection_alive():
+        return jsonify({'success': False, 'message': 'Not connected to server'})
+    
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not available'})
     
     try:
         data = request.json
@@ -1418,6 +1465,69 @@ def download_itemsconfig():
             'success': False,
             'message': 'An internal error occurred downloading or parsing the file.'
         })
+
+# ===============================
+# POI Regeneration API Endpoints
+# ===============================
+
+@app.route('/api/regenerate-poi', methods=['POST'])
+def regenerate_poi():
+    """Regenerate a specific POI by entity ID."""
+    logger.info("POI regeneration requested")
+    
+    try:
+        data = request.get_json(force=True)
+        entity_id = data.get('entity_id')
+        
+        if not entity_id:
+            return jsonify({
+                'success': False,
+                'message': 'Entity ID is required'
+            }), 400
+        
+        # Check if background service is available and connected
+        if not background_service:
+            return jsonify({
+                'success': False,
+                'message': 'Background service not available'
+            })
+        
+        connection_handler = background_service.get_connection_handler()
+        if not connection_handler or not connection_handler.is_connection_alive():
+            return jsonify({
+                'success': False,
+                'message': 'Not connected to server'
+            })
+        
+        # Send regenerate command
+        regenerate_command = f"regenerate {entity_id}"
+        logger.info(f"Executing RCON command: {regenerate_command}")
+        
+        result = connection_handler.send_command(regenerate_command)
+        
+        if result and isinstance(result, str):
+            logger.info(f"Regenerate command result: {result}")
+            return jsonify({
+                'success': True,
+                'message': f'POI {entity_id} regeneration command sent successfully',
+                'server_response': result.strip()
+            })
+        else:
+            logger.warning(f"Unexpected result from regenerate command: {result}")
+            return jsonify({
+                'success': False,
+                'message': 'No response from server or command failed'
+            })
+        
+    except Exception as e:
+        logger.error(f"Error regenerating POI: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'An internal error occurred while regenerating POI'
+        })
+
+# POI Management endpoint removed - wipe command only destroys POIs without regenerating them
+# For POI regeneration, use 'regenerate <entityid>' in-game console or manual playfield file deletion
 
 
 if __name__ == '__main__':

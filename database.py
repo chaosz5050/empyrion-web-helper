@@ -1258,6 +1258,78 @@ class PlayerDatabase:
             logger.error(f"Error refreshing geolocation: {e}")
             return 0
     
+    def purge_old_players(self, days_threshold: int = 14) -> Dict:
+        """
+        Remove players with no last_seen data or who haven't been seen in the specified number of days.
+        
+        Args:
+            days_threshold (int): Number of days threshold. Players not seen for this many days will be deleted.
+                                Default is 14 days.
+        
+        Returns:
+            Dict: Result dictionary with success status, message, and count of deleted players.
+        """
+        try:
+            from datetime import datetime, timedelta
+            
+            # Calculate cutoff date
+            cutoff_date = (datetime.now() - timedelta(days=days_threshold)).isoformat()
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # First, count how many players will be deleted for logging
+                cursor.execute("""
+                    SELECT COUNT(*) FROM players 
+                    WHERE last_seen IS NULL 
+                       OR last_seen = '' 
+                       OR last_seen < ?
+                """, (cutoff_date,))
+                
+                count_to_delete = cursor.fetchone()[0]
+                
+                if count_to_delete == 0:
+                    logger.info("No old player data found to purge")
+                    return {
+                        'success': True,
+                        'message': 'No old player data found to purge',
+                        'deleted_count': 0
+                    }
+                
+                # Delete players meeting the criteria
+                cursor.execute("""
+                    DELETE FROM players 
+                    WHERE last_seen IS NULL 
+                       OR last_seen = '' 
+                       OR last_seen < ?
+                """, (cutoff_date,))
+                
+                deleted_count = cursor.rowcount
+                
+                # Also clean up any associated player sessions
+                cursor.execute("""
+                    DELETE FROM player_sessions 
+                    WHERE steam_id NOT IN (SELECT steam_id FROM players)
+                """)
+                
+                conn.commit()
+                
+                logger.info(f"Purged {deleted_count} old players (threshold: {days_threshold} days, cutoff: {cutoff_date})")
+                
+                return {
+                    'success': True,
+                    'message': f'Successfully deleted {deleted_count} players',
+                    'deleted_count': deleted_count
+                }
+                
+        except Exception as e:
+            logger.error(f"Error purging old players: {e}", exc_info=True)
+            return {
+                'success': False,
+                'message': 'An internal error occurred while purging player data',
+                'deleted_count': 0
+            }
+    
     # ============================================================================
     # ENTITY MANAGEMENT METHODS
     # ============================================================================

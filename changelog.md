@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.5.1] - 2025-07-23
 
+### Added
+- **🗑️ Player Data Cleanup** - Database maintenance for stale player records
+  - "Purge old data" button in Players tab for cleaning database
+  - Removes players with no activity data or not seen in 14+ days
+  - Confirmation dialog prevents accidental deletion
+  - Shows count of removed records and refreshes player list
+  - Helps maintain database performance and relevance
+
 ### Fixed - Settings Architecture
 - **🔧 Configuration Architecture Cleanup** - Proper separation of settings by type
   - Moved `update_interval` from database to config file (`empyrion_helper.conf`)

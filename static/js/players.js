@@ -358,6 +358,35 @@ window.PlayersManager = {
         } catch (error) {
             showToast('Unban failed: ' + error, 'error');
         }
+    },
+
+    async purgeOldPlayers() {
+        // Show confirmation dialog with better phrasing
+        const confirmMessage = 'Are you sure you want to delete all players with missing activity data or who haven\'t been seen in the last 14 days?\n\nThis action cannot be undone.';
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            const data = await apiCall('/players/purge', { method: 'POST' });
+            
+            if (data.success) {
+                const count = data.deleted_count || 0;
+                if (count > 0) {
+                    showToast(`Successfully deleted ${count} old player records`, 'success');
+                    // Refresh the player list to reflect changes
+                    setTimeout(() => this.loadPlayersFromDatabase(), 1000);
+                } else {
+                    showToast('No old player data found to purge', 'info');
+                }
+            } else {
+                showToast(data.message || 'Failed to purge old player data', 'error');
+            }
+        } catch (error) {
+            console.error('Error purging old players:', error);
+            showToast('Error purging old player data: ' + error, 'error');
+        }
     }
 };
 
@@ -380,4 +409,8 @@ function cancelKick() {
 
 function executeKick() {
     window.PlayersManager.executeKick();
+}
+
+function purgeOldPlayers() {
+    window.PlayersManager.purgeOldPlayers();
 }
