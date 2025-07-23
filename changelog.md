@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Welcome/goodbye messages timing now respects user setting
   - Admins can now easily adjust polling frequency via config file
 
+- **🌌 Entities UI Cleanup** - Removed instructional content from interface
+  - Removed POI regeneration note container with implementation tips
+  - Keeps UI focused on functionality, documentation belongs in README
+
 ## [v0.5.0] - 2025-07-22
 
 ### Added - ItemsConfig Management Feature
