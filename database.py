@@ -1151,6 +1151,18 @@ class PlayerDatabase:
             logger.error(f"Error retrieving app setting {key}: {e}")
         return default
 
+    def set_ftp_test_success(self) -> bool:
+        """
+        Record that FTP connection test was successful.
+        """
+        return self.set_app_setting('ftp_test_status', 'success')
+
+    def get_ftp_test_status(self) -> str:
+        """
+        Get FTP test status. Returns: 'success', or None if never tested.
+        """
+        return self.get_app_setting('ftp_test_status')
+
     def validate_update_interval(self, value) -> int:
         """
         Validate update_interval: must be integer >= 10. Default to 20 if invalid.

@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows count of removed records and refreshes player list
   - Helps maintain database performance and relevance
 
+- **🎛️ Smart UI Improvements** - Enhanced interface clarity and usability
+  - Removed confusing background service start/stop buttons from header
+  - Smart FTP status display with progressive states (❌ Not configured → 🔧 Test FTP → ✅ Available)
+  - Database tracking for successful FTP test status with immediate header updates
+  - FTP settings form now allows partial updates without re-entering credentials
+  - Improved tooltips and status messages for better user experience
+  - Visual consistency with emoji icons matching RCON status display style
+
 ### Fixed - Settings Architecture
 - **🔧 Configuration Architecture Cleanup** - Proper separation of settings by type
   - Moved `update_interval` from database to config file (`empyrion_helper.conf`)

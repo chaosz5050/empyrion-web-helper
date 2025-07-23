@@ -331,35 +331,64 @@ window.SettingsManager = {
         const password = document.getElementById('ftpPassword').value.trim();
         const remotePath = document.getElementById('ftpRemotePath').value.trim();
 
-        if (!host || !username || !password || !remotePath) {
-            showToast('Please fill in all FTP fields', 'error');
+        // Check if host and path are provided (always required)
+        if (!host || !remotePath) {
+            showToast('Please provide FTP host and remote path', 'error');
+            return;
+        }
+
+        // Check if credentials are already configured
+        const credentialsConfigured = this.settingsData.ftp?.configured;
+        
+        // Only require credentials if not already configured
+        if (!credentialsConfigured && (!username || !password)) {
+            showToast('Please provide FTP username and password for first-time setup', 'error');
             return;
         }
 
         try {
-            // Save FTP settings
+            // Always save FTP settings (host and path)
             await this.setAppSetting('ftp_host', `${host}:${port}`);
             await this.setAppSetting('ftp_remote_log_path', remotePath);
 
-            // Save FTP credentials
-            const credData = await apiCall('/api/credentials/set', {
-                method: 'POST',
-                body: JSON.stringify({
-                    ftp_user: username,
-                    ftp_password: password
-                })
-            });
+            // Only update credentials if new ones are provided
+            if (username && password) {
+                const credData = await apiCall('/api/credentials/set', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        ftp_user: username,
+                        ftp_password: password
+                    })
+                });
 
-            if (credData.success) {
-                showToast('FTP settings saved successfully', 'success');
+                if (!credData.success) {
+                    showToast('Failed to save FTP credentials', 'error');
+                    return;
+                }
+                
+                // Update UI to show credentials are configured
                 this.settingsData.ftp = { configured: true };
                 document.getElementById('ftpUsername').placeholder = '••••••••••••';
                 document.getElementById('ftpPassword').placeholder = '••••••••••••';
                 document.getElementById('ftpUsername').value = '';
                 document.getElementById('ftpPassword').value = '';
-                this.updateStatusDisplay();
+                
+                showToast('FTP settings and credentials saved successfully', 'success');
             } else {
-                showToast('Failed to save FTP credentials', 'error');
+                showToast('FTP settings saved successfully (credentials unchanged)', 'success');
+            }
+            
+            // Clear FTP test status when settings change (need to retest)
+            await apiCall('/api/settings/ftp_test_status', {
+                method: 'POST',
+                body: JSON.stringify({ value: '' })
+            });
+            
+            this.updateStatusDisplay();
+            
+            // Immediately update FTP status in header to reflect changes
+            if (typeof updateFtpConnectionStatus === 'function') {
+                updateFtpConnectionStatus();
             }
 
         } catch (error) {
@@ -414,6 +443,11 @@ window.SettingsManager = {
 
             if (testData.success) {
                 showToast(testData.message || 'FTP connection test successful', 'success');
+                
+                // Immediately update FTP status in header (don't wait for periodic refresh)
+                if (typeof updateFtpConnectionStatus === 'function') {
+                    updateFtpConnectionStatus();
+                }
             } else {
                 showToast(testData.message || 'FTP connection test failed', 'error');
             }

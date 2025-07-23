@@ -1,7 +1,7 @@
 # FILE LOCATION: /app.py (root directory)
 #!/usr/bin/env python3
 """
-Empyrion Web Helper v0.4.1
+Empyrion Web Helper v0.5.1
 A web-based admin tool for Empyrion Galactic Survival servers.
 
 This Flask-based application provides a web interface for server administration, with
@@ -96,7 +96,7 @@ def initialize_app():
     # Initialize background service
     background_service = BackgroundService(config_manager, player_db, messaging_manager)
     
-    logger.info("Empyrion Web Helper v0.4.1 initialized with background service architecture")
+    logger.info("Empyrion Web Helper v0.5.1 initialized with background service architecture")
     logger.info(f"Target server: {config_manager.get('host')}:{config_manager.get('telnet_port')}")
     
     # Check credential status
@@ -561,6 +561,10 @@ def test_ftp_connection():
                 ftp.quit()
                 
                 logger.info(f"✅ FTP test successful to {host}:{port}")
+                
+                # Record successful test in database
+                player_db.set_ftp_test_success()
+                
                 return jsonify({
                     'success': True,
                     'message': f'✅ FTP connection successful to {host}:{port}',
@@ -569,6 +573,10 @@ def test_ftp_connection():
             except Exception as e:
                 ftp.quit()
                 logger.warning(f"FTP connected but directory listing failed to {host}:{port}: {e}")
+                
+                # Record successful test in database (connection works even if directory listing is limited)
+                player_db.set_ftp_test_success()
+                
                 return jsonify({
                     'success': True,
                     'message': f'⚠️ FTP connected to {host}:{port} but directory access limited',
@@ -603,6 +611,48 @@ def test_ftp_connection():
             'success': False,
             'message': 'FTP test failed due to internal error',
             'details': 'Check logs for more details'
+        })
+
+@app.route('/api/ftp/status', methods=['GET'])
+def get_ftp_status():
+    """Get smart FTP status with progressive states."""
+    try:
+        # Check if credentials are configured
+        credentials = player_db.get_ftp_credentials()
+        if not credentials:
+            return jsonify({
+                'status': 'not_configured',
+                'message': '❌ Not configured',
+                'color': 'var(--accent-red)',
+                'tooltip': 'FTP credentials not configured'
+            })
+        
+        # Check if FTP has been successfully tested
+        test_status = player_db.get_ftp_test_status()
+        if test_status == 'success':
+            # Get host for tooltip
+            host = player_db.get_app_setting('ftp_host', 'Unknown')
+            return jsonify({
+                'status': 'available',
+                'message': '✅ Available',
+                'color': 'var(--accent-green)',
+                'tooltip': f'FTP available on {host}'
+            })
+        else:
+            return jsonify({
+                'status': 'test_ftp',
+                'message': '🔧 Test FTP',
+                'color': 'var(--accent-orange)',
+                'tooltip': 'FTP configured but not tested - click Settings to test'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error getting FTP status: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': '❓ Error',
+            'color': 'var(--text-secondary)',
+            'tooltip': 'Unable to check FTP status'
         })
 
 # --- RESTORED API ENDPOINTS FOR FRONTEND INTEGRATION ---
@@ -1532,7 +1582,7 @@ def regenerate_poi():
 
 if __name__ == '__main__':
     # Initialize the application
-    logger.info("🚀 Starting Empyrion Web Helper v0.4.1...")
+    logger.info("🚀 Starting Empyrion Web Helper v0.5.1...")
     
     init_success = initialize_app()
     
