@@ -51,7 +51,7 @@ class ConfigManager:
             'host': '192.168.1.100',
             'telnet_port': 30004,
             # Monitoring settings
-            'update_interval': 20,
+            'update_interval': 40,
             # FTP settings (no sensitive data here)
             'ftp_host': '192.168.1.100:21',
             'remote_log_path': '/path/to/your/scenario/Content/Configuration',
@@ -164,7 +164,6 @@ class ConfigManager:
         server_port = self.player_db.get_app_setting('server_port')
         ftp_host = self.player_db.get_app_setting('ftp_host')
         ftp_remote_log_path = self.player_db.get_app_setting('ftp_remote_log_path')
-        update_interval = self.player_db.get_app_setting('update_interval')
         
         # Override config with database values if they exist
         if server_host:
@@ -183,12 +182,6 @@ class ConfigManager:
             
         if ftp_remote_log_path:
             self.config['remote_log_path'] = ftp_remote_log_path
-            
-        if update_interval:
-            try:
-                self.config['update_interval'] = int(update_interval)
-            except:
-                pass
     
     def get(self, key: str, default=None):
         """
@@ -289,11 +282,6 @@ class ConfigManager:
         Returns:
             bool: True if value set, False otherwise (for credential keys).
         """
-        if key == 'update_interval' and self.player_db:
-            valid_val = self.player_db.validate_update_interval(value)
-            self.config[key] = valid_val
-            self.player_db.set_app_setting('update_interval', str(valid_val))
-            return True
         # Credentials must be set via database methods
         if key in ['telnet_password', 'ftp_password', 'ftp_user']:
             logger.warning(f"Cannot set {key} via config - use database credential methods")

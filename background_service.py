@@ -50,12 +50,28 @@ class BackgroundService:
         # Player tracking for status changes
         self.previous_players = {}
         
-        # Constants
-        self.MONITOR_INTERVAL = 20  # seconds - hardcoded sweet spot
+        # Get update interval from config file
+        self.MONITOR_INTERVAL = self._get_update_interval()
         self.RECONNECT_DELAY = 30   # seconds between reconnection attempts
         self.MAX_RECONNECT_DELAY = 300  # 5 minutes max delay
         
-        logger.info("Background service initialized with is_connected=False")
+        logger.info(f"Background service initialized with update_interval={self.MONITOR_INTERVAL}s")
+    
+    def _get_update_interval(self) -> int:
+        """Get update interval from config file with validation."""
+        try:
+            interval = self.config_manager.get('update_interval')
+            if interval:
+                interval = int(interval)
+                if interval < 10:
+                    logger.warning("update_interval below minimum (10s); using 20s")
+                    return 20
+                return interval
+        except (ValueError, TypeError):
+            logger.warning("Invalid update_interval in config; using default 20s")
+        
+        # Default fallback
+        return 20
     
     def start(self):
         """

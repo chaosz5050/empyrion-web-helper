@@ -5,10 +5,25 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.1] - 2025-07-23
+
+### Fixed - Settings Architecture
+- **üîß Configuration Architecture Cleanup** - Proper separation of settings by type
+  - Moved `update_interval` from database to config file (`empyrion_helper.conf`)
+  - Background service now properly reads update interval from config instead of hardcoded 20s
+  - Fixed RCON polling frequency to respect user-configured interval
+  - Settings now properly separated: credentials in database, app config in conf file
+
+### Changed
+- **‚öôÔ∏è RCON Polling Behavior** - More predictable timing
+  - Player status detection now uses configured interval (default 40s) instead of hardcoded 20s
+  - Welcome/goodbye messages timing now respects user setting
+  - Admins can now easily adjust polling frequency via config file
+
 ## [v0.5.0] - 2025-07-22
 
 ### Added - ItemsConfig Management Feature
-- **=‡ ItemsConfig.ecf Editor** - Complete ECF file management via FTP
+- **=ÔøΩ ItemsConfig.ecf Editor** - Complete ECF file management via FTP
   - Live FTP connection testing with detailed error reporting
   - Real-time download and parsing of ItemsConfig.ecf from server
   - Professional table interface with 1,100+ items display
@@ -23,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive error handling for connection, permission, and file issues
   - File information display (size, download time, item counts)
 
-- **=  ECF Parser Engine**
+- **=ÔøΩ ECF Parser Engine**
   - Handles complex ECF format with nested braces and property inheritance
   - Distinguishes between templates (9) and items (1,118+) correctly
   - Resolves template inheritance for complete item data
