@@ -1,0 +1,1037 @@
+/* FILE LOCATION: /static/css/components.css */
+/* Component Library - Extracted from main.css */
+
+/* ========================================
+   BUTTONS & INTERACTIVE ELEMENTS
+   ======================================== */
+
+/* Tab Navigation Buttons */
+.tab-button {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.tab-button:hover {
+    color: var(--text-primary);
+    background-color: rgba(255,255,255,0.05);
+}
+
+.tab-button.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+}
+
+/* Primary Button */
+button {
+    background-color: var(--accent-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+}
+
+/* Button Variants */
+.btn-danger {
+    background-color: var(--accent-red);
+}
+
+.btn-danger:hover {
+    background-color: #b30000;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-test,
+.btn-add {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.btn-test {
+    background-color: var(--accent-orange);
+    color: white;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-test:hover {
+    background-color: #e68900;
+}
+
+.btn-add {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.btn-add:hover {
+    background-color: #00b359;
+}
+
+/* Konsole Buttons */
+.konsole-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.konsole-btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.konsole-btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.konsole-btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.konsole-btn-secondary:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--accent-blue);
+}
+
+.konsole-btn-danger {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+.konsole-btn-danger:hover {
+    background-color: #b30000;
+}
+
+/* Action Buttons (with tooltips) */
+.action-btn {
+    background: none;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.action-btn.kick {
+    color: var(--accent-orange);
+}
+
+.action-btn.ban {
+    color: var(--accent-red);
+}
+
+.action-btn.unban {
+    color: var(--accent-green);
+}
+
+.action-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* Tooltip styles for action buttons */
+.action-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 1000;
+    border: 1px solid var(--border-color);
+}
+
+.action-btn:hover::after {
+    opacity: 1;
+}
+
+/* Password Toggle Button */
+.konsole-password-toggle {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+}
+
+.konsole-password-toggle:hover {
+    color: var(--text-primary);
+}
+
+/* Pagination Buttons */
+.pagination-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.pagination-buttons button {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.pagination-buttons button:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: #007acc;
+}
+
+.pagination-buttons button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ========================================
+   FORMS & INPUTS
+   ======================================== */
+
+/* Base Input Styles */
+input, select, textarea {
+    padding: 8px 10px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Konsole Search Input */
+.konsole-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.konsole-search-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Konsole Input */
+.konsole-input {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.konsole-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+}
+
+/* Filter Input */
+.filter-input {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.filter-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Message Input */
+.message-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.message-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.message-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Schedule Select */
+.schedule-select {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.schedule-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Setting Input */
+.setting-input {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Log Lines Select */
+.log-lines-select {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Pagination Size Select */
+.pagination-size select {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.pagination-size select:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.pagination-size select option {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    padding: 4px 8px;
+}
+
+/* Cell Editor */
+.cell-editor {
+    width: 100%;
+    padding: 4px 6px;
+    border: 2px solid var(--accent-blue);
+    border-radius: 3px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.cell-editor:focus {
+    outline: none;
+    border-color: var(--accent-green);
+}
+
+/* Form Components */
+.konsole-form-group {
+    margin-bottom: 20px;
+}
+
+.konsole-form-group label {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+}
+
+.konsole-help-text {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Custom Checkbox */
+.konsole-checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.konsole-checkbox {
+    display: none;
+}
+
+.konsole-checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 3px;
+    margin-right: 10px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.konsole-checkbox:checked + .konsole-checkbox-custom {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.konsole-checkbox:checked + .konsole-checkbox-custom::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Form Input Containers */
+.message-input-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.schedule-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.konsole-password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Modal Input */
+.modal-body input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.modal-body input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* ========================================
+   MODALS
+   ======================================== */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    color: var(--accent-blue);
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* ========================================
+   TABLES
+   ======================================== */
+
+/* Player Table */
+.player-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.player-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.player-table th {
+    background-color: var(--bg-primary);
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--accent-blue);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.player-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.player-table tr:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.player-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Message History Table */
+.message-history-container {
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.message-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.message-history-table th {
+    background-color: var(--bg-secondary);
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--accent-blue);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.message-history-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.message-history-table tr:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.message-history-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Entity Table */
+.entity-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.entity-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.entity-table th {
+    background-color: var(--bg-primary);
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--accent-blue);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.entity-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.entity-table tr:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.entity-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Items Config Table */
+.itemsconfig-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.itemsconfig-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.itemsconfig-table th {
+    background-color: var(--bg-primary);
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--accent-blue);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.itemsconfig-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.itemsconfig-table tr:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.itemsconfig-table tr:last-child td {
+    border-bottom: none;
+}
+
+.modified-row {
+    background-color: rgba(255, 204, 0, 0.1);
+    border-left: 3px solid var(--accent-orange);
+}
+
+/* Editable Cell */
+.editable-cell {
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.editable-cell:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Table-related styling classes */
+.player-name {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.player-steam-id {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.player-status {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.player-status.online {
+    background-color: var(--online-color);
+    color: white;
+}
+
+.player-status.offline {
+    background-color: var(--offline-color);
+    color: white;
+}
+
+.player-faction {
+    color: var(--text-secondary);
+}
+
+.player-ip {
+    color: var(--text-secondary);
+}
+
+.player-country {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.player-playfield {
+    color: var(--text-secondary);
+}
+
+.player-last-seen {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.player-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+/* Entity table styling */
+.entity-id {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: var(--accent-blue);
+    font-weight: bold;
+}
+
+.entity-type {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.entity-type.astvoxel {
+    background-color: #8B4513;
+    color: white;
+}
+
+.entity-type.ba {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.entity-type.cv {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.entity-type.sv {
+    background-color: var(--accent-orange);
+    color: white;
+}
+
+.entity-name {
+    color: var(--text-primary);
+}
+
+.entity-playfield {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+/* Items config table styling */
+.item-type {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.item-type.template {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.item-type.item {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.item-id {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: var(--accent-blue);
+    font-weight: bold;
+}
+
+.item-name {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.item-template {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.item-status {
+    font-size: 0.9em;
+}
+
+/* Message history table styling */
+.message-type {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.message-type.manual {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.message-type.welcome {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.message-type.goodbye {
+    background-color: var(--accent-orange);
+    color: white;
+}
+
+.message-type.scheduled {
+    background-color: #9966cc;
+    color: white;
+}
+
+.message-status {
+    font-weight: bold;
+}
+
+.message-status.success {
+    color: var(--accent-green);
+}
+
+.message-status.failed {
+    color: var(--accent-red);
+}
+
+.message-text {
+    max-width: 300px;
+    word-wrap: break-word;
+    color: var(--text-primary);
+}
+
+.message-timestamp {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+/* ========================================
+   PAGINATION COMPONENT
+   ======================================== */
+
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.pagination-info {
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-size label {
+    color: #cccccc;
+    font-size: 13px;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN FOR COMPONENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+    /* Button adjustments */
+    .tab-navigation {
+        flex-wrap: wrap;
+    }
+    
+    /* Form adjustments */
+    .message-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .schedule-input-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    /* Modal adjustments */
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    /* Table adjustments */
+    .player-table,
+    .entity-table,
+    .message-history-table,
+    .itemsconfig-table {
+        font-size: 12px;
+    }
+    
+    .player-table th,
+    .player-table td,
+    .entity-table th,
+    .entity-table td,
+    .message-history-table th,
+    .message-history-table td,
+    .itemsconfig-table th,
+    .itemsconfig-table td {
+        padding: 8px 6px;
+    }
+    
+    /* Pagination adjustments */
+    .pagination-controls {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .pagination-buttons {
+        justify-content: center;
+    }
+    
+    .pagination-buttons button {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    /* Hide country column on mobile */
+    .player-table th:nth-child(6),
+    .player-table td:nth-child(6) {
+        display: none;
+    }
+}

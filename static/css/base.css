@@ -1,0 +1,163 @@
+/* FILE LOCATION: /static/css/base.css */
+/* Base CSS - Variables, Reset, Typography, Core Layout */
+
+/* CSS Variables - Theme Foundation */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #888888;
+    --accent-blue: #0066cc;
+    --accent-green: #00cc66;
+    --accent-red: #cc0000;
+    --accent-orange: #ff9900;
+    --border-color: #555555;
+    --online-color: #00cc66;
+    --offline-color: #cc6600;
+    
+    /* Spacing System */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    
+    /* Border Radius System */
+    --radius-sm: 3px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    
+    /* Layout Variables */
+    --panel-bg: var(--bg-secondary);
+    --input-bg: var(--bg-tertiary);
+    --shadow-light: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-medium: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* CSS Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Base Typography */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: var(--space-md);
+    line-height: 1.2;
+}
+
+h1 {
+    color: var(--accent-blue);
+    font-size: 2em;
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+h2 {
+    color: var(--accent-blue);
+    font-size: 1.5em;
+}
+
+h3 {
+    color: var(--text-primary);
+    font-size: 1.25em;
+}
+
+h4 {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+p {
+    margin-bottom: var(--space-md);
+    color: var(--text-secondary);
+}
+
+/* Core Layout */
+.container {
+    width: 70%;
+    max-width: none;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+/* Panel Description Styling */
+.panel-description {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Utility Classes */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--accent-green); }
+.text-danger { color: var(--accent-red); }
+.text-warning { color: var(--accent-orange); }
+.text-info { color: var(--accent-blue); }
+
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); }
+
+.mb-xs { margin-bottom: var(--space-xs); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-lg { margin-bottom: var(--space-lg); }
+.mb-xl { margin-bottom: var(--space-xl); }
+
+.p-xs { padding: var(--space-xs); }
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.p-lg { padding: var(--space-lg); }
+.p-xl { padding: var(--space-xl); }
+
+/* Theme System Foundation */
+.theme-dark {
+    /* Default theme - already defined above */
+}
+
+.theme-light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #e0e0e0;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --border-color: #dddddd;
+    --panel-bg: var(--bg-secondary);
+    --input-bg: var(--bg-tertiary);
+    --shadow-light: 0 2px 4px rgba(0,0,0,0.1);
+    --shadow-medium: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.theme-accessible {
+    --bg-primary: #000000;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #333333;
+    --text-primary: #ffffff;
+    --text-secondary: #ffff00;
+    --text-muted: #cccccc;
+    --accent-blue: #00aaff;
+    --accent-green: #00ff00;
+    --accent-red: #ff0000;
+    --accent-orange: #ffaa00;
+    --border-color: #666666;
+    --online-color: #00ff00;
+    --offline-color: #ffaa00;
+}

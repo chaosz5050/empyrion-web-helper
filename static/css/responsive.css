@@ -1,0 +1,506 @@
+/* FILE LOCATION: /static/css/responsive.css */
+/* Responsive CSS and Media Queries extracted from main.css */
+/* Mobile-first responsive design approach for Empyrion Web Helper */
+
+/* =============================================================================
+   CONTAINER RESPONSIVENESS
+   ============================================================================= */
+
+/* Base container styles with responsive width */
+.container {
+    width: 70%;
+    max-width: none;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* =============================================================================
+   GRID SYSTEM RESPONSIVENESS
+   ============================================================================= */
+
+/* Responsive grid layouts */
+.filters-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.konsole-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.log-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.geo-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.entity-info-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* =============================================================================
+   FLEXBOX RESPONSIVE LAYOUTS
+   ============================================================================= */
+
+/* Header controls with flexible wrapping */
+.header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Navigation responsiveness */
+.tab-navigation {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Player actions panel */
+.player-actions-panel {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Message controls */
+.custom-message-controls,
+.scheduled-message-controls,
+.history-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.schedule-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.history-stats {
+    display: flex;
+    gap: 20px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.entity-actions-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.log-action-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* =============================================================================
+   TABLE RESPONSIVENESS
+   ============================================================================= */
+
+/* Player table container with horizontal scrolling */
+.player-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.player-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px; /* Ensures horizontal scroll on small screens */
+}
+
+/* Message history table */
+.message-history-container {
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.message-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+/* Entity table */
+.entity-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.entity-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+/* Items config table */
+.itemsconfig-table-container {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.itemsconfig-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+/* =============================================================================
+   KONSOLE SETTINGS MOBILE RESPONSIVENESS
+   ============================================================================= */
+
+/* Mobile responsive for Konsole settings */
+@media (max-width: 768px) {
+    .konsole-settings-container {
+        flex-direction: column;
+    }
+    
+    .konsole-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .konsole-nav-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0;
+    }
+    
+    .konsole-nav-item {
+        min-width: 120px;
+        flex-shrink: 0;
+        justify-content: center;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+    
+    .konsole-nav-item.active {
+        border-left: none;
+        border-bottom-color: var(--accent-blue);
+    }
+    
+    .konsole-content-panel {
+        padding: 20px;
+    }
+    
+    .konsole-form-actions {
+        flex-direction: column;
+    }
+    
+    .konsole-status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   DESKTOP/TABLET BREAKPOINT (max-width: 1200px)
+   ============================================================================= */
+
+@media (max-width: 1200px) {
+    .player-country {
+        font-size: 0.8em;
+    }
+    
+    .geo-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .entity-info-panel {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   MOBILE BREAKPOINT (max-width: 768px)
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    /* Header and navigation mobile adjustments */
+    .header-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .control-group {
+        justify-content: center;
+    }
+    
+    .tab-navigation {
+        flex-wrap: wrap;
+    }
+    
+    /* Grid system mobile overrides */
+    .filters-panel {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Player stats mobile layout */
+    .player-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    /* Message controls mobile layout */
+    .message-input-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .custom-message-controls,
+    .scheduled-message-controls,
+    .history-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .schedule-input-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .history-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    /* Panel mobile adjustments */
+    .player-actions-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .log-action-row {
+        flex-direction: column;
+    }
+    
+    .entity-actions-row {
+        flex-direction: column;
+    }
+    
+    /* Table mobile handling - hide country column */
+    .player-table th:nth-child(6),
+    .player-table td:nth-child(6) {
+        display: none;
+    }
+    
+    /* Items config mobile adjustments */
+    .itemsconfig-status-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .status-actions {
+        justify-content: center;
+    }
+    
+    .action-row {
+        flex-direction: column;
+    }
+    
+    .file-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+/* =============================================================================
+   PAGINATION MOBILE RESPONSIVENESS
+   ============================================================================= */
+
+/* Mobile responsive pagination */
+@media (max-width: 768px) {
+    .pagination-controls {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .pagination-buttons {
+        justify-content: center;
+    }
+    
+    .pagination-buttons button {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+}
+
+/* =============================================================================
+   MODAL RESPONSIVENESS
+   ============================================================================= */
+
+.modal-content {
+    max-width: 400px;
+    width: 90%; /* Responsive width for mobile */
+}
+
+/* =============================================================================
+   SCROLLBAR RESPONSIVE STYLING
+   ============================================================================= */
+
+/* Custom scrollbar for logs content */
+.logs-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.logs-content::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.logs-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.logs-content::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue);
+}
+
+/* =============================================================================
+   UTILITY RESPONSIVE CLASSES
+   ============================================================================= */
+
+/* Text wrapping and responsive text handling */
+.player-country span {
+    white-space: nowrap;
+}
+
+.message-text {
+    max-width: 300px;
+    word-wrap: break-word;
+}
+
+.message-timestamp {
+    white-space: nowrap;
+}
+
+.player-table th {
+    white-space: nowrap;
+}
+
+.message-history-table th {
+    white-space: nowrap;
+}
+
+.entity-table th {
+    white-space: nowrap;
+}
+
+.itemsconfig-table th {
+    white-space: nowrap;
+}
+
+/* =============================================================================
+   RESPONSIVE TOAST NOTIFICATIONS
+   ============================================================================= */
+
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    max-width: 300px;
+    /* Mobile adaptation handled by positioning */
+}
+
+/* =============================================================================
+   RESPONSIVE FORM ELEMENTS
+   ============================================================================= */
+
+/* Responsive input containers */
+.konsole-password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Responsive checkboxes */
+.konsole-checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+/* =============================================================================
+   RESPONSIVE COUNTRY LIST
+   ============================================================================= */
+
+.country-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.country-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* =============================================================================
+   RESPONSIVE ACTION BUTTONS
+   ============================================================================= */
+
+.player-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+/* =============================================================================
+   RESPONSIVE LOG CONTENT
+   ============================================================================= */
+
+.logs-content {
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* =============================================================================
+   END OF RESPONSIVE CSS
+   ============================================================================= */

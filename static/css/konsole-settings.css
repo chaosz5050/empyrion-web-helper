@@ -1,0 +1,382 @@
+/* KONSOLE-STYLE VERTICAL SETTINGS CSS */
+/* Extracted from main.css for settings page specific styling */
+
+/* CSS Variables for konsole theme consistency */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --accent-blue: #0066cc;
+    --accent-green: #00cc66;
+    --accent-red: #cc0000;
+    --accent-orange: #ff9900;
+    --border-color: #555555;
+}
+
+/* KONSOLE-STYLE VERTICAL SETTINGS CONTAINER */
+.konsole-settings-container {
+    display: flex;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 600px;
+}
+
+/* KONSOLE SIDEBAR */
+.konsole-sidebar {
+    width: 200px;
+    background-color: var(--bg-tertiary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+/* KONSOLE SEARCH */
+.konsole-search {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.konsole-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.konsole-search-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* KONSOLE NAVIGATION */
+.konsole-nav-list {
+    flex: 1;
+    padding: 10px 0;
+}
+
+.konsole-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    margin: 2px 0;
+}
+
+.konsole-nav-item:hover {
+    background-color: rgba(255,255,255,0.05);
+    border-left-color: var(--accent-blue);
+}
+
+.konsole-nav-item.active {
+    background-color: rgba(0,102,204,0.15);
+    border-left-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.konsole-nav-icon {
+    font-size: 16px;
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.konsole-nav-label {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+/* KONSOLE CONTENT AREA */
+.konsole-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.konsole-content-panel {
+    display: none;
+    padding: 30px;
+    flex: 1;
+}
+
+.konsole-content-panel.active {
+    display: block;
+}
+
+/* KONSOLE CONTENT HEADER */
+.konsole-content-header {
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.konsole-content-header h3 {
+    color: var(--accent-blue);
+    font-size: 1.4em;
+    margin-bottom: 5px;
+}
+
+.konsole-content-header p {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+/* KONSOLE FORM STYLING */
+.konsole-form-section {
+    max-width: 500px;
+}
+
+.konsole-form-group {
+    margin-bottom: 20px;
+}
+
+.konsole-form-group label {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+}
+
+/* KONSOLE INPUT STYLING */
+.konsole-input {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.konsole-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+}
+
+/* KONSOLE PASSWORD FIELD WITH TOGGLE */
+.konsole-password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.konsole-password-toggle {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+}
+
+.konsole-password-toggle:hover {
+    color: var(--text-primary);
+}
+
+/* KONSOLE HELP TEXT */
+.konsole-help-text {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* KONSOLE CHECKBOX STYLING */
+.konsole-checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.konsole-checkbox {
+    display: none;
+}
+
+.konsole-checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 3px;
+    margin-right: 10px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.konsole-checkbox:checked + .konsole-checkbox-custom {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.konsole-checkbox:checked + .konsole-checkbox-custom::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* KONSOLE FORM ACTIONS */
+.konsole-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* KONSOLE BUTTON STYLING */
+.konsole-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.konsole-btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.konsole-btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.konsole-btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.konsole-btn-secondary:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--accent-blue);
+}
+
+.konsole-btn-danger {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+.konsole-btn-danger:hover {
+    background-color: #b30000;
+}
+
+/* KONSOLE STATUS PANELS */
+.konsole-status-panel {
+    background-color: var(--bg-tertiary);
+    padding: 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+.konsole-status-panel h4 {
+    color: var(--accent-blue);
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+.konsole-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.konsole-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.konsole-status-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.konsole-status-value {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+/* SETTINGS INPUT STYLING */
+.setting-input {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* MOBILE RESPONSIVE FOR KONSOLE SETTINGS */
+@media (max-width: 768px) {
+    .konsole-settings-container {
+        flex-direction: column;
+    }
+    
+    .konsole-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .konsole-nav-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0;
+    }
+    
+    .konsole-nav-item {
+        min-width: 120px;
+        flex-shrink: 0;
+        justify-content: center;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+    
+    .konsole-nav-item.active {
+        border-left: none;
+        border-bottom-color: var(--accent-blue);
+    }
+    
+    .konsole-content-panel {
+        padding: 20px;
+    }
+    
+    .konsole-form-actions {
+        flex-direction: column;
+    }
+    
+    .konsole-status-grid {
+        grid-template-columns: 1fr;
+    }
+}

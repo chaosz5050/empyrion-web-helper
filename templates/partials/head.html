@@ -1,7 +1,7 @@
 <!-- FILE LOCATION: /templates/partials/head.html -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Empyrion Web Helper v0.5.1{% endblock %}</title>
+<title>{% block title %}Empyrion Web Helper v0.5.2{% endblock %}</title>
 
 <!-- Favicon - Multiple formats for better browser support -->
 <link rel="icon" type="image/png" sizes="32x32" href="/static/ewh_icon.png">
@@ -12,5 +12,10 @@
 <!-- External Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 
-<!-- Styles -->
-<link rel="stylesheet" href="/static/css/main.css">
+<!-- Styles - Modular CSS Architecture -->
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/features.css">
+<link rel="stylesheet" href="/static/css/konsole-settings.css">
+<link rel="stylesheet" href="/static/css/responsive.css">
