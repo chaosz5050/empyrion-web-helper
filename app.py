@@ -413,6 +413,58 @@ def set_monitoring_settings():
     player_db.set_app_setting('update_interval', str(interval))
     return jsonify({'success': True, 'update_interval': interval})
 
+# Theme Settings API endpoints  
+@app.route('/api/settings/theme', methods=['POST'])
+def save_theme_preference():
+    """Save user theme preference to database"""
+    try:
+        data = request.get_json(force=True)
+        theme = data.get('theme', 'dark')
+        
+        # Validate theme
+        if theme not in ['dark', 'light', 'accessible']:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid theme. Must be dark, light, or accessible.'
+            })
+        
+        # Save to database
+        player_db.set_setting('user_theme', theme)
+        
+        logger.info(f"Theme preference saved: {theme}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Theme preference saved: {theme}',
+            'theme': theme
+        })
+        
+    except Exception as e:
+        logger.error(f"Error saving theme preference: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to save theme preference'
+        })
+
+@app.route('/api/settings/theme', methods=['GET'])
+def get_theme_preference():
+    """Get saved user theme preference from database"""
+    try:
+        theme = player_db.get_setting('user_theme', 'dark')
+        
+        return jsonify({
+            'success': True,
+            'theme': theme
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting theme preference: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to get theme preference',
+            'theme': 'dark'  # Default fallback
+        })
+
 # App Settings API endpoints
 @app.route('/api/settings/<setting_key>', methods=['GET'])
 def get_app_setting(setting_key):

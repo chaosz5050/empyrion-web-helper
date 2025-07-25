@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.5.2
+# 🚀 Empyrion Web Helper v0.5.3
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.5.2-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.5.3-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -151,10 +151,12 @@ Empyrion Web Helper features a revolutionary **dual-architecture design**:
 
 ## 📱 Web Interface
 
-### Dark Theme Professional UI
+### Multi-Theme Professional UI
+- **Three Complete Themes** - Dark (default), Light, and Accessible (WCAG 2.1 AAA compliant)
+- **Real-time Theme Switching** - Instant theme changes without page reload
 - **Responsive Design** - Works perfectly on desktop, tablet, and mobile
 - **Real-time Updates** - WebSocket integration for live data
-- **Professional Styling** - Eye-friendly dark theme optimized for long sessions
+- **Professional Styling** - Optimized themes for different environments and accessibility needs
 - **Mobile Optimized** - Full functionality available on phones and tablets
 
 ### Core Tabs
@@ -164,7 +166,7 @@ Empyrion Web Helper features a revolutionary **dual-architecture design**:
 - **🛠️ ItemsConfig** - Live ECF file management, item editing, template resolution
 - **💬 Messaging** - Message history, templates, scheduled announcements
 - **📋 Logs** - Real-time log viewer, rotation management, statistics
-- **⚙️ Settings** - Secure credential management, service configuration
+- **⚙️ Settings** - Secure credential management, service configuration, appearance themes
 
 ## 🎯 Daily Operations
 
@@ -395,4 +397,4 @@ For more details, see the [full license text](https://creativecommons.org/licens
 
 **Built with ❤️ for the Empyrion Galactic Survival community by Chaosz Software**
 
-*Empyrion Web Helper v0.5.0+ - Professional server management with universal compatibility and enterprise-grade security*
+*Empyrion Web Helper v0.5.3 - Professional server management with universal compatibility, enterprise-grade security, and advanced theming system*

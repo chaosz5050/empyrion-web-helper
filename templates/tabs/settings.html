@@ -26,6 +26,11 @@
                     <div class="konsole-nav-label">General</div>
                 </div>
                 
+                <div class="konsole-nav-item" data-target="themes-settings">
+                    <div class="konsole-nav-icon">🎨</div>
+                    <div class="konsole-nav-label">Appearance</div>
+                </div>
+                
                 <div class="konsole-nav-item" data-target="logs-settings">
                     <div class="konsole-nav-icon">📋</div>
                     <div class="konsole-nav-label">Logging</div>
@@ -145,6 +150,81 @@
                     <div class="konsole-form-actions">
                         <button onclick="SettingsManager.resetToDefaults()" class="konsole-btn konsole-btn-danger">Reset to Defaults</button>
                         <button onclick="SettingsManager.saveGeneralSettings()" class="konsole-btn konsole-btn-primary">Save General Settings</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Appearance Settings Panel -->
+            <div class="konsole-content-panel" id="themes-settings">
+                <div class="konsole-content-header">
+                    <h3>Appearance & Themes</h3>
+                    <p>Customize the visual appearance of the application</p>
+                </div>
+                
+                <div class="konsole-form-section">
+                    <div class="konsole-form-group">
+                        <label>Color Theme:</label>
+                        <div class="theme-selector-container">
+                            <div class="theme-option" data-theme="dark">
+                                <div class="theme-preview theme-preview-dark">
+                                    <div class="theme-preview-header"></div>
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-sidebar"></div>
+                                        <div class="theme-preview-main">
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <div class="theme-name">🌙 Dark Theme</div>
+                                    <div class="theme-description">High contrast, reduced eye strain</div>
+                                </div>
+                                <input type="radio" name="theme" value="dark" id="theme-dark" checked>
+                            </div>
+                            
+                            <div class="theme-option" data-theme="light">
+                                <div class="theme-preview theme-preview-light">
+                                    <div class="theme-preview-header"></div>
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-sidebar"></div>
+                                        <div class="theme-preview-main">
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <div class="theme-name">☀️ Light Theme</div>
+                                    <div class="theme-description">Clean, bright appearance</div>
+                                </div>
+                                <input type="radio" name="theme" value="light" id="theme-light">
+                            </div>
+                            
+                            <div class="theme-option" data-theme="accessible">
+                                <div class="theme-preview theme-preview-accessible">
+                                    <div class="theme-preview-header"></div>
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-sidebar"></div>
+                                        <div class="theme-preview-main">
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <div class="theme-name">♿ Accessible Theme</div>
+                                    <div class="theme-description">WCAG 2.1 AAA compliant</div>
+                                </div>
+                                <input type="radio" name="theme" value="accessible" id="theme-accessible">
+                            </div>
+                        </div>
+                        <small class="konsole-help-text">Choose a color theme that suits your preference and environment</small>
+                    </div>
+                    
+                    <div class="konsole-form-actions">
+                        <button onclick="ThemeManager.resetToDefault()" class="konsole-btn konsole-btn-secondary">Reset to Default</button>
+                        <button onclick="ThemeManager.saveThemePreference()" class="konsole-btn konsole-btn-primary">Save Theme Preference</button>
                     </div>
                 </div>
             </div>

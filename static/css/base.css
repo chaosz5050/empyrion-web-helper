@@ -17,17 +17,26 @@
     --online-color: #00cc66;
     --offline-color: #cc6600;
     
-    /* Spacing System */
-    --space-xs: 4px;
-    --space-sm: 8px;
-    --space-md: 16px;
-    --space-lg: 24px;
-    --space-xl: 32px;
+    /* Interactive States & Effects */
+    --hover-overlay: rgba(255, 255, 255, 0.05);
+    --hover-overlay-light: rgba(255, 255, 255, 0.1);
+    --hover-overlay-medium: rgba(255, 255, 255, 0.15);
+    --focus-ring: rgba(0, 102, 204, 0.2);
+    --border-hover: rgba(255, 255, 255, 0.2);
     
-    /* Border Radius System */
-    --radius-sm: 3px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    /* Spacing System - Systematized */
+    --space-xs: 4px;    /* Tiny gaps, small buttons */
+    --space-sm: 8px;    /* Form element spacing */
+    --space-md: 12px;   /* Standard padding */
+    --space-lg: 16px;   /* Section spacing */
+    --space-xl: 20px;   /* Panel padding */
+    --space-xxl: 24px;  /* Large sections */
+    --space-xxxl: 32px; /* Page margins */
+    
+    /* Border Radius System - Standardized */
+    --radius-sm: 3px;   /* Small elements, badges */
+    --radius-md: 6px;   /* Standard buttons, inputs */
+    --radius-lg: 8px;   /* Panels, cards, modals */
     
     /* Layout Variables */
     --panel-bg: var(--bg-secondary);
@@ -115,21 +124,81 @@ p {
 .bg-secondary { background-color: var(--bg-secondary); }
 .bg-tertiary { background-color: var(--bg-tertiary); }
 
+/* Spacing Utilities - Extended System */
+.m-0 { margin: 0; }
 .mb-xs { margin-bottom: var(--space-xs); }
 .mb-sm { margin-bottom: var(--space-sm); }
 .mb-md { margin-bottom: var(--space-md); }
 .mb-lg { margin-bottom: var(--space-lg); }
 .mb-xl { margin-bottom: var(--space-xl); }
+.mb-xxl { margin-bottom: var(--space-xxl); }
+.mb-xxxl { margin-bottom: var(--space-xxxl); }
 
+.p-0 { padding: 0; }
 .p-xs { padding: var(--space-xs); }
 .p-sm { padding: var(--space-sm); }
 .p-md { padding: var(--space-md); }
 .p-lg { padding: var(--space-lg); }
 .p-xl { padding: var(--space-xl); }
+.p-xxl { padding: var(--space-xxl); }
+.p-xxxl { padding: var(--space-xxxl); }
+
+/* Base Component Classes - Design System Foundation */
+.btn-base {
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-xl);
+    transition: all 0.3s ease;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-base:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-base {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-base:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.panel-base {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.card-base {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    box-shadow: var(--shadow-light);
+}
 
 /* Theme System Foundation */
-.theme-dark {
+html.theme-dark,
+html:not([class*="theme-"]) {
     /* Default theme - already defined above */
+    /* Applied when theme-dark class is present OR no theme class is set */
 }
 
 .theme-light {
@@ -144,6 +213,13 @@ p {
     --input-bg: var(--bg-tertiary);
     --shadow-light: 0 2px 4px rgba(0,0,0,0.1);
     --shadow-medium: 0 4px 8px rgba(0,0,0,0.15);
+    
+    /* Light theme interactive states */
+    --hover-overlay: rgba(0, 0, 0, 0.05);
+    --hover-overlay-light: rgba(0, 0, 0, 0.1);
+    --hover-overlay-medium: rgba(0, 0, 0, 0.15);
+    --focus-ring: rgba(0, 102, 204, 0.3);
+    --border-hover: rgba(0, 0, 0, 0.2);
 }
 
 .theme-accessible {
@@ -160,4 +236,11 @@ p {
     --border-color: #666666;
     --online-color: #00ff00;
     --offline-color: #ffaa00;
+    
+    /* High contrast accessible theme interactive states */
+    --hover-overlay: rgba(255, 255, 255, 0.1);
+    --hover-overlay-light: rgba(255, 255, 255, 0.2);
+    --hover-overlay-medium: rgba(255, 255, 255, 0.3);
+    --focus-ring: rgba(0, 170, 255, 0.5);
+    --border-hover: rgba(255, 255, 255, 0.4);
 }

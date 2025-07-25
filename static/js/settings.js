@@ -733,9 +733,158 @@ function validateFtpPaths() {
     }
 }
 
+// Theme Manager
+window.ThemeManager = {
+    currentTheme: 'dark',
+    
+    init() {
+        debugLog('Theme manager initialized');
+        this.loadSavedTheme();
+        this.setupThemeListeners();
+    },
+    
+    async loadSavedTheme() {
+        // Check localStorage first for instant loading
+        const localTheme = localStorage.getItem('empyrion-theme');
+        if (localTheme && ['dark', 'light', 'accessible'].includes(localTheme)) {
+            this.currentTheme = localTheme;
+            this.applyTheme(localTheme);
+            this.updateThemeSelector(localTheme);
+        } else {
+            // Default to dark theme initially
+            this.applyTheme('dark');
+            this.updateThemeSelector('dark');
+        }
+        
+        // Then check database for saved preference
+        try {
+            const response = await apiCall('/api/settings/theme');
+            if (response.success && response.theme !== this.currentTheme) {
+                debugLog(`Loading theme from database: ${response.theme}`);
+                this.currentTheme = response.theme;
+                this.applyTheme(response.theme);
+                this.updateThemeSelector(response.theme);
+                // Update localStorage to match database
+                localStorage.setItem('empyrion-theme', response.theme);
+            }
+        } catch (error) {
+            console.error('Error loading theme from database:', error);
+            debugLog('Falling back to localStorage or default theme');
+        }
+    },
+    
+    setupThemeListeners() {
+        // Add event listeners to theme selector
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const theme = option.getAttribute('data-theme');
+                this.selectTheme(theme);
+            });
+        });
+        
+        // Add event listeners to radio buttons
+        document.querySelectorAll('input[name="theme"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.selectTheme(e.target.value);
+                }
+            });
+        });
+    },
+    
+    selectTheme(theme) {
+        debugLog(`Theme selected: ${theme}`);
+        
+        // Update current theme
+        this.currentTheme = theme;
+        
+        // Apply theme immediately
+        this.applyTheme(theme);
+        
+        // Update UI selector
+        this.updateThemeSelector(theme);
+        
+        // Save to localStorage for instant loading
+        localStorage.setItem('empyrion-theme', theme);
+        
+        // Show feedback
+        showToast(`Theme changed to ${this.getThemeName(theme)}`, 'success');
+    },
+    
+    applyTheme(theme) {
+        // Remove existing theme classes
+        document.documentElement.classList.remove('theme-dark', 'theme-light', 'theme-accessible');
+        
+        // Apply new theme class
+        document.documentElement.classList.add(`theme-${theme}`);
+        
+        debugLog(`Applied theme: ${theme}`);
+    },
+    
+    updateThemeSelector(theme) {
+        // Update radio button
+        const radio = document.getElementById(`theme-${theme}`);
+        if (radio) {
+            radio.checked = true;
+        }
+        
+        // Update visual selection
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        const selectedOption = document.querySelector(`[data-theme="${theme}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('selected');
+        }
+    },
+    
+    getThemeName(theme) {
+        const names = {
+            'dark': 'Dark Theme',
+            'light': 'Light Theme',
+            'accessible': 'Accessible Theme'
+        };
+        return names[theme] || theme;
+    },
+    
+    async saveThemePreference() {
+        debugLog(`Saving theme preference: ${this.currentTheme}`);
+        
+        try {
+            const response = await apiCall('/api/settings/theme', {
+                method: 'POST',
+                body: JSON.stringify({
+                    theme: this.currentTheme
+                })
+            });
+            
+            if (response.success) {
+                showToast('Theme preference saved successfully!', 'success');
+            } else {
+                showToast('Failed to save theme preference to database', 'warning');
+                // Still works with localStorage
+            }
+        } catch (error) {
+            console.error('Error saving theme preference:', error);
+            showToast('Theme will be remembered locally', 'info');
+        }
+    },
+    
+    resetToDefault() {
+        debugLog('Resetting theme to default (dark)');
+        this.selectTheme('dark');
+        showToast('Theme reset to default (Dark)', 'info');
+    }
+};
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     if (window.SettingsManager) {
         window.SettingsManager.init();
+    }
+    
+    if (window.ThemeManager) {
+        window.ThemeManager.init();
     }
 });

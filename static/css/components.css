@@ -1,5 +1,5 @@
 /* FILE LOCATION: /static/css/components.css */
-/* Component Library - Extracted from main.css */
+/* Component Library - Systematized with Design System Variables */
 
 /* ========================================
    BUTTONS & INTERACTIVE ELEMENTS
@@ -9,7 +9,7 @@
 .tab-button {
     background: none;
     border: none;
-    padding: 12px 20px;
+    padding: var(--space-md) var(--space-xl);
     color: var(--text-secondary);
     cursor: pointer;
     border-bottom: 3px solid transparent;
@@ -20,7 +20,7 @@
 
 .tab-button:hover {
     color: var(--text-primary);
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--hover-overlay);
 }
 
 .tab-button.active {
@@ -28,93 +28,101 @@
     border-bottom-color: var(--accent-blue);
 }
 
-/* Primary Button */
+/* Button System - Extends btn-base from base.css */
 button {
+    /* Inherits all properties from .btn-base - apply as class for systematic approach */
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
     border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
+    padding: var(--space-md) var(--space-xl);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.3s;
+    font-weight: bold;
+    transition: all 0.3s ease;
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: var(--accent-blue);
+    opacity: 0.8;
 }
 
 button:disabled {
-    background-color: #666;
+    background-color: var(--text-muted);
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
-/* Button Variants */
-.btn-danger {
-    background-color: var(--accent-red);
-}
-
-.btn-danger:hover {
-    background-color: #b30000;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-test,
-.btn-add {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-    white-space: nowrap;
-}
-
+/* Button Variants - Systematic Approach (extends .btn-base) */
 .btn-primary {
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .btn-primary:hover {
-    background-color: #0056b3;
+    background-color: var(--accent-blue);
+    opacity: 0.8;
 }
 
 .btn-secondary {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
+.btn-danger {
+    background-color: var(--accent-red);
+    color: var(--text-primary);
+}
+
+.btn-danger:hover {
+    background-color: var(--accent-red);
+    opacity: 0.8;
+}
+
+.btn-success {
+    background-color: var(--accent-green);
+    color: var(--text-primary);
+}
+
+.btn-success:hover {
+    background-color: var(--accent-green);
+    opacity: 0.8;
+}
+
+/* Specialized Button Types - Use .btn-base as foundation */
 .btn-test {
     background-color: var(--accent-orange);
-    color: white;
-    padding: 6px 12px;
+    color: var(--text-primary);
+    padding: var(--space-sm) var(--space-md);
     font-size: 12px;
 }
 
 .btn-test:hover {
-    background-color: #e68900;
+    background-color: var(--accent-orange);
+    opacity: 0.8;
 }
 
 .btn-add {
     background-color: var(--accent-green);
-    color: white;
+    color: var(--text-primary);
 }
 
 .btn-add:hover {
-    background-color: #00b359;
+    background-color: var(--accent-green);
+    opacity: 0.8;
 }
 
-/* Konsole Buttons */
+/* Konsole Button System - Extends .btn-base concept */
 .konsole-btn {
-    padding: 10px 20px;
+    padding: var(--space-sm) var(--space-xl);
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -123,11 +131,12 @@ button:disabled {
 
 .konsole-btn-primary {
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .konsole-btn-primary:hover {
-    background-color: #0056b3;
+    background-color: var(--accent-blue);
+    opacity: 0.8;
 }
 
 .konsole-btn-secondary {
@@ -143,19 +152,20 @@ button:disabled {
 
 .konsole-btn-danger {
     background-color: var(--accent-red);
-    color: white;
+    color: var(--text-primary);
 }
 
 .konsole-btn-danger:hover {
-    background-color: #b30000;
+    background-color: var(--accent-red);
+    opacity: 0.8;
 }
 
 /* Action Buttons (with tooltips) */
 .action-btn {
     background: none;
     border: none;
-    padding: 6px 8px;
-    border-radius: 4px;
+    padding: var(--space-sm) var(--space-sm);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.2s;
@@ -180,7 +190,7 @@ button:disabled {
 }
 
 .action-btn:hover {
-    background-color: rgba(255,255,255,0.1);
+    background-color: var(--hover-overlay-light);
 }
 
 /* Tooltip styles for action buttons */
@@ -192,8 +202,8 @@ button:disabled {
     transform: translateX(-50%);
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
     font-size: 12px;
     white-space: nowrap;
     opacity: 0;
@@ -210,12 +220,12 @@ button:disabled {
 /* Password Toggle Button */
 .konsole-password-toggle {
     position: absolute;
-    right: 8px;
+    right: var(--space-sm);
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px;
+    padding: var(--space-xs);
     font-size: 14px;
 }
 
@@ -226,23 +236,23 @@ button:disabled {
 /* Pagination Buttons */
 .pagination-buttons {
     display: flex;
-    gap: 5px;
+    gap: var(--space-xs);
 }
 
 .pagination-buttons button {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-    padding: 6px 12px;
-    border-radius: 4px;
+    background-color: var(--hover-overlay-light);
+    border: 1px solid var(--border-hover);
+    color: var(--text-primary);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s ease;
 }
 
 .pagination-buttons button:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: #007acc;
+    background-color: var(--hover-overlay-medium);
+    border-color: var(--accent-blue);
 }
 
 .pagination-buttons button:disabled {
@@ -251,72 +261,76 @@ button:disabled {
 }
 
 /* ========================================
-   FORMS & INPUTS
+   FORMS & INPUTS - All extend .form-base concept
    ======================================== */
 
-/* Base Input Styles */
+/* Base Input Styles - Use .form-base as foundation */
 input, select, textarea {
-    padding: 8px 10px;
-    background-color: var(--bg-primary);
+    /* Inherits all properties from .form-base - apply as class for systematic approach */
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
     color: var(--text-primary);
     font-size: 14px;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease;
 }
 
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Konsole Search Input */
+/* Specialized Input Types - All extend .form-base concept */
 .konsole-search-input {
     width: 100%;
-    padding: 8px 10px;
-    background-color: var(--bg-primary);
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
     font-size: 12px;
+    transition: all 0.3s ease;
 }
 
 .konsole-search-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Konsole Input */
 .konsole-input {
     width: 100%;
-    padding: 10px 12px;
-    background-color: var(--bg-primary);
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
     color: var(--text-primary);
     font-size: 14px;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease;
 }
 
 .konsole-input:focus {
     outline: none;
     border-color: var(--accent-blue);
-    box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Filter Input */
 .filter-input {
-    padding: 8px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
     font-size: 12px;
+    transition: all 0.3s ease;
 }
 
 .filter-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .filter-input::placeholder {
@@ -324,20 +338,21 @@ input:focus, select:focus, textarea:focus {
     opacity: 0.7;
 }
 
-/* Message Input */
 .message-input {
     flex: 1;
-    padding: 10px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
     color: var(--text-primary);
     font-size: 14px;
+    transition: all 0.3s ease;
 }
 
 .message-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .message-input::placeholder {
@@ -345,74 +360,85 @@ input:focus, select:focus, textarea:focus {
     opacity: 0.7;
 }
 
-/* Schedule Select */
 .schedule-select {
-    padding: 8px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
 .schedule-select:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Setting Input */
 .setting-input {
-    padding: 8px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
     font-size: 14px;
+    transition: all 0.3s ease;
 }
 
 .setting-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Log Lines Select */
 .log-lines-select {
-    padding: 8px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.log-lines-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Pagination Size Select */
 .pagination-size select {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    color: #ffffff;
-    padding: 4px 8px;
+    background-color: var(--hover-overlay-light);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: var(--space-xs) var(--space-sm);
     font-size: 13px;
+    transition: all 0.3s ease;
 }
 
 .pagination-size select:focus {
     outline: none;
-    border-color: #007acc;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .pagination-size select option {
-    background-color: #2d2d2d;
-    color: #ffffff;
-    padding: 4px 8px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: var(--space-xs) var(--space-sm);
 }
 
-/* Cell Editor */
+/* Cell Editor - Special case for inline editing */
 .cell-editor {
     width: 100%;
-    padding: 4px 6px;
+    padding: var(--space-xs) var(--space-sm);
     border: 2px solid var(--accent-blue);
-    border-radius: 3px;
-    background-color: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
     color: var(--text-primary);
     font-size: 13px;
+    transition: all 0.3s ease;
 }
 
 .cell-editor:focus {
@@ -420,16 +446,16 @@ input:focus, select:focus, textarea:focus {
     border-color: var(--accent-green);
 }
 
-/* Form Components */
+/* Form Components - Systematic Spacing */
 .konsole-form-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-xl);
 }
 
 .konsole-form-group label {
     display: block;
     color: var(--text-primary);
     font-weight: 500;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-sm);
     font-size: 0.9em;
 }
 
@@ -437,11 +463,11 @@ input:focus, select:focus, textarea:focus {
     display: block;
     color: var(--text-secondary);
     font-size: 0.8em;
-    margin-top: 4px;
+    margin-top: var(--space-xs);
     font-style: italic;
 }
 
-/* Custom Checkbox */
+/* Custom Checkbox - Systematic Design */
 .konsole-checkbox-label {
     display: flex;
     align-items: center;
@@ -457,8 +483,8 @@ input:focus, select:focus, textarea:focus {
     width: 18px;
     height: 18px;
     border: 2px solid var(--border-color);
-    border-radius: 3px;
-    margin-right: 10px;
+    border-radius: var(--radius-sm);
+    margin-right: var(--space-md);
     position: relative;
     transition: all 0.2s;
 }
@@ -473,21 +499,21 @@ input:focus, select:focus, textarea:focus {
     position: absolute;
     top: -2px;
     left: 2px;
-    color: white;
+    color: var(--text-primary);
     font-size: 12px;
     font-weight: bold;
 }
 
-/* Form Input Containers */
+/* Form Input Containers - Systematic Spacing */
 .message-input-container {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
     align-items: center;
 }
 
 .schedule-input-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
     align-items: center;
 }
 
@@ -497,24 +523,26 @@ input:focus, select:focus, textarea:focus {
     align-items: center;
 }
 
-/* Modal Input */
+/* Modal Input - Extends .form-base concept */
 .modal-body input[type="text"] {
     width: 100%;
-    padding: 8px;
+    background-color: var(--input-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
     color: var(--text-primary);
     font-size: 14px;
+    transition: all 0.3s ease;
 }
 
 .modal-body input[type="text"]:focus {
     outline: none;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* ========================================
-   MODALS
+   MODALS - Systematic Design
    ======================================== */
 
 .modal {
@@ -535,46 +563,46 @@ input:focus, select:focus, textarea:focus {
 }
 
 .modal-content {
-    background-color: var(--bg-secondary);
-    padding: 20px;
-    border-radius: 8px;
+    background-color: var(--panel-bg);
+    padding: var(--space-xl);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     max-width: 400px;
     width: 90%;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-medium);
 }
 
 .modal-header {
     color: var(--accent-blue);
     font-size: 1.2em;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: var(--space-lg);
 }
 
 .modal-body {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-xl);
 }
 
 .modal-body label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: var(--space-xs);
     color: var(--text-secondary);
 }
 
 .modal-footer {
     display: flex;
-    gap: 10px;
+    gap: var(--space-md);
     justify-content: flex-end;
 }
 
 /* ========================================
-   TABLES
+   TABLES - Systematic Design
    ======================================== */
 
 /* Player Table */
 .player-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -587,7 +615,7 @@ input:focus, select:focus, textarea:focus {
 
 .player-table th {
     background-color: var(--bg-primary);
-    padding: 12px 8px;
+    padding: var(--space-md) var(--space-sm);
     text-align: left;
     font-weight: bold;
     color: var(--accent-blue);
@@ -596,13 +624,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .player-table td {
-    padding: 10px 8px;
+    padding: var(--space-md) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
 }
 
 .player-table tr:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--hover-overlay);
 }
 
 .player-table tr:last-child td {
@@ -612,7 +640,7 @@ input:focus, select:focus, textarea:focus {
 /* Message History Table */
 .message-history-container {
     background-color: var(--bg-primary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -625,7 +653,7 @@ input:focus, select:focus, textarea:focus {
 
 .message-history-table th {
     background-color: var(--bg-secondary);
-    padding: 12px 8px;
+    padding: var(--space-md) var(--space-sm);
     text-align: left;
     font-weight: bold;
     color: var(--accent-blue);
@@ -634,13 +662,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .message-history-table td {
-    padding: 10px 8px;
+    padding: var(--space-md) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
     vertical-align: top;
 }
 
 .message-history-table tr:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--hover-overlay);
 }
 
 .message-history-table tr:last-child td {
@@ -650,7 +678,7 @@ input:focus, select:focus, textarea:focus {
 /* Entity Table */
 .entity-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -663,7 +691,7 @@ input:focus, select:focus, textarea:focus {
 
 .entity-table th {
     background-color: var(--bg-primary);
-    padding: 12px 8px;
+    padding: var(--space-md) var(--space-sm);
     text-align: left;
     font-weight: bold;
     color: var(--accent-blue);
@@ -672,13 +700,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .entity-table td {
-    padding: 10px 8px;
+    padding: var(--space-md) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
 }
 
 .entity-table tr:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--hover-overlay);
 }
 
 .entity-table tr:last-child td {
@@ -688,7 +716,7 @@ input:focus, select:focus, textarea:focus {
 /* Items Config Table */
 .itemsconfig-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -701,7 +729,7 @@ input:focus, select:focus, textarea:focus {
 
 .itemsconfig-table th {
     background-color: var(--bg-primary);
-    padding: 12px 8px;
+    padding: var(--space-md) var(--space-sm);
     text-align: left;
     font-weight: bold;
     color: var(--accent-blue);
@@ -710,13 +738,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .itemsconfig-table td {
-    padding: 10px 8px;
+    padding: var(--space-md) var(--space-sm);
     border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
 }
 
 .itemsconfig-table tr:hover {
-    background-color: rgba(255,255,255,0.05);
+    background-color: var(--hover-overlay);
 }
 
 .itemsconfig-table tr:last-child td {
@@ -736,10 +764,10 @@ input:focus, select:focus, textarea:focus {
 }
 
 .editable-cell:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--hover-overlay-light);
 }
 
-/* Table-related styling classes */
+/* Table-related styling classes - Systematic Approach */
 .player-name {
     font-weight: bold;
     color: var(--text-primary);
@@ -753,20 +781,20 @@ input:focus, select:focus, textarea:focus {
 
 .player-status {
     font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
     text-align: center;
     font-size: 0.8em;
 }
 
 .player-status.online {
     background-color: var(--online-color);
-    color: white;
+    color: var(--text-primary);
 }
 
 .player-status.offline {
     background-color: var(--offline-color);
-    color: white;
+    color: var(--text-primary);
 }
 
 .player-faction {
@@ -793,11 +821,11 @@ input:focus, select:focus, textarea:focus {
 
 .player-actions {
     display: flex;
-    gap: 5px;
+    gap: var(--space-xs);
     justify-content: center;
 }
 
-/* Entity table styling */
+/* Entity table styling - Systematic Badges */
 .entity-id {
     font-family: monospace;
     font-size: 0.9em;
@@ -807,30 +835,30 @@ input:focus, select:focus, textarea:focus {
 
 .entity-type {
     font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
     text-align: center;
     font-size: 0.8em;
 }
 
 .entity-type.astvoxel {
     background-color: #8B4513;
-    color: white;
+    color: var(--text-primary);
 }
 
 .entity-type.ba {
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .entity-type.cv {
     background-color: var(--accent-green);
-    color: white;
+    color: var(--text-primary);
 }
 
 .entity-type.sv {
     background-color: var(--accent-orange);
-    color: white;
+    color: var(--text-primary);
 }
 
 .entity-name {
@@ -842,11 +870,11 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.9em;
 }
 
-/* Items config table styling */
+/* Items config table styling - Systematic Badges */
 .item-type {
     font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
     text-align: center;
     font-size: 0.8em;
     text-transform: uppercase;
@@ -854,12 +882,12 @@ input:focus, select:focus, textarea:focus {
 
 .item-type.template {
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .item-type.item {
     background-color: var(--accent-green);
-    color: white;
+    color: var(--text-primary);
 }
 
 .item-id {
@@ -883,33 +911,33 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.9em;
 }
 
-/* Message history table styling */
+/* Message history table styling - Systematic Badges */
 .message-type {
     font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 3px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
     font-size: 0.8em;
     text-transform: uppercase;
 }
 
 .message-type.manual {
     background-color: var(--accent-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .message-type.welcome {
     background-color: var(--accent-green);
-    color: white;
+    color: var(--text-primary);
 }
 
 .message-type.goodbye {
     background-color: var(--accent-orange);
-    color: white;
+    color: var(--text-primary);
 }
 
 .message-type.scheduled {
     background-color: #9966cc;
-    color: white;
+    color: var(--text-primary);
 }
 
 .message-status {
@@ -937,38 +965,38 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ========================================
-   PAGINATION COMPONENT
+   PAGINATION COMPONENT - Systematic Design
    ======================================== */
 
 .pagination-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    margin-bottom: 10px;
+    padding: var(--space-md);
+    background-color: var(--hover-overlay);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-md);
     font-size: 14px;
 }
 
 .pagination-info {
-    color: #cccccc;
+    color: var(--text-secondary);
     font-weight: 500;
 }
 
 .pagination-size {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-sm);
 }
 
 .pagination-size label {
-    color: #cccccc;
+    color: var(--text-secondary);
     font-size: 13px;
 }
 
 /* ========================================
-   RESPONSIVE DESIGN FOR COMPONENTS
+   RESPONSIVE DESIGN FOR COMPONENTS - Systematic Spacing
    ======================================== */
 
 @media (max-width: 768px) {
@@ -991,10 +1019,10 @@ input:focus, select:focus, textarea:focus {
     /* Modal adjustments */
     .modal-content {
         width: 95%;
-        margin: 10px;
+        margin: var(--space-md);
     }
     
-    /* Table adjustments */
+    /* Table adjustments - Systematic Spacing */
     .player-table,
     .entity-table,
     .message-history-table,
@@ -1010,13 +1038,13 @@ input:focus, select:focus, textarea:focus {
     .message-history-table td,
     .itemsconfig-table th,
     .itemsconfig-table td {
-        padding: 8px 6px;
+        padding: var(--space-sm) var(--space-sm);
     }
     
-    /* Pagination adjustments */
+    /* Pagination adjustments - Systematic Spacing */
     .pagination-controls {
         flex-direction: column;
-        gap: 10px;
+        gap: var(--space-md);
         text-align: center;
     }
     
@@ -1025,11 +1053,11 @@ input:focus, select:focus, textarea:focus {
     }
     
     .pagination-buttons button {
-        padding: 8px 10px;
+        padding: var(--space-sm) var(--space-md);
         font-size: 11px;
     }
     
-    /* Hide country column on mobile */
+    /* Hide country column on mobile for better UX */
     .player-table th:nth-child(6),
     .player-table td:nth-child(6) {
         display: none;

@@ -11,7 +11,7 @@
     width: 70%;
     max-width: none;
     margin: 0 auto;
-    padding: 20px;
+    padding: var(--space-xl);
 }
 
 /* =============================================================================
@@ -22,38 +22,38 @@
 .filters-panel {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
+    gap: var(--space-sm);
 }
 
 .konsole-status-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    gap: var(--space-lg);
 }
 
 .log-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
+    gap: var(--space-lg);
 }
 
 .geo-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
+    gap: var(--space-lg);
 }
 
 .settings-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    gap: var(--space-lg);
     align-items: end;
 }
 
 .entity-info-panel {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+    gap: var(--space-xl);
 }
 
 /* =============================================================================
@@ -66,21 +66,21 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: var(--space-xl);
 }
 
 .control-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-sm);
     flex-wrap: wrap;
 }
 
 /* Navigation responsiveness */
 .tab-navigation {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
     border-bottom: 2px solid var(--border-color);
 }
 
@@ -88,7 +88,7 @@
 .player-actions-panel {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: var(--space-lg);
     flex-wrap: wrap;
 }
 
@@ -97,33 +97,33 @@
 .scheduled-message-controls,
 .history-controls {
     display: flex;
-    gap: 10px;
+    gap: var(--space-sm);
     align-items: center;
     flex-wrap: wrap;
 }
 
 .schedule-input-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-sm);
     align-items: center;
 }
 
 .history-stats {
     display: flex;
-    gap: 20px;
+    gap: var(--space-xl);
     color: var(--text-secondary);
     font-size: 0.9em;
 }
 
 .entity-actions-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-sm);
     flex-wrap: wrap;
 }
 
 .log-action-row {
     display: flex;
-    gap: 10px;
+    gap: var(--space-sm);
     flex-wrap: wrap;
 }
 
@@ -134,7 +134,7 @@
 /* Player table container with horizontal scrolling */
 .player-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -148,7 +148,7 @@
 /* Message history table */
 .message-history-container {
     background-color: var(--bg-primary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -162,7 +162,7 @@
 /* Entity table */
 .entity-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -176,7 +176,7 @@
 /* Items config table */
 .itemsconfig-table-container {
     background-color: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     overflow-x: auto;
 }
@@ -224,7 +224,7 @@
     }
     
     .konsole-content-panel {
-        padding: 20px;
+        padding: var(--space-xl);
     }
     
     .konsole-form-actions {
@@ -281,7 +281,7 @@
     /* Player stats mobile layout */
     .player-stats {
         flex-direction: column;
-        gap: 5px;
+        gap: var(--space-xs);
     }
     
     /* Message controls mobile layout */
@@ -304,7 +304,7 @@
     
     .history-stats {
         flex-direction: column;
-        gap: 5px;
+        gap: var(--space-xs);
     }
     
     /* Panel mobile adjustments */
@@ -343,7 +343,7 @@
     
     .file-stats {
         flex-direction: column;
-        gap: 5px;
+        gap: var(--space-xs);
     }
 }
 
@@ -355,7 +355,7 @@
 @media (max-width: 768px) {
     .pagination-controls {
         flex-direction: column;
-        gap: 10px;
+        gap: var(--space-sm);
         text-align: center;
     }
     
@@ -364,7 +364,7 @@
     }
     
     .pagination-buttons button {
-        padding: 8px 10px;
+        padding: var(--space-sm) var(--space-sm);
         font-size: 11px;
     }
 }
@@ -384,7 +384,7 @@
 
 /* Custom scrollbar for logs content */
 .logs-content::-webkit-scrollbar {
-    width: 8px;
+    width: var(--space-sm);
 }
 
 .logs-content::-webkit-scrollbar-track {
@@ -393,7 +393,7 @@
 
 .logs-content::-webkit-scrollbar-thumb {
     background: var(--border-color);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 
 .logs-content::-webkit-scrollbar-thumb:hover {
@@ -440,8 +440,8 @@
 
 .toast {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: var(--space-xl);
+    right: var(--space-xl);
     max-width: 300px;
     /* Mobile adaptation handled by positioning */
 }
@@ -486,7 +486,7 @@
 
 .player-actions {
     display: flex;
-    gap: 5px;
+    gap: var(--space-xs);
     justify-content: center;
 }
 
