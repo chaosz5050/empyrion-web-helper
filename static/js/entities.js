@@ -118,34 +118,80 @@ window.EntitiesManager = {
         }
     },
 
-    async applyFilters() {
+    applyFilters() {
         debugLog('applyFilters() called');
         
-        // Build filter parameters
-        const params = new URLSearchParams();
+        // Start with all entities
+        let filtered = [...this.allEntities];
+        
+        // Apply each filter
         for (const [key, element] of Object.entries(this.filterElements)) {
             if (element && element.value.trim()) {
-                params.append(key, element.value.trim());
+                const filterValue = element.value.trim().toLowerCase();
+                
+                filtered = filtered.filter(entity => {
+                    let entityValue = '';
+                    
+                    // Map filter keys to entity properties
+                    switch (key) {
+                        case 'entity_id':
+                            entityValue = entity.id || '';
+                            break;
+                        case 'type':
+                            entityValue = entity.type || '';
+                            break;
+                        case 'faction':
+                            entityValue = entity.faction || '';
+                            break;
+                        case 'name':
+                            entityValue = entity.name || '';
+                            break;
+                        case 'playfield':
+                            entityValue = entity.playfield || '';
+                            break;
+                        default:
+                            return true;
+                    }
+                    
+                    return entityValue.toLowerCase().includes(filterValue);
+                });
             }
         }
         
-        try {
-            const data = await apiCall('/entities?' + params.toString());
-            
-            if (data.success) {
-                this.filteredEntities = data.entities || [];
-                this.currentPage = 1;
-                this.updatePagination();
-                this.updateEntitiesTable();
-                this.updateEntityStats(data.stats);
-                debugLog(`Applied filters, showing ${this.filteredEntities.length} entities`);
-            } else {
-                showToast(data.message || 'Failed to apply filters', 'error');
+        this.filteredEntities = filtered;
+        this.currentPage = 1;
+        this.updatePagination();
+        this.updateEntitiesTable();
+        
+        debugLog(`Applied filters, showing ${this.filteredEntities.length} of ${this.allEntities.length} entities`);
+        
+        // Update stats for filtered results
+        this.updateEntityStats(this.calculateFilteredStats());
+    },
+
+    calculateFilteredStats() {
+        const stats = {
+            total: this.filteredEntities.length,
+            asteroids: 0,
+            bases: 0,
+            ships: 0,
+            wrecks: 0
+        };
+        
+        this.filteredEntities.forEach(entity => {
+            const type = (entity.type || '').toLowerCase();
+            if (type.includes('astvoxel') || type.includes('asteroid')) {
+                stats.asteroids++;
+            } else if (type === 'ba') {
+                stats.bases++;
+            } else if (type === 'cv' || type === 'sv') {
+                stats.ships++;
+            } else if (entity.name && entity.name.toLowerCase().includes('wreck')) {
+                stats.wrecks++;
             }
-        } catch (error) {
-            console.error('Error applying filters:', error);
-            showToast('Error applying filters: ' + error, 'error');
-        }
+        });
+        
+        return stats;
     },
 
     clearEntityFilters() {
@@ -159,6 +205,9 @@ window.EntitiesManager = {
         this.currentPage = 1;
         this.updatePagination();
         this.updateEntitiesTable();
+        
+        // Reset stats to show all entities
+        this.updateEntityStats(this.calculateFilteredStats());
     },
 
     updateEntitiesTable() {
@@ -190,12 +239,12 @@ window.EntitiesManager = {
 
             html += `
                 <tr>
-                    <td class="entity-id">${escapeHtml(entity.entity_id)}</td>
+                    <td class="entity-id">${escapeHtml(entity.id)}</td>
                     <td><span class="entity-type ${typeClass}">${escapeHtml(entity.type)}</span></td>
                     <td><span class="entity-faction ${factionClass}">${escapeHtml(entity.faction)}</span></td>
                     <td class="entity-name">${escapeHtml(entity.name)}</td>
                     <td class="entity-playfield">${escapeHtml(entity.playfield)}</td>
-                    <td><span class="entity-category ${categoryClass}">${categoryClass}</span></td>
+                    <td><span class="entity-category ${typeClass}">${escapeHtml(entity.type)}</span></td>
                 </tr>
             `;
         });
@@ -427,6 +476,11 @@ function exportEntitiesData() {
 function clearAllEntities() {
     window.EntitiesManager.clearAllEntities();
 }
+
+// POI Management Note: 
+// The 'wipe poi' command only destroys POIs without regenerating them.
+// For POI regeneration, use 'regenerate <entityid>' in-game console or
+// manually delete playfield files (World.dat, Plantlife.dat, Decoration.dat)
 
 // Backward compatibility - keep the old function name
 function refreshEntities() {

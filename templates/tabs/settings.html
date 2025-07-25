@@ -72,7 +72,7 @@
             <div class="konsole-content-panel" id="ftp-settings">
                 <div class="konsole-content-header">
                     <h3>FTP Configuration</h3>
-                    <p>Configure FTP access for server file management</p>
+                    <p>Configure FTP/SFTP access for server file management. The system automatically detects and supports both FTP and SFTP protocols.</p>
                 </div>
                 
                 <div class="konsole-form-section">
@@ -100,11 +100,20 @@
                     </div>
                     
                     <div class="konsole-form-group">
-                        <label for="ftpRemotePath">Remote Log Path:</label>
-                        <input type="text" id="ftpRemotePath" class="konsole-input" placeholder="/path/to/scenario/Content/Configuration">
+                        <label for="itemsConfigPath">ItemsConfig Path:</label>
+                        <input type="text" id="itemsConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Configuration">
+                        <small class="konsole-help-text">Path to your scenario's Configuration directory containing ItemsConfig.ecf</small>
                     </div>
                     
+                    <div class="konsole-form-group">
+                        <label for="playfieldsPath">Playfields Path:</label>
+                        <input type="text" id="playfieldsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Playfields">
+                        <small class="konsole-help-text">Path to your scenario's Playfields directory for wipe automation</small>
+                    </div>
+                    
+                    
                     <div class="konsole-form-actions">
+                        <button onclick="validateFtpPaths()" class="konsole-btn konsole-btn-secondary">Validate Paths</button>
                         <button onclick="SettingsManager.testFtpConnection()" class="konsole-btn konsole-btn-secondary">Test Connection</button>
                         <button onclick="SettingsManager.saveFtpSettings()" class="konsole-btn konsole-btn-primary">Save FTP Settings</button>
                     </div>

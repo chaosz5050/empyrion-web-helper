@@ -1,0 +1,413 @@
+<!-- FILE LOCATION: /templates/tabs/test.html -->
+<div class="panel" id="testPanel" style="display: none;">
+    <h2>⚡ Regenerate POIs - Selective POI Regeneration</h2>
+    <p class="panel-description">Regenerate NPC POIs while preserving all player-owned structures (built bases and cored POIs).</p>
+    
+    <!-- Control Panel -->
+    <div class="konsole-section">
+        <div class="konsole-section-header">
+            <h3>⚡ Selective POI Regeneration</h3>
+            <p>Regenerate NPC POIs while preserving all player-owned structures (built bases and cored POIs).</p>
+        </div>
+        
+        <div class="konsole-controls">
+            <button id="loadPlayfieldsBtn" class="konsole-btn konsole-btn-primary" onclick="TestManager.loadActivePlayfields()">
+                🌍 Load Active Playfields
+            </button>
+            <button id="refreshEntitiesBtn" class="konsole-btn konsole-btn-secondary" onclick="TestManager.refreshEntityData()" style="margin-left: 10px;">
+                📡 Refresh Entity Data (gents)
+            </button>
+        </div>
+        
+        <!-- Playfield Selection -->
+        <div id="playfieldSelection" class="konsole-playfield-selection" style="display: none; margin-top: 20px;">
+            <h4>🎯 Select Playfields for Regeneration:</h4>
+            <div id="playfieldList" class="konsole-playfield-list">
+                <!-- Playfields will be populated here -->
+            </div>
+            <div class="konsole-controls" style="margin-top: 15px;">
+                <button id="startRegenerationBtn" class="konsole-btn konsole-btn-danger" onclick="TestManager.startRegeneration()" disabled>
+                    ⚡ Start Selective Regeneration
+                </button>
+                <button id="selectAllBtn" class="konsole-btn konsole-btn-secondary" onclick="TestManager.selectAllPlayfields()" style="margin-left: 10px;">
+                    ☑️ Select All
+                </button>
+                <button id="clearSelectionBtn" class="konsole-btn konsole-btn-secondary" onclick="TestManager.clearPlayfieldSelection()" style="margin-left: 10px;">
+                    ❌ Clear Selection
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Display -->
+        <div id="testStatus" class="konsole-status-bar" style="margin-top: 15px; display: none;">
+            <div class="status-content">
+                <span id="testStatusText">Ready</span>
+                <div id="progressContainer" class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progressText">0/0 (0%)</span>
+                        <span id="progressEta"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="konsole-section" id="resultsSection" style="display: none;">
+        <div class="konsole-section-header">
+            <h3>🏠 Player-Owned Structures Found</h3>
+            <p>These structures will be <strong>preserved</strong> during selective POI regeneration.</p>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="konsole-stats-grid" id="playerStatsGrid">
+            <div class="konsole-stat-item">
+                <span class="konsole-stat-value" id="totalPlayerStructures">0</span>
+                <span class="konsole-stat-label">Player Structures</span>
+            </div>
+            <div class="konsole-stat-item">
+                <span class="konsole-stat-value" id="totalNpcStructures">0</span>
+                <span class="konsole-stat-label">NPC Structures</span>
+            </div>
+            <div class="konsole-stat-item">
+                <span class="konsole-stat-value" id="totalNeutralStructures">0</span>
+                <span class="konsole-stat-label">Abandoned Structures</span>
+            </div>
+        </div>
+        
+        <!-- Player Structures Table -->
+        <div class="konsole-table-container">
+            <table class="konsole-table" id="playerStructuresTable">
+                <thead>
+                    <tr>
+                        <th>Entity ID</th>
+                        <th>Type</th>
+                        <th>Faction</th>
+                        <th>Name</th>
+                        <th>Playfield</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="playerStructuresTableBody">
+                    <!-- Results will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="noPlayerStructures" class="konsole-empty-state" style="display: none;">
+            <h3>🎯 No Player Structures Found</h3>
+            <p>All entities appear to be NPC-owned or abandoned. This is normal for a fresh server.</p>
+            <p><strong>Test Suggestion:</strong> Core some NPC POIs in-game, then refresh this test to see if they're detected as player-owned.</p>
+        </div>
+    </div>
+    
+    <!-- Technical Details -->
+    <div class="konsole-section" id="technicalSection" style="display: none;">
+        <div class="konsole-section-header">
+            <h3>🔧 Technical Details</h3>
+            <p>Faction classification breakdown for debugging.</p>
+        </div>
+        
+        <div class="konsole-details-grid" id="factionBreakdown">
+            <!-- Faction breakdown will be populated here -->
+        </div>
+    </div>
+    
+    <!-- Instructions Box -->
+    <div class="konsole-info-box">
+        <h4>📋 How to Use Selective POI Regeneration:</h4>
+        <ol>
+            <li><strong>Refresh Entity Data</strong> - Get the latest entity information from the server</li>
+            <li><strong>Load Active Playfields</strong> - Discover which playfields are currently loaded with entity counts</li>
+            <li><strong>Select Playfields</strong> - Choose which playfields to regenerate (shows NPC vs Player entity counts)</li>
+            <li><strong>Review the Plan</strong> - Check how many NPC entities will be regenerated and player entities preserved</li>
+            <li><strong>Execute Regeneration</strong> - Run the selective regeneration process</li>
+        </ol>
+        <p><strong>Safety Features:</strong> Only NPC POIs are regenerated. ALL player-owned structures (built bases and cored POIs) are automatically preserved.</p>
+        <p><strong>Live Testing:</strong> Core some NPC POIs in-game, refresh data, and verify they appear as player-owned structures that will be preserved.</p>
+    </div>
+</div>
+
+<style>
+/* Test-specific styles */
+.konsole-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+
+.konsole-stat-item {
+    text-align: center;
+    padding: 10px;
+    background: var(--input-bg);
+    border-radius: 3px;
+}
+
+.konsole-stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--accent-green);
+    margin-bottom: 5px;
+}
+
+.konsole-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.konsole-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.konsole-faction-item {
+    padding: 10px;
+    background: var(--input-bg);
+    border-radius: 3px;
+    border-left: 3px solid var(--accent-blue);
+}
+
+.konsole-faction-code {
+    font-weight: bold;
+    color: var(--accent-blue);
+}
+
+.konsole-faction-count {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+.konsole-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--panel-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.konsole-empty-state h3 {
+    color: var(--accent-blue);
+    margin-bottom: 10px;
+}
+
+.konsole-info-box {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.konsole-info-box h4 {
+    color: var(--accent-blue);
+    margin-bottom: 15px;
+}
+
+.konsole-info-box ol {
+    margin-left: 20px;
+    line-height: 1.6;
+}
+
+.konsole-info-box ol li {
+    margin-bottom: 8px;
+}
+
+.konsole-info-box p {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.konsole-status-bar {
+    padding: 10px 15px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.konsole-status-bar.loading {
+    border-color: var(--accent-blue);
+    background: linear-gradient(90deg, var(--input-bg) 0%, rgba(64, 164, 223, 0.1) 50%, var(--input-bg) 100%);
+    animation: loading-pulse 2s infinite;
+}
+
+@keyframes loading-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Progress Bar Styles */
+.status-content {
+    width: 100%;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0 6px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+    animation: progress-shine 2s infinite;
+}
+
+@keyframes progress-shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+#progressText {
+    font-weight: bold;
+    color: var(--accent-green);
+}
+
+#progressEta {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.progress-container {
+    display: none;
+}
+
+.entity-status.player-owned {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+.entity-status.neutral {
+    color: var(--text-muted);
+}
+
+.konsole-faction-category h4 {
+    color: var(--accent-blue);
+    margin: 15px 0 10px 0;
+    font-size: 16px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.konsole-playfield-selection {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 20px;
+}
+
+.konsole-playfield-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.konsole-playfield-item {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.konsole-playfield-item:hover {
+    border-color: var(--accent-blue);
+    background: rgba(64, 164, 223, 0.1);
+}
+
+.konsole-playfield-item.selected {
+    border-color: var(--accent-green);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.konsole-playfield-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.konsole-playfield-checkbox {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.konsole-playfield-name {
+    font-weight: bold;
+    color: var(--accent-blue);
+    font-size: 16px;
+}
+
+.konsole-playfield-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+}
+
+.konsole-playfield-stat {
+    display: flex;
+    justify-content: space-between;
+}
+
+.konsole-playfield-stat-label {
+    color: var(--text-muted);
+}
+
+.konsole-playfield-stat-value {
+    font-weight: bold;
+}
+
+.konsole-playfield-stat-value.npc {
+    color: var(--accent-blue);
+}
+
+.konsole-playfield-stat-value.player {
+    color: var(--accent-green);
+}
+</style>

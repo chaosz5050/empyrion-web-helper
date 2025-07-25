@@ -14,6 +14,7 @@ window.SettingsManager = {
         debugLog('Settings manager initialized - Konsole style');
         this.setupNavigation();
         this.setupSearch();
+        this.setupAdvancedFtpListeners();
         this.loadAllSettings();
     },
 
@@ -33,6 +34,17 @@ window.SettingsManager = {
             searchInput.addEventListener('input', (e) => {
                 this.filterSettings(e.target.value);
             });
+        }
+    },
+    
+    setupAdvancedFtpListeners() {
+        // Add event listeners for new simplified path fields
+        const itemsConfigPathInput = document.getElementById('itemsConfigPath');
+        const playfieldsPathInput = document.getElementById('playfieldsPath');
+        
+        if (itemsConfigPathInput && playfieldsPathInput) {
+            // Event listeners for new path fields can be added here if needed
+            // Currently no special handling required for the simplified paths
         }
     },
 
@@ -142,7 +154,8 @@ window.SettingsManager = {
 
             // Load FTP settings
             const ftpHost = await this.getAppSetting('ftp_host');
-            const ftpRemotePath = await this.getAppSetting('ftp_remote_log_path');
+            const itemsConfigPath = await this.getAppSetting('items_config_path');
+            const playfieldsPath = await this.getAppSetting('playfields_path');
             
             if (ftpHost) {
                 // Parse host:port format
@@ -150,7 +163,9 @@ window.SettingsManager = {
                 document.getElementById('ftpHost').value = host;
                 document.getElementById('ftpPort').value = port || '21';
             }
-            if (ftpRemotePath) document.getElementById('ftpRemotePath').value = ftpRemotePath;
+            if (itemsConfigPath) document.getElementById('itemsConfigPath').value = itemsConfigPath;
+            if (playfieldsPath) document.getElementById('playfieldsPath').value = playfieldsPath;
+            
             
         } catch (error) {
             debugLog('Error loading FTP status:', error);
@@ -329,11 +344,12 @@ window.SettingsManager = {
         const port = document.getElementById('ftpPort').value.trim() || '21';
         const username = document.getElementById('ftpUsername').value.trim();
         const password = document.getElementById('ftpPassword').value.trim();
-        const remotePath = document.getElementById('ftpRemotePath').value.trim();
+        const itemsConfigPath = document.getElementById('itemsConfigPath').value.trim();
+        const playfieldsPath = document.getElementById('playfieldsPath').value.trim();
 
-        // Check if host and path are provided (always required)
-        if (!host || !remotePath) {
-            showToast('Please provide FTP host and remote path', 'error');
+        // Check if host and paths are provided (always required)
+        if (!host || !itemsConfigPath || !playfieldsPath) {
+            showToast('Please provide FTP host, items config path, and playfields path', 'error');
             return;
         }
 
@@ -347,9 +363,10 @@ window.SettingsManager = {
         }
 
         try {
-            // Always save FTP settings (host and path)
+            // Always save FTP settings (host and paths)
             await this.setAppSetting('ftp_host', `${host}:${port}`);
-            await this.setAppSetting('ftp_remote_log_path', remotePath);
+            await this.setAppSetting('items_config_path', itemsConfigPath);
+            await this.setAppSetting('playfields_path', playfieldsPath);
 
             // Only update credentials if new ones are provided
             if (username && password) {
@@ -430,7 +447,7 @@ window.SettingsManager = {
                 port = parts[1] || '21';
             }
 
-            showToast('Testing FTP connection...', 'info');
+            showToast('🔍 Testing connection with auto-detection...', 'info');
             
             const testData = await apiCall('/api/test/ftp', {
                 method: 'POST',
@@ -442,14 +459,45 @@ window.SettingsManager = {
             });
 
             if (testData.success) {
-                showToast(testData.message || 'FTP connection test successful', 'success');
+                // Create detailed success message with connection type info
+                let successMessage = testData.message || 'Connection test successful';
+                let connectionDetails = [];
+                
+                if (testData.connection_type) {
+                    connectionDetails.push(`Protocol: ${testData.connection_type.toUpperCase()}`);
+                }
+                
+                if (testData.ssl_enabled) {
+                    connectionDetails.push('🔒 SSL/TLS encryption enabled');
+                }
+                
+                if (testData.supports_certificates) {
+                    connectionDetails.push('📜 Certificate handling supported');
+                }
+                
+                // Show main success message
+                showToast(successMessage, 'success');
+                
+                // Show detailed connection info if available
+                if (connectionDetails.length > 0) {
+                    setTimeout(() => {
+                        showToast(`📋 Connection details: ${connectionDetails.join(', ')}`, 'info');
+                    }, 2000);
+                }
                 
                 // Immediately update FTP status in header (don't wait for periodic refresh)
                 if (typeof updateFtpConnectionStatus === 'function') {
                     updateFtpConnectionStatus();
                 }
             } else {
-                showToast(testData.message || 'FTP connection test failed', 'error');
+                showToast(testData.message || 'Connection test failed', 'error');
+                
+                // Show additional details if available
+                if (testData.details) {
+                    setTimeout(() => {
+                        showToast(`Details: ${testData.details}`, 'warning');
+                    }, 2000);
+                }
             }
         } catch (error) {
             showToast('FTP connection test failed', 'error');
@@ -592,6 +640,64 @@ window.SettingsManager = {
         this.loadAllSettings();
     },
 
+    // Advanced FTP Settings Functions
+    
+    async validateFtpPaths() {
+        const itemsConfigPath = document.getElementById('itemsConfigPath').value.trim();
+        const playfieldsPath = document.getElementById('playfieldsPath').value.trim();
+        
+        if (!itemsConfigPath || !playfieldsPath) {
+            showToast('Please fill in both items config path and playfields path', 'error');
+            return;
+        }
+        
+        showToast('Validating FTP paths...', 'info');
+        
+        try {
+            // Get FTP credentials first
+            const credData = await apiCall('/api/credentials/get/ftp');
+            
+            if (!credData.success) {
+                showToast('Please configure FTP credentials first', 'error');
+                return;
+            }
+            
+            // Test paths via FTP
+            const validationData = await apiCall('/api/ftp/validate-paths', {
+                method: 'POST',
+                body: JSON.stringify({
+                    items_config_path: itemsConfigPath,
+                    playfields_path: playfieldsPath
+                })
+            });
+            
+            if (validationData.success) {
+                const results = validationData.results;
+                let message = 'Path validation results:\n';
+                let hasErrors = false;
+                
+                for (const [pathType, result] of Object.entries(results)) {
+                    const status = result.exists ? '✅' : '❌';
+                    message += `${status} ${pathType}: ${result.path}\n`;
+                    if (!result.exists) hasErrors = true;
+                }
+                
+                if (hasErrors) {
+                    showToast('Some paths do not exist - check configuration', 'warning');
+                    console.log(message);
+                } else {
+                    showToast('All paths validated successfully', 'success');
+                }
+            } else {
+                showToast(validationData.message || 'Path validation failed', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error validating paths:', error);
+            showToast('Error validating FTP paths', 'error');
+        }
+    },
+    
     // Helper methods
     async setAppSetting(key, value) {
         try {
@@ -612,6 +718,18 @@ window.SettingsManager = {
 function switchSettingsPanel(panelId) {
     if (window.SettingsManager) {
         window.SettingsManager.switchPanel(panelId);
+    }
+}
+
+// Auto-detect scenarios function has been removed
+
+// Global function for validate FTP paths button
+function validateFtpPaths() {
+    if (window.SettingsManager && window.SettingsManager.validateFtpPaths) {
+        window.SettingsManager.validateFtpPaths();
+    } else {
+        console.error('SettingsManager not ready or validateFtpPaths function not available');
+        showToast('Settings manager not ready. Please try again.', 'error');
     }
 }
 

@@ -1936,6 +1936,28 @@ button:disabled {
     border-color: var(--accent-green);
 }
 
+/* POI Management Info Box */
+.poi-management-info {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    max-width: 500px;
+    margin-top: 10px;
+}
+
+.poi-management-info code {
+    background-color: var(--bg-tertiary);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: var(--accent-green);
+}
+
 /* Mobile responsive for Items Config */
 @media (max-width: 768px) {
     .itemsconfig-status-panel {

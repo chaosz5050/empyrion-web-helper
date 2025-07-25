@@ -31,6 +31,10 @@ cryptography
 # Used for ip-api.com geolocation lookups
 requests
 
+# SFTP support for secure file transfers
+# Enables automatic FTP/SFTP detection for different hosting providers
+paramiko
+
 # ============================================================================
 # BUILT-IN PYTHON MODULES (No installation required)
 # ============================================================================

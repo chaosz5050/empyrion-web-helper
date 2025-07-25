@@ -1,12 +1,14 @@
 # FILE LOCATION: /app.py (root directory)
 #!/usr/bin/env python3
 """
-Empyrion Web Helper v0.5.1
+Empyrion Web Helper v0.5.2
 A web-based admin tool for Empyrion Galactic Survival servers.
 
 This Flask-based application provides a web interface for server administration, with
 background service architecture for independent operation and robust error handling.
 """
+
+from version import __version__
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
@@ -519,11 +521,9 @@ def test_rcon_connection():
 
 @app.route('/api/test/ftp', methods=['POST'])
 def test_ftp_connection():
-    """Test FTP connection with real connectivity check."""
+    """Test FTP/SFTP connection with automatic detection and enhanced compatibility."""
     try:
-        import ftplib
-        import socket
-        from urllib.parse import urlparse
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
         
         data = request.get_json(force=True)
         host_port = data.get('host', '').strip()
@@ -531,7 +531,7 @@ def test_ftp_connection():
         password = data.get('password', '').strip()
         
         if not host_port:
-            return jsonify({'success': False, 'message': 'FTP host is required'})
+            return jsonify({'success': False, 'message': 'Server host is required'})
             
         # Parse host and port
         if ':' in host_port:
@@ -539,78 +539,74 @@ def test_ftp_connection():
             try:
                 port = int(port_str)
             except ValueError:
-                return jsonify({'success': False, 'message': 'Invalid port in FTP host'})
+                return jsonify({'success': False, 'message': 'Invalid port in server host'})
         else:
             host = host_port
-            port = 21  # Default FTP port
+            # Try common ports for auto-detection
+            port = 22  # Default to SFTP port, will try FTP (21) as fallback
         
         if not username or not password:
-            return jsonify({'success': False, 'message': 'FTP username and password are required'})
+            return jsonify({'success': False, 'message': 'Username and password are required'})
         
-        logger.info(f"Testing FTP connection to {host}:{port}")
+        logger.info(f"🔍 Testing connection to {host}:{port} with auto-detection")
         
-        try:
-            # Test FTP connection
-            ftp = ftplib.FTP()
-            ftp.connect(host, port, timeout=10)
-            ftp.login(username, password)
+        # Use enhanced connection manager for auto-detection
+        manager = EnhancedConnectionManager()
+        result = manager.detect_and_connect(host, port, username, password)
+        
+        if result.success:
+            logger.info(f"✅ {result.connection_type.upper()} connection successful to {host}:{port}")
             
-            # Test if we can list directories
-            try:
-                files = ftp.nlst()
-                ftp.quit()
-                
-                logger.info(f"✅ FTP test successful to {host}:{port}")
-                
-                # Record successful test in database
-                player_db.set_ftp_test_success()
-                
-                return jsonify({
-                    'success': True,
-                    'message': f'✅ FTP connection successful to {host}:{port}',
-                    'details': f'Login successful, found {len(files)} items in root directory'
-                })
-            except Exception as e:
-                ftp.quit()
-                logger.warning(f"FTP connected but directory listing failed to {host}:{port}: {e}")
-                
-                # Record successful test in database (connection works even if directory listing is limited)
-                player_db.set_ftp_test_success()
-                
-                return jsonify({
-                    'success': True,
-                    'message': f'⚠️ FTP connected to {host}:{port} but directory access limited',
-                    'details': 'Login successful but cannot list directory contents'
-                })
-                
-        except ftplib.error_perm as e:
-            logger.warning(f"❌ FTP authentication failed to {host}:{port}: {e}")
+            # Record successful test in database
+            player_db.set_ftp_test_success()
+            
+            # Create detailed success message
+            connection_details = []
+            if result.details:
+                if 'files_found' in result.details:
+                    connection_details.append(f"Found {result.details['files_found']} items in root directory")
+                if result.details.get('supports_certificates'):
+                    connection_details.append("Certificate handling supported")
+                if result.details.get('ssl_enabled'):
+                    connection_details.append("SSL/TLS encryption enabled")
+            
+            details_text = '; '.join(connection_details) if connection_details else 'Connection established successfully'
+            
             return jsonify({
-                'success': False,
-                'message': f'❌ FTP authentication failed to {host}:{port}',
-                'details': 'Invalid username or password'
+                'success': True,
+                'message': f'✅ {result.connection_type.upper()} connection successful to {host}:{port}',
+                'details': details_text,
+                'connection_type': result.connection_type,
+                'supports_certificates': result.details.get('supports_certificates', False),
+                'ssl_enabled': result.details.get('ssl_enabled', False)
             })
-        except socket.timeout:
-            logger.warning(f"❌ FTP connection timeout to {host}:{port}")
+        else:
+            logger.warning(f"❌ All connection types failed to {host}:{port}: {result.message}")
+            
+            # Provide helpful error message based on common issues
+            error_message = result.message
+            helpful_details = "Try checking: 1) Server address and port, 2) Username and password, 3) Firewall settings"
+            
+            if "timeout" in result.message.lower():
+                helpful_details = "Connection timeout - check if server is reachable and port is correct"
+            elif "authentication" in result.message.lower():
+                helpful_details = "Authentication failed - verify username and password are correct"
+            elif "certificate" in result.message.lower():
+                helpful_details = "Certificate issue - this is automatically handled for SFTP connections"
+            
             return jsonify({
                 'success': False,
-                'message': f'❌ FTP connection timeout to {host}:{port}',
-                'details': 'Server did not respond within 10 seconds'
-            })
-        except socket.error as e:
-            logger.warning(f"❌ FTP connection failed to {host}:{port}: {e}")
-            return jsonify({
-                'success': False,
-                'message': f'❌ FTP connection failed to {host}:{port}',
-                'details': 'Cannot reach FTP server (check host/port)'
+                'message': f'❌ Connection failed to {host}:{port}',
+                'details': f'{error_message}. {helpful_details}',
+                'connection_type': None
             })
             
     except Exception as e:
-        logger.error(f"Error testing FTP connection: {e}", exc_info=True)
+        logger.error(f"Error testing connection: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'message': 'FTP test failed due to internal error',
-            'details': 'Check logs for more details'
+            'message': 'Connection test failed due to internal error',
+            'details': f'Error: {str(e)}. Check logs for more details'
         })
 
 @app.route('/api/ftp/status', methods=['GET'])
@@ -842,6 +838,752 @@ def clear_entities():
     except Exception as e:
         logger.error(f"Error clearing entities: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+# ===============================
+# Player Structure Detection (Test)
+# ===============================
+
+# DEFINITIVE NPC faction codes from Factions.ecf (IDs 1-99)
+NPC_FACTIONS = {
+    # Hardcoded Core Factions (IDs 1-8)
+    'Pub': 'Public',           # ID 1
+    'Zrx': 'Zirax',           # ID 2 
+    'Prd': 'Predator',        # ID 3
+    'Pry': 'Prey',            # ID 4
+    'Adm': 'Admin',           # ID 5
+    'Tal': 'Talon',           # ID 6 - Main Story Faction
+    'Pol': 'Polaris',         # ID 7 - Main Story Faction (Arkenian Republic)
+    'Aln': 'Alien',           # ID 8
+    
+    # Custom Static Factions (IDs 9-40)
+    'DSC': 'DESC',            # ID 9
+    'Lgc': 'TheLegacy',       # ID 10 - Main Story Faction
+    'Prg': 'Progenitor',      # ID 12 - Main Story Faction
+    'Voi': 'Void',            # ID 13 - Main Story Faction
+    'GLD': 'GLaD',            # ID 14 - Main Story Faction
+    'Civ': 'Civilian',        # ID 15
+    'War': 'Warlord',         # ID 27
+    'NTY': 'NTY',             # ID 31
+    'HIS': 'Hishkal',         # ID 32
+    'DRK': 'DarkFaction',     # ID 40
+    
+    # Custom Dynamic Factions (IDs 11, 16-30, 33-38)
+    'UCH': 'UCH',             # ID 11 - Main Story Faction
+    'Pir': 'Pirates',         # ID 16
+    'Kri': 'Kriel',           # ID 17
+    'Tra': 'Trader',          # ID 18 - Main Story Faction (Prenn Trading Federation)
+    'Col': 'Colonists',       # ID 19
+    'Tsc': 'Tesch',           # ID 20
+    'BoF': 'Farr',            # ID 28 - Brotherhood of Farr
+    'WST': 'Wastelanders',    # ID 29
+    'ARC': 'ARC',             # ID 30
+    'Ark': 'ArkenianRepublic', # ID 33
+    'Pre': 'PrennFederation', # ID 34
+    'HLS': 'Helios',          # ID 35
+    'RAV': 'Ravagers',        # ID 36
+    'KRN': 'Karana',          # ID 37
+    'TRS': 'Tresari',         # ID 38
+    
+    # Zirax Sub-Factions (IDs 21-26)
+    'Xen': 'Xenu',            # ID 21 - Zirax Empire Military
+    'Rad': 'Rados',           # ID 22 - Zirax Empire Support
+    'Eps': 'Epsilon',         # ID 23 - Zirax Empire Communication  
+    'Ghy': 'Ghyst',           # ID 24 - Zirax Empire Recon
+    'Ser': 'Serdu',           # ID 25 - Zirax Empire Religion
+    'Aby': 'Abyssal',         # ID 26 - Zirax Empire Science
+    
+    # Special Factions (IDs 39, 41)
+    'PDH': 'PlayerAssist',    # ID 39
+    'STR': 'STRY',            # ID 41 - Dynamic story faction
+    
+    # Star Salvage Scenario-Specific NPC Factions (Custom IDs)
+    'Gst': 'GhostShip',       # Custom faction
+    'Mys': 'Mystery',         # Custom faction  
+    'Slv': 'Salvage',         # Custom faction
+    'Isi': 'Interspace',      # ID 36 - Interspace Salvage Industries
+    'UEF': 'UEF',             # ID 37 - United Earth Fleet
+    'AJS': 'AJS',             # Custom faction (likely NPC based on ID pattern)
+    'SAS': 'SAS',             # Custom faction
+}
+
+NEUTRAL_FACTIONS = {'NoF'}  # No Faction - abandoned/neutral
+
+def classify_entity_faction(faction):
+    """Classify an entity's faction as NPC, Player, or Neutral"""
+    if faction in NPC_FACTIONS:
+        return 'NPC', NPC_FACTIONS[faction]
+    elif faction in NEUTRAL_FACTIONS:
+        return 'Neutral', 'Abandoned/No Faction'
+    elif faction.isdigit():
+        return 'Player', f'Player Faction {faction}'
+    elif faction == '':
+        return 'Player', 'Private/No Faction'
+    else:
+        # Based on Factions.ecf rule: "The id must be < 100 else a player faction will be created!"
+        # Unknown 3-letter codes are likely player factions (ID 100+)
+        return 'Player', f'Player Faction: {faction}'
+
+@app.route('/api/test/regenerate-2015', methods=['POST'])
+def test_regenerate_2015():
+    """Test regeneration of entity ID 2015 using remoteex regenerate command."""
+    logger.info("Test regeneration of entity 2015 requested")
+    
+    try:
+        # Check if background service is available and connected
+        if not background_service:
+            return jsonify({
+                'success': False,
+                'message': 'Background service not available'
+            })
+        
+        connection_handler = background_service.get_connection_handler()
+        if not connection_handler or not connection_handler.is_connection_alive():
+            return jsonify({
+                'success': False,
+                'message': 'Not connected to server'
+            })
+        
+        # First get playfield server info to find the PID for 'Mard Orntell'
+        servers_command = "servers"
+        logger.info(f"Getting playfield server info: {servers_command}")
+        
+        servers_result = connection_handler.send_command(servers_command)
+        if not servers_result:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to get playfield server information'
+            })
+        
+        # Parse servers output to find PID for 'Mard Orntell'
+        playfield_pid = None
+        for line in servers_result.split('\n'):
+            if "'Mard Orntell'" in line:
+                # Look for PID in previous lines or current context
+                lines = servers_result.split('\n')
+                for i, server_line in enumerate(lines):
+                    if "'Mard Orntell'" in server_line:
+                        # Look backwards for PID line
+                        for j in range(i-1, max(i-5, -1), -1):
+                            if 'PID:' in lines[j]:
+                                pid_part = lines[j].split('PID:')[1].strip()
+                                playfield_pid = pid_part.split()[0]  # Get first part before any spaces
+                                break
+                        break
+                break
+        
+        if not playfield_pid:
+            return jsonify({
+                'success': False,
+                'message': f'Could not find PID for playfield "Mard Orntell" in servers output: {servers_result}'
+            })
+        
+        # Send remoteex regenerate command using the found PID
+        regenerate_command = f"remoteex pf={playfield_pid} regenerate 2015"
+        logger.info(f"Executing RCON command: {regenerate_command}")
+        
+        result = connection_handler.send_command(regenerate_command)
+        
+        if result and isinstance(result, str):
+            logger.info(f"Test regenerate command result: {result}")
+            return jsonify({
+                'success': True,
+                'message': 'Entity 2015 regeneration command sent successfully',
+                'server_response': result.strip(),
+                'command': regenerate_command
+            })
+        else:
+            logger.warning(f"Unexpected result from test regenerate command: {result}")
+            return jsonify({
+                'success': False,
+                'message': 'No response from server or command failed',
+                'command': regenerate_command
+            })
+        
+    except Exception as e:
+        logger.error(f"Error in test regeneration: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'An internal error occurred during test regeneration'
+        })
+
+@app.route('/api/test/active-playfields', methods=['GET'])
+def get_active_playfields():
+    """Get active playfields with entity counts for selective regeneration"""
+    if not background_service:
+        return jsonify({'success': False, 'message': 'Background service not available'})
+    
+    try:
+        connection_handler = background_service.get_connection_handler()
+        if not connection_handler or not connection_handler.is_connection_alive():
+            return jsonify({'success': False, 'message': 'Not connected to server'})
+        
+        # Get active playfield servers
+        servers_result = connection_handler.send_command("servers")
+        if not servers_result:
+            return jsonify({'success': False, 'message': 'Failed to get server information'})
+        
+        # Parse servers output to extract playfields and PIDs
+        playfields = []
+        lines = servers_result.split('\n')
+        current_pid = None
+        
+        for line in lines:
+            line = line.strip()
+            if 'PID:' in line:
+                current_pid = line.split('PID:')[1].strip().split()[0]
+            elif line.startswith("*'") and line.endswith("'"):
+                # Extract playfield name
+                playfield_name = line[2:-1]  # Remove *' and '
+                if current_pid:
+                    playfields.append({
+                        'name': playfield_name,
+                        'pid': current_pid
+                    })
+        
+        # Get entity data and classify by playfield
+        entities_response = player_db.get_entities()
+        if not entities_response.get('success'):
+            return jsonify({'success': False, 'message': 'Failed to retrieve entities from database'})
+        
+        entities = entities_response.get('entities', [])
+        
+        # Calculate entity counts per playfield
+        playfield_stats = {}
+        for entity in entities:
+            playfield = entity.get('playfield', 'Unknown')
+            faction = entity.get('faction', '')
+            
+            if playfield not in playfield_stats:
+                playfield_stats[playfield] = {
+                    'npc_count': 0,
+                    'player_count': 0,
+                    'neutral_count': 0,
+                    'total_count': 0
+                }
+            
+            # Classify entity
+            category, _ = classify_entity_faction(faction)
+            playfield_stats[playfield]['total_count'] += 1
+            
+            if category == 'NPC':
+                playfield_stats[playfield]['npc_count'] += 1
+            elif category == 'Player':
+                playfield_stats[playfield]['player_count'] += 1
+            else:
+                playfield_stats[playfield]['neutral_count'] += 1
+        
+        # Debug logging
+        logger.info(f"Parsed playfields from servers: {[pf['name'] for pf in playfields]}")
+        logger.info(f"Playfields with entity stats: {list(playfield_stats.keys())}")
+        logger.info(f"Total entities processed: {len(entities)}")
+        
+        # Merge playfield info with statistics
+        result_playfields = []
+        for pf in playfields:
+            pf_name = pf['name']
+            
+            # Try exact match first
+            stats = playfield_stats.get(pf_name, None)
+            
+            # If no exact match, try with "(loaded)" suffix
+            if stats is None:
+                loaded_name = f"{pf_name} (loaded)"
+                stats = playfield_stats.get(loaded_name, {
+                    'npc_count': 0,
+                    'player_count': 0,
+                    'neutral_count': 0,
+                    'total_count': 0
+                })
+                if stats['total_count'] > 0:
+                    logger.info(f"Found entities for '{pf_name}' using loaded name '{loaded_name}'")
+            
+            logger.info(f"Playfield '{pf_name}' final stats: {stats}")
+            
+            result_playfields.append({
+                'name': pf_name,
+                'pid': pf['pid'],
+                'npc_count': stats['npc_count'],
+                'player_count': stats['player_count'],
+                'neutral_count': stats['neutral_count'],
+                'total_count': stats['total_count']
+            })
+        
+        logger.info(f"Found {len(result_playfields)} active playfields")
+        
+        return jsonify({
+            'success': True,
+            'playfields': result_playfields,
+            'total_active_playfields': len(result_playfields),
+            'raw_servers_output': servers_result
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting active playfields: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to get active playfields'
+        })
+
+@app.route('/api/test/bulk-regenerate-stream', methods=['GET'])
+def bulk_regenerate_stream():
+    """Stream bulk regeneration progress using Server-Sent Events"""
+    import json
+    import time
+    from flask import Response
+    
+    if not background_service:
+        return jsonify({'success': False, 'message': 'Background service not available'})
+    
+    # Get playfields from query parameter
+    playfields_param = request.args.get('playfields', '[]')
+    try:
+        selected_playfields = json.loads(playfields_param)
+    except:
+        return jsonify({'success': False, 'message': 'Invalid playfields parameter'})
+    
+    if not selected_playfields:
+        return jsonify({'success': False, 'message': 'No playfields selected'})
+    
+    def generate_progress():
+        try:
+            connection_handler = background_service.get_connection_handler()
+            if not connection_handler or not connection_handler.is_connection_alive():
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Not connected to server'})}\n\n"
+                return
+            
+            logger.info(f"Starting streaming bulk regeneration for playfields: {selected_playfields}")
+            
+            # Get active playfield PIDs - same logic as bulk_regenerate_npc_entities
+            servers_result = connection_handler.send_command("servers")
+            if not servers_result:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to get server information'})}\n\n"
+                return
+            
+            # Parse PIDs for selected playfields
+            playfield_pids = {}
+            lines = servers_result.split('\n')
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if line.startswith("*'") and line.endswith("'"):
+                    playfield_name = line[2:-1]
+                    if playfield_name in selected_playfields:
+                        for j in range(i-1, max(i-10, -1), -1):
+                            prev_line = lines[j].strip()
+                            if 'PID:' in prev_line:
+                                pid = prev_line.split('PID:')[1].strip().split()[0]
+                                playfield_pids[playfield_name] = pid
+                                break
+            
+            # Get entities - same logic as bulk_regenerate_npc_entities
+            entities_response = player_db.get_entities()
+            if not entities_response.get('success') or len(entities_response.get('entities', [])) == 0:
+                logger.info("Database is empty or failed, fetching live entity data from server...")
+                live_entities = connection_handler.get_entities()
+                if not live_entities:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to retrieve live entity data from server'})}\n\n"
+                    return
+                entities = live_entities
+            else:
+                entities = entities_response.get('entities', [])
+            
+            entities_to_regenerate = []
+            
+            for entity in entities:
+                entity_playfield = entity.get('playfield', '')
+                
+                # Check if entity is on a selected playfield
+                is_on_selected_playfield = False
+                for selected_pf in selected_playfields:
+                    if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
+                        is_on_selected_playfield = True
+                        break
+                
+                if not is_on_selected_playfield:
+                    continue
+                
+                # Classify entity faction
+                faction = entity.get('faction', '')
+                category, description = classify_entity_faction(faction)
+                
+                # Only regenerate NPC and Neutral entities
+                if category in ['NPC', 'Neutral']:
+                    # Find the PID for this entity's playfield
+                    entity_pid = None
+                    for selected_pf in selected_playfields:
+                        if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
+                            entity_pid = playfield_pids.get(selected_pf)
+                            break
+                    
+                    if entity_pid:
+                        entities_to_regenerate.append({
+                            'id': entity.get('id'),
+                            'name': entity.get('name'),
+                            'playfield': entity_playfield,
+                            'pid': entity_pid,
+                            'faction': faction,
+                            'faction_description': description
+                        })
+            
+            total_entities = len(entities_to_regenerate)
+            
+            # Send start event
+            yield f"data: {json.dumps({'type': 'start', 'total': total_entities})}\n\n"
+            
+            if total_entities == 0:
+                yield f"data: {json.dumps({'type': 'complete', 'regenerated_count': 0, 'failed_count': 0, 'total_processed': 0})}\n\n"
+                return
+            
+            # Process entities with streaming progress
+            successful_count = 0
+            failed_count = 0
+            start_time = time.time()
+            
+            for i, entity in enumerate(entities_to_regenerate):
+                try:
+                    regenerate_command = f"remoteex pf={entity['pid']} regenerate {entity['id']}"
+                    
+                    result = connection_handler.send_command(regenerate_command)
+                    
+                    current = i + 1
+                    success = bool(result and isinstance(result, str))
+                    
+                    if success:
+                        successful_count += 1
+                    else:
+                        failed_count += 1
+                    
+                    # Calculate ETA
+                    elapsed = time.time() - start_time
+                    avg_time_per_entity = elapsed / current
+                    remaining_entities = total_entities - current
+                    eta_seconds = remaining_entities * avg_time_per_entity
+                    
+                    # Send progress event
+                    progress_data = {
+                        'type': 'progress',
+                        'processed': current,
+                        'total': total_entities,
+                        'entity_id': entity['id'],
+                        'entity_name': entity['name'],
+                        'success': success,
+                        'successful': successful_count,
+                        'failed_count': failed_count,
+                        'eta_seconds': int(eta_seconds) if eta_seconds > 0 else 0
+                    }
+                    
+                    yield f"data: {json.dumps(progress_data)}\n\n"
+                    
+                    # Small delay between commands
+                    time.sleep(0.2)
+                    
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"Error regenerating entity {entity['id']}: {e}")
+                    
+                    # Send error event but continue processing
+                    error_data = {
+                        'type': 'progress',
+                        'processed': i + 1,
+                        'total': total_entities,
+                        'entity_id': entity['id'],
+                        'entity_name': entity['name'],
+                        'success': False,
+                        'successful': successful_count,
+                        'failed_count': failed_count,
+                        'error': str(e)
+                    }
+                    yield f"data: {json.dumps(error_data)}\n\n"
+            
+            # Send completion event
+            complete_data = {
+                'type': 'complete',
+                'regenerated_count': successful_count,
+                'failed_count': failed_count,
+                'total_processed': total_entities
+            }
+            
+            yield f"data: {json.dumps(complete_data)}\n\n"
+            
+            logger.info(f"Streaming regeneration complete: {successful_count} successful, {failed_count} failed")
+            
+        except Exception as e:
+            logger.error(f"Error in streaming regeneration: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return Response(generate_progress(), mimetype='text/event-stream',
+                   headers={'Cache-Control': 'no-cache', 'Connection': 'keep-alive'})
+
+@app.route('/api/test/bulk-regenerate', methods=['POST'])
+def bulk_regenerate_npc_entities():
+    """Execute bulk regeneration of NPC entities on selected playfields"""
+    if not background_service:
+        return jsonify({'success': False, 'message': 'Background service not available'})
+    
+    try:
+        data = request.get_json(force=True)
+        selected_playfields = data.get('playfields', [])
+        
+        if not selected_playfields:
+            return jsonify({'success': False, 'message': 'No playfields selected'})
+        
+        connection_handler = background_service.get_connection_handler()
+        if not connection_handler or not connection_handler.is_connection_alive():
+            return jsonify({'success': False, 'message': 'Not connected to server'})
+        
+        logger.info(f"Starting bulk regeneration for playfields: {selected_playfields}")
+        
+        # Get active playfield PIDs
+        servers_result = connection_handler.send_command("servers")
+        if not servers_result:
+            return jsonify({'success': False, 'message': 'Failed to get server information'})
+        
+        # Parse PIDs for selected playfields
+        playfield_pids = {}
+        lines = servers_result.split('\n')
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            # Look for playfield names first
+            if line.startswith("*'") and line.endswith("'"):
+                playfield_name = line[2:-1]  # Remove *' and '
+                if playfield_name in selected_playfields:
+                    # Look backwards to find the PID for this playfield
+                    for j in range(i-1, max(i-10, -1), -1):
+                        prev_line = lines[j].strip()
+                        if 'PID:' in prev_line:
+                            pid = prev_line.split('PID:')[1].strip().split()[0]
+                            playfield_pids[playfield_name] = pid
+                            logger.info(f"Mapped playfield '{playfield_name}' to PID {pid}")
+                            break
+        
+        logger.info(f"Final playfield PID mapping: {playfield_pids}")
+        
+        # Get entities and filter for NPC entities on selected playfields
+        entities_response = player_db.get_entities()
+        if not entities_response.get('success') or len(entities_response.get('entities', [])) == 0:
+            # Database is empty or failed, fetch live entity data
+            logger.info("Database is empty or failed, fetching live entity data from server...")
+            live_entities = connection_handler.get_entities()
+            if not live_entities:
+                return jsonify({'success': False, 'message': 'Failed to retrieve live entity data from server'})
+            entities = live_entities
+        else:
+            entities = entities_response.get('entities', [])
+        entities_to_regenerate = []
+        
+        for entity in entities:
+            entity_playfield = entity.get('playfield', '')
+            
+            # Check if entity is on a selected playfield (handle both formats)
+            is_on_selected_playfield = False
+            for selected_pf in selected_playfields:
+                if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
+                    is_on_selected_playfield = True
+                    break
+            
+            if not is_on_selected_playfield:
+                continue
+            
+            # Classify entity faction
+            faction = entity.get('faction', '')
+            category, description = classify_entity_faction(faction)
+            
+            # Only regenerate NPC and Neutral entities (preserve Player entities)
+            if category in ['NPC', 'Neutral']:
+                # Find the PID for this entity's playfield
+                entity_pid = None
+                for selected_pf in selected_playfields:
+                    if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
+                        entity_pid = playfield_pids.get(selected_pf)
+                        break
+                
+                if entity_pid:
+                    entities_to_regenerate.append({
+                        'id': entity.get('id'),
+                        'name': entity.get('name'),
+                        'playfield': entity_playfield,
+                        'pid': entity_pid,
+                        'faction': faction,
+                        'faction_description': description
+                    })
+        
+        logger.info(f"Found {len(entities_to_regenerate)} NPC+Neutral entities to regenerate")
+        
+        if len(entities_to_regenerate) == 0:
+            return jsonify({
+                'success': True,
+                'message': 'No NPC+Neutral entities found to regenerate',
+                'regenerated_count': 0,
+                'failed_count': 0,
+                'results': []
+            })
+        
+        # Execute regeneration commands
+        successful_regenerations = []
+        failed_regenerations = []
+        commands_sent = 0
+        replies_received = 0
+        
+        logger.info(f"=== BULK REGENERATION DEBUG START ===")
+        logger.info(f"Total entities to process: {len(entities_to_regenerate)}")
+        
+        for i, entity in enumerate(entities_to_regenerate):
+            try:
+                regenerate_command = f"remoteex pf={entity['pid']} regenerate {entity['id']}"
+                logger.info(f"RCON SEND ({i+1}/{len(entities_to_regenerate)}): {regenerate_command}")
+                commands_sent += 1
+                
+                result = connection_handler.send_command(regenerate_command)
+                
+                if result and isinstance(result, str):
+                    replies_received += 1
+                    logger.info(f"RCON REPLY ({i+1}): {result.strip()}")
+                    successful_regenerations.append({
+                        'entity_id': entity['id'],
+                        'entity_name': entity['name'],
+                        'playfield': entity['playfield'],
+                        'command': regenerate_command,
+                        'server_response': result.strip()
+                    })
+                else:
+                    logger.warning(f"RCON NO REPLY ({i+1}): Command sent but no response received for entity {entity['id']}")
+                    failed_regenerations.append({
+                        'entity_id': entity['id'],
+                        'entity_name': entity['name'],
+                        'playfield': entity['playfield'],
+                        'command': regenerate_command,
+                        'error': 'No response from server'
+                    })
+                
+                # Small delay between commands to avoid overwhelming the server
+                import time
+                time.sleep(0.2)  # 200ms delay
+                
+            except Exception as e:
+                failed_regenerations.append({
+                    'entity_id': entity['id'],
+                    'entity_name': entity['name'],
+                    'playfield': entity['playfield'],
+                    'command': regenerate_command,
+                    'error': str(e)
+                })
+                logger.error(f"Error regenerating entity {entity['id']}: {e}")
+        
+        # Debug summary
+        logger.info(f"=== BULK REGENERATION DEBUG SUMMARY ===")
+        logger.info(f"Commands sent: {commands_sent}")
+        logger.info(f"Replies received: {replies_received}")
+        logger.info(f"Success rate: {replies_received}/{commands_sent} ({100*replies_received/commands_sent:.1f}%)" if commands_sent > 0 else "Success rate: N/A")
+        logger.info(f"Successful regenerations: {len(successful_regenerations)}")
+        logger.info(f"Failed regenerations: {len(failed_regenerations)}")
+        logger.info(f"=== BULK REGENERATION DEBUG END ===")
+        
+        logger.info(f"Bulk regeneration complete: {len(successful_regenerations)} successful, {len(failed_regenerations)} failed")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully regenerated {len(successful_regenerations)} NPC+Neutral entities',
+            'regenerated_count': len(successful_regenerations),
+            'failed_count': len(failed_regenerations),
+            'total_processed': len(entities_to_regenerate),
+            'successful_regenerations': successful_regenerations,
+            'failed_regenerations': failed_regenerations
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in bulk regeneration: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'An internal error occurred during bulk regeneration'
+        })
+
+@app.route('/api/test/player-structures', methods=['GET'])
+def get_player_structures():
+    """Get all player-owned structures for testing selective POI regeneration"""
+    if not player_db:
+        return jsonify({'success': False, 'message': 'Database not initialized'})
+    
+    try:
+        # Get all entities from database
+        entities_response = player_db.get_entities()
+        if not entities_response.get('success'):
+            return jsonify({'success': False, 'message': 'Failed to retrieve entities from database'})
+        
+        entities = entities_response.get('entities', [])
+        
+        # Classify entities by faction
+        player_entities = []
+        npc_entities = []
+        neutral_entities = []
+        faction_breakdown = {}
+        
+        for entity in entities:
+            faction = entity.get('faction', '')
+            category, description = classify_entity_faction(faction)
+            
+            # Add faction to breakdown
+            if faction not in faction_breakdown:
+                faction_breakdown[faction] = {
+                    'count': 0,
+                    'category': category,
+                    'description': description
+                }
+            faction_breakdown[faction]['count'] += 1
+            
+            # Categorize entity
+            entity_data = {
+                'id': entity.get('id'),
+                'name': entity.get('name'),
+                'type': entity.get('type'),
+                'faction': faction,
+                'faction_description': description,
+                'playfield': entity.get('playfield'),
+                'time_info': entity.get('time_info'),
+                'last_seen': entity.get('last_seen')
+            }
+            
+            if category == 'Player':
+                player_entities.append(entity_data)
+            elif category == 'NPC':
+                npc_entities.append(entity_data)
+            else:  # Neutral
+                neutral_entities.append(entity_data)
+        
+        # Sort player entities by playfield and name
+        player_entities.sort(key=lambda x: (x['playfield'] or '', x['name'] or ''))
+        
+        logger.info(f"Player structure detection: {len(player_entities)} player, {len(npc_entities)} NPC, {len(neutral_entities)} neutral")
+        
+        # Fix faction breakdown data structure for frontend
+        frontend_faction_breakdown = {}
+        for faction, data in faction_breakdown.items():
+            frontend_faction_breakdown[faction] = {
+                'name': data['description'],
+                'count': data['count'],
+                'category': data['category']
+            }
+        
+        return jsonify({
+            'success': True,
+            'player_entities': player_entities,
+            'statistics': {
+                'total_entities': len(entities),
+                'player_entities': len(player_entities),
+                'npc_entities': len(npc_entities),
+                'neutral_entities': len(neutral_entities)
+            },
+            'faction_breakdown': frontend_faction_breakdown,
+            'analysis_time': datetime.now().isoformat(),
+            'message': f'Found {len(player_entities)} player-owned structures'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting player structures: {e}", exc_info=True)
+        return jsonify({
+            'success': False, 
+            'message': 'Failed to analyze player structures'
+        })
 
 @app.route('/messaging/custom', methods=['GET'])
 def get_custom_messages():
@@ -1103,13 +1845,19 @@ def api_credential_status():
     server_port = player_db.get_app_setting('server_port')
     ftp_host = player_db.get_app_setting('ftp_host')
     ftp_remote_log_path = player_db.get_app_setting('ftp_remote_log_path')
+    empyrion_root = player_db.get_app_setting('empyrion_root')
+    scenario_name = player_db.get_app_setting('scenario_name')
+    
     status = {
         'rcon': bool(rcon_creds and rcon_creds.get('password')),
         'ftp': bool(ftp_creds and ftp_creds.get('password') and ftp_creds.get('username')),
         'server_host': bool(server_host),
         'server_port': bool(server_port),
         'ftp_host': bool(ftp_host),
-        'ftp_remote_log_path': bool(ftp_remote_log_path)
+        'ftp_remote_log_path': bool(ftp_remote_log_path),
+        'empyrion_root': bool(empyrion_root),
+        'scenario_name': bool(scenario_name),
+        'advanced_ftp': bool(empyrion_root and scenario_name)  # Both new settings configured
     }
     return jsonify(status)
 
@@ -1197,7 +1945,7 @@ def api_set_credentials():
         except Exception:
             errors['server_port'] = 'Server port must be a number between 1 and 65535.'
 
-    # FTP HOST/REMOTE LOG PATH
+    # FTP HOST/REMOTE LOG PATH (Legacy support)
     ftp_host = data.get('ftp_host')
     ftp_remote_log_path = data.get('ftp_remote_log_path')
     if ftp_host is not None:
@@ -1213,46 +1961,373 @@ def api_set_credentials():
             player_db.set_app_setting('ftp_remote_log_path', ftp_remote_log_path.strip())
             updated.append('ftp_remote_log_path')
 
+    # NEW FTP ROOT PATH SETTINGS (For playfield wipe automation)
+    empyrion_root = data.get('empyrion_root')
+    scenario_name = data.get('scenario_name')
+    if empyrion_root is not None:
+        if not isinstance(empyrion_root, str) or not empyrion_root.strip():
+            errors['empyrion_root'] = 'Empyrion root path is required.'
+        else:
+            # Normalize path (remove trailing slash)
+            root_path = empyrion_root.strip().rstrip('/')
+            player_db.set_app_setting('empyrion_root', root_path)
+            updated.append('empyrion_root')
+            
+    if scenario_name is not None:
+        if not isinstance(scenario_name, str) or not scenario_name.strip():
+            errors['scenario_name'] = 'Scenario name is required.'
+        else:
+            player_db.set_app_setting('scenario_name', scenario_name.strip())
+            updated.append('scenario_name')
+
     if errors:
         return jsonify({'success': False, 'errors': errors}), 400
     return jsonify({'success': True, 'updated': updated})
 
 # ===============================
-# Items Config API Endpoints
+# FTP Path Calculation Utilities
 # ===============================
 
-@app.route('/itemsconfig/test', methods=['POST'])
-def test_itemsconfig_connection():
-    """Test FTP connection and check for ItemsConfig.ecf file."""
-    logger.info("Testing ItemsConfig FTP connection")
-    
+
+# Legacy path calculation functions removed - now using direct path configuration
+
+
+
+# ===============================
+# Advanced FTP API Endpoints
+# ===============================
+
+
+@app.route('/api/ftp/validate-paths', methods=['POST'])
+def validate_ftp_paths():
+    """Validate direct Empyrion paths via FTP/SFTP connection with auto-detection."""
     try:
-        import ftplib
         import socket
-        from urllib.parse import urlparse
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
         
-        # Get FTP credentials and configuration path
+        data = request.get_json(force=True)
+        items_config_path = data.get('items_config_path', '').strip()
+        playfields_path = data.get('playfields_path', '').strip()
+        
+        if not items_config_path or not playfields_path:
+            return jsonify({
+                'success': False, 
+                'message': 'Both items config path and playfields path are required'
+            })
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'Server credentials not configured'})
+            
         ftp_host = player_db.get_app_setting('ftp_host')
-        ftp_user = player_db.get_ftp_credentials().get('username')
-        ftp_password = player_db.get_ftp_credentials().get('password')
-        ftp_config_path = player_db.get_app_setting('ftp_remote_log_path')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'Server host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port for auto-detection
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port for auto-detection
+            
+        # Paths to test (direct user input)
+        paths = {
+            'items_config_path': items_config_path,
+            'playfields_path': playfields_path
+        }
         
-        if not all([ftp_host, ftp_user, ftp_password]):
+        logger.info(f"🔍 Validating direct paths with auto-detection")
+        
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for path validation")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            # Test each direct path
+            results = {}
+            
+            with client.connect():
+                for path_type, path_value in paths.items():
+                    if path_value:  # Skip empty paths
+                        try:
+                            # Test if path exists by listing its contents
+                            client.list_directory(path_value)
+                            results[path_type] = {
+                                'exists': True,
+                                'path': path_value
+                            }
+                        except Exception:
+                            results[path_type] = {
+                                'exists': False,
+                                'path': path_value
+                            }
+            
+            # Count successful validations
+            valid_count = sum(1 for r in results.values() if r['exists'])
+            total_count = len(results)
+            
+            logger.info(f"Path validation completed: {valid_count}/{total_count} paths exist")
+            
+            return jsonify({
+                'success': True,
+                'results': results,
+                'summary': f'{valid_count}/{total_count} paths exist',
+                'message': f'Validated {total_count} paths successfully',
+                'connection_type': connection_result.connection_type
+            })
+            
+        except Exception as connection_error:
+            logger.error(f"Connection error validating paths: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection failed: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error validating FTP paths: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error validating paths'
+        })
+
+@app.route('/api/ftp/list-playfields', methods=['POST'])
+def list_playfields_via_ftp():
+    """List available playfields by browsing playfields directory via FTP/SFTP with auto-detection."""
+    try:
+        import socket
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True) 
+        playfields_path = data.get('playfields_path', '').strip()
+        
+        if not playfields_path:
             return jsonify({
                 'success': False, 
-                'connected': False,
-                'file_exists': False,
-                'message': 'FTP credentials not configured. Please check Settings.'
+                'message': 'Playfields path is required'
             })
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'Server credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'Server host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port for auto-detection
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port for auto-detection
+            
+        logger.info(f"🔍 Listing playfields from {playfields_path} with auto-detection")
         
-        if not ftp_config_path:
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for playfield listing")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # List directories (playfields) in the playfields path
+                    playfield_names = client.list_directories_only(playfields_path)
+                    
+                    # Process and filter playfields
+                    playfields = []
+                    for playfield_name in playfield_names:
+                        # Skip system directories
+                        if playfield_name.startswith('.') or playfield_name in ['Templates', 'Cache']:
+                            continue
+                            
+                        # Get additional info about playfield
+                        playfield_info = {
+                            'name': playfield_name,
+                            'display_name': playfield_name.replace('_', ' '),  # Make more readable
+                            'path': f"{playfields_path}/{playfield_name}",
+                            'type': 'Unknown'  # We'll determine this later if needed
+                        }
+                        
+                        # Try to determine playfield type from name patterns
+                        name_lower = playfield_name.lower()
+                        if any(x in name_lower for x in ['space', 'orbit', 'asteroid']):
+                            playfield_info['type'] = 'Space'
+                        elif any(x in name_lower for x in ['planet', 'moon', 'desert', 'temperate', 'alien']):
+                            playfield_info['type'] = 'Planet/Moon'
+                        elif 'trading' in name_lower or 'station' in name_lower:
+                            playfield_info['type'] = 'Trading Station'
+                        
+                        playfields.append(playfield_info)
+                    
+                    # Sort playfields alphabetically
+                    playfields.sort(key=lambda x: x['name'])
+                    
+                    logger.info(f"Found {len(playfields)} playfields")
+                    
+                    return jsonify({
+                        'success': True,
+                        'playfields': playfields,
+                        'count': len(playfields),
+                        'message': f'Found {len(playfields)} playfields',
+                        'connection_type': connection_result.connection_type
+                    })
+                    
+                except Exception as browse_error:
+                    logger.error(f"Error browsing playfields directory: {browse_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Playfields directory not found or inaccessible: {playfields_path}'
+                    })
+            
+        except Exception as connection_error:
+            logger.error(f"Connection error listing playfields: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection failed: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error listing playfields: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error listing playfields'
+        })
+
+def generate_wipe_file_content(wipe_types: list) -> str:
+    """Generate content for wipeinfo.txt file based on requested wipe types.
+    
+    Args:
+        wipe_types: List of wipe types (poi, deposit, terrain, all)
+        
+    Returns:
+        String content for wipeinfo.txt file
+    """
+    # Normalize input
+    wipe_types = [w.lower().strip() for w in wipe_types if w]
+    
+    # Handle 'all' option
+    if 'all' in wipe_types:
+        wipe_types = ['poi', 'deposit', 'terrain']
+    
+    # Remove duplicates and sort for consistency
+    wipe_types = sorted(list(set(wipe_types)))
+    
+    # Generate content (one type per line)
+    content_lines = []
+    for wipe_type in wipe_types:
+        if wipe_type in ['poi', 'deposit', 'terrain']:
+            content_lines.append(wipe_type)
+    
+    # Add empty line at end (matches the format from temp/wipeinfo.txt)
+    return '\n'.join(content_lines) + '\n'
+
+@app.route('/api/wipe/generate-file', methods=['POST'])
+def generate_wipe_file():
+    """Generate wipeinfo.txt file content for specified playfields and wipe types."""
+    try:
+        data = request.get_json(force=True)
+        playfields = data.get('playfields', [])  # List of playfield names
+        wipe_types = data.get('wipe_types', [])   # List of wipe types (poi, deposit, terrain)
+        
+        if not playfields:
+            return jsonify({'success': False, 'message': 'No playfields specified'})
+            
+        if not wipe_types:
+            return jsonify({'success': False, 'message': 'No wipe types specified'})
+            
+        # Generate wipe file content
+        wipe_content = generate_wipe_file_content(wipe_types)
+        
+        logger.info(f"Generated wipe file for {len(playfields)} playfields with types: {wipe_types}")
+        
+        return jsonify({
+            'success': True,
+            'content': wipe_content,
+            'playfields': playfields,
+            'wipe_types': wipe_types,
+            'message': f'Generated wipe file for {len(playfields)} playfields'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating wipe file: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error generating wipe file'
+        })
+
+@app.route('/api/wipe/deploy-files', methods=['POST'])
+def deploy_wipe_files():
+    """Deploy wipeinfo.txt files to specified playfields via FTP/SFTP with auto-detection."""
+    try:
+        import socket
+        import io
+        
+        data = request.get_json(force=True)
+        playfields_path = data.get('playfields_path', '').strip()
+        playfields = data.get('playfields', [])  # List of playfield names
+        wipe_types = data.get('wipe_types', [])   # List of wipe types
+        
+        if not playfields_path:
             return jsonify({
                 'success': False, 
-                'connected': False,
-                'file_exists': False,
-                'message': 'FTP remote log path not set. Please configure it in FTP Settings.'
+                'message': 'Playfields path is required'
             })
-        
+            
+        if not playfields:
+            return jsonify({'success': False, 'message': 'No playfields specified'})
+            
+        if not wipe_types:
+            return jsonify({'success': False, 'message': 'No wipe types specified'})
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
         # Parse host and port
         if ':' in ftp_host:
             host, port_str = ftp_host.split(':', 1)
@@ -1263,84 +2338,220 @@ def test_itemsconfig_connection():
         else:
             host = ftp_host
             port = 21
+            
+        # Use direct playfields path (already validated above)
+            
+        # Generate wipe file content
+        wipe_content = generate_wipe_file_content(wipe_types)
         
-        logger.info(f"Testing FTP connection to {host}:{port} for ItemsConfig.ecf")
+        logger.info(f"Deploying wipe files to {len(playfields)} playfields with content: {wipe_content.strip()}")
         
         try:
-            # Test FTP connection
-            ftp = ftplib.FTP()
-            ftp.connect(host, port, timeout=10)
-            ftp.login(ftp_user, ftp_password)
+            # Auto-detect connection type and connect
+            from connection_manager import EnhancedConnectionManager, UniversalFileClient
             
-            # Navigate to the configured path
-            config_path = ftp_config_path
-            ftp.cwd(config_path)
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
             
-            # Check if ItemsConfig.ecf exists
-            files = ftp.nlst()
-            file_exists = 'ItemsConfig.ecf' in files
-            file_info = None
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
             
-            if file_exists:
-                # Get file info
-                try:
-                    file_size = ftp.size('ItemsConfig.ecf')
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for wipe file deployment")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            # Deploy to each playfield
+            deployed_playfields = []
+            failed_playfields = []
+            
+            with client.connect():
+                for playfield_name in playfields:
+                    try:
+                        # Upload wipeinfo.txt file to playfield directory
+                        playfield_path = f"{playfields_path}/{playfield_name}/wipeinfo.txt"
+                        wipe_file_bytes = io.BytesIO(wipe_content.encode('utf-8'))
+                        
+                        client.upload_file(wipe_file_bytes, playfield_path)
+                        
+                        deployed_playfields.append(playfield_name)
+                        logger.info(f"Successfully deployed wipeinfo.txt to {playfield_name}")
+                        
+                    except Exception as e:
+                        failed_playfields.append({'name': playfield_name, 'error': str(e)})
+                        logger.error(f"Failed to deploy to {playfield_name}: {e}")
+                        continue
+            
+            # Prepare response
+            success_count = len(deployed_playfields)
+            total_count = len(playfields)
+            
+            if success_count == total_count:
+                return jsonify({
+                    'success': True,
+                    'deployed': deployed_playfields,
+                    'failed': failed_playfields,
+                    'summary': f'Successfully deployed to all {success_count} playfields',
+                    'message': f'✅ Wipe files deployed to {success_count} playfields. Server restart required to activate.'
+                })
+            elif success_count > 0:
+                return jsonify({
+                    'success': True,  # Partial success
+                    'deployed': deployed_playfields,
+                    'failed': failed_playfields,
+                    'summary': f'Deployed to {success_count}/{total_count} playfields',
+                    'message': f'⚠️ Deployed to {success_count}/{total_count} playfields. Check failed deployments.'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'deployed': deployed_playfields,
+                    'failed': failed_playfields,
+                    'summary': 'Failed to deploy to any playfields',
+                    'message': '❌ All deployments failed. Check FTP permissions and paths.'
+                })
+                
+        except Exception as deploy_error:
+            logger.error(f"Connection error deploying wipe files: {deploy_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Deployment failed: {str(deploy_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error deploying wipe files: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error deploying wipe files'
+        })
+
+# ===============================
+# Items Config API Endpoints
+# ===============================
+
+@app.route('/itemsconfig/test', methods=['POST'])
+def test_itemsconfig_connection():
+    """Test FTP/SFTP connection and check for ItemsConfig.ecf file with auto-detection."""
+    logger.info("🔍 Testing ItemsConfig connection with auto-detection")
+    
+    try:
+        import socket
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        from urllib.parse import urlparse
+        
+        # Get FTP credentials and configuration path
+        ftp_host = player_db.get_app_setting('ftp_host')
+        credentials = player_db.get_ftp_credentials()
+        ftp_user = credentials.get('username') if credentials else None
+        ftp_password = credentials.get('password') if credentials else None
+        
+        # Get direct items config path from settings
+        items_config_path = player_db.get_app_setting('items_config_path')
+        
+        if not all([ftp_host, ftp_user, ftp_password]):
+            return jsonify({
+                'success': False, 
+                'connected': False,
+                'file_exists': False,
+                'message': 'Server credentials not configured. Please check Settings.'
+            })
+        
+        if not items_config_path:
+            return jsonify({
+                'success': False, 
+                'connected': False,
+                'file_exists': False,
+                'message': 'Items config path not set. Please configure ItemsConfig path in Settings.'
+            })
+        
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port for auto-detection
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port for auto-detection
+        
+        logger.info(f"🔍 Testing connection to {host}:{port} for ItemsConfig.ecf")
+        
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, ftp_user, ftp_password)
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'connected': False,
+                    'file_exists': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for ItemsConfig test")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                ftp_user, ftp_password
+            )
+            
+            with client.connect():
+                # Check if ItemsConfig.ecf exists
+                itemsconfig_path = f"{items_config_path}/ItemsConfig.ecf"
+                
+                file_info_result = client.get_file_info(itemsconfig_path)
+                file_exists = file_info_result.get('exists', False)
+                file_info = None
+                
+                if file_exists:
+                    # Format file information
+                    file_size = file_info_result.get('size', 0)
                     file_size_mb = round(file_size / 1024 / 1024, 1) if file_size else 0
                     
-                    # Get modification time
-                    try:
-                        mdtm_response = ftp.sendcmd('MDTM ItemsConfig.ecf')
-                        # Parse MDTM response (format: 213 YYYYMMDDHHMMSS)
-                        if mdtm_response.startswith('213 '):
-                            time_str = mdtm_response[4:]
+                    # Get modification time if available
+                    file_modified = 'Unknown'
+                    if 'modified' in file_info_result:
+                        try:
                             from datetime import datetime
-                            mod_time = datetime.strptime(time_str, '%Y%m%d%H%M%S')
+                            mod_time = datetime.fromtimestamp(file_info_result['modified'])
                             file_modified = mod_time.strftime('%Y-%m-%d %H:%M:%S')
-                        else:
+                        except:
                             file_modified = 'Unknown'
-                    except:
-                        file_modified = 'Unknown'
                     
                     file_info = {
                         'size': f'{file_size_mb} MB',
                         'modified': file_modified
                     }
-                    
-                except Exception as e:
-                    logger.warning(f"Could not get file details for ItemsConfig.ecf: {e}")
-                    file_info = {
-                        'size': 'Unknown',
-                        'modified': 'Unknown'
-                    }
+                
+                logger.info(f"✅ Connection test successful - ItemsConfig.ecf {'found' if file_exists else 'not found'}")
+                
+                return jsonify({
+                    'success': True,
+                    'connected': True,
+                    'file_exists': file_exists,
+                    'file_info': file_info,
+                    'connection_type': connection_result.connection_type,
+                    'message': f'{connection_result.connection_type.upper()} connection successful. ItemsConfig.ecf {'found' if file_exists else 'not found'} in {items_config_path}'
+                })
             
-            ftp.quit()
-            
-            logger.info(f"✅ FTP test successful - ItemsConfig.ecf {'found' if file_exists else 'not found'}")
-            
-            return jsonify({
-                'success': True,
-                'connected': True,
-                'file_exists': file_exists,
-                'file_info': file_info,
-                'message': f'FTP connection successful. ItemsConfig.ecf {'found' if file_exists else 'not found'} in {config_path}'
-            })
-            
-        except ftplib.error_perm as e:
-            logger.warning(f"❌ FTP permission error: {e}")
+        except Exception as connection_error:
+            logger.warning(f"❌ Connection error: {connection_error}")
             return jsonify({
                 'success': False,
                 'connected': False,
                 'file_exists': False,
-                'message': f'FTP permission denied: {str(e)}'
-            })
-            
-        except (socket.timeout, socket.gaierror, ConnectionRefusedError) as e:
-            logger.warning(f"❌ FTP connection failed: {e}")
-            return jsonify({
-                'success': False,
-                'connected': False,
-                'file_exists': False,
-                'message': f'Cannot connect to FTP server: {str(e)}'
+                'message': f'Connection failed: {str(connection_error)}'
             })
         
     except Exception as e:
@@ -1354,16 +2565,14 @@ def test_itemsconfig_connection():
 
 @app.route('/itemsconfig/download', methods=['POST'])
 def download_itemsconfig():
-    """Download and parse ItemsConfig.ecf file via FTP."""
-    logger.info("Downloading ItemsConfig.ecf file via FTP")
+    """Download and parse ItemsConfig.ecf file via FTP/FTPS/SFTP with automatic detection."""
+    logger.info("Downloading ItemsConfig.ecf file via auto-detected connection")
     
     try:
-        import ftplib
-        import socket
         import os
         import tempfile
         from ecf_parser import ECFParser
-        from urllib.parse import urlparse
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
         
         # Get FTP credentials and configuration path
         ftp_host = player_db.get_app_setting('ftp_host')
@@ -1374,13 +2583,13 @@ def download_itemsconfig():
         if not all([ftp_host, ftp_user, ftp_password]):
             return jsonify({
                 'success': False,
-                'message': 'FTP credentials not configured. Please check Settings.'
+                'message': 'Server credentials not configured. Please check Settings.'
             })
         
         if not ftp_config_path:
             return jsonify({
                 'success': False,
-                'message': 'FTP remote log path not set. Please configure it in FTP Settings.'
+                'message': 'Remote server path not set. Please configure it in Settings.'
             })
         
         # Parse host and port
@@ -1396,44 +2605,64 @@ def download_itemsconfig():
         
         logger.info(f"Downloading ItemsConfig.ecf from {host}:{port}")
         
+        # Auto-detect connection type and establish connection
+        connection_manager = EnhancedConnectionManager()
+        connection_result = connection_manager.detect_and_connect(host, port, ftp_user, ftp_password)
+        
+        if not connection_result.success:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to connect to server: {connection_result.message}'
+            })
+        
+        logger.info(f"Connected using {connection_result.connection_type.upper()}")
+        
         # Create temporary file for download
         temp_file = None
         try:
-            # Connect to FTP
-            ftp = ftplib.FTP()
-            ftp.connect(host, port, timeout=30)
-            ftp.login(ftp_user, ftp_password)
+            # Create UniversalFileClient
+            client = UniversalFileClient(
+                connection_result.connection_type, 
+                host, 
+                port, 
+                ftp_user, 
+                ftp_password
+            )
             
-            # Navigate to the configured path
-            config_path = ftp_config_path
-            ftp.cwd(config_path)
-            
-            # Check if file exists
-            files = ftp.nlst()
-            if 'ItemsConfig.ecf' not in files:
-                ftp.quit()
-                return jsonify({
-                    'success': False,
-                    'message': f'ItemsConfig.ecf not found in {config_path}'
-                })
-            
-            # Create temporary file
-            temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.ecf', delete=False)
-            temp_file_path = temp_file.name
-            
-            # Download the file
-            logger.info(f"Downloading ItemsConfig.ecf to {temp_file_path}")
-            ftp.retrbinary('RETR ItemsConfig.ecf', temp_file.write)
-            temp_file.close()
-            
-            # Get file info for response
-            try:
-                file_size = ftp.size('ItemsConfig.ecf')
-                file_size_mb = round(file_size / 1024 / 1024, 1) if file_size else 0
-            except:
-                file_size_mb = round(os.path.getsize(temp_file_path) / 1024 / 1024, 1)
-            
-            ftp.quit()
+            with client.connect():
+                # Check if file exists in the configured path
+                remote_file_path = f"{ftp_config_path}/ItemsConfig.ecf" if ftp_config_path != '.' else 'ItemsConfig.ecf'
+                
+                # List directory to check if file exists
+                try:
+                    files = client.list_directory(ftp_config_path)
+                    if 'ItemsConfig.ecf' not in files:
+                        return jsonify({
+                            'success': False,
+                            'message': f'ItemsConfig.ecf not found in {ftp_config_path}'
+                        })
+                except Exception as list_error:
+                    logger.warning(f"Could not list directory {ftp_config_path}: {list_error}")
+                    # Continue anyway, maybe file exists but listing failed
+                
+                # Create temporary file
+                temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.ecf', delete=False)
+                temp_file_path = temp_file.name
+                
+                # Download the file
+                logger.info(f"Downloading ItemsConfig.ecf to {temp_file_path}")
+                client.download_file(remote_file_path, temp_file)
+                temp_file.close()
+                
+                # Get file info for response
+                try:
+                    file_info = client.get_file_info(remote_file_path)
+                    if file_info.get('exists') and file_info.get('size'):
+                        file_size_mb = round(file_info['size'] / 1024 / 1024, 1)
+                    else:
+                        file_size_mb = round(os.path.getsize(temp_file_path) / 1024 / 1024, 1)
+                except:
+                    file_size_mb = round(os.path.getsize(temp_file_path) / 1024 / 1024, 1)
             
             logger.info(f"Successfully downloaded ItemsConfig.ecf ({file_size_mb} MB)")
             
@@ -1484,18 +2713,11 @@ def download_itemsconfig():
                 'message': f'Successfully downloaded and parsed {len(formatted_items)} items ({parse_result["template_count"]} templates, {parse_result["item_count"]} items)'
             })
             
-        except ftplib.error_perm as e:
-            logger.error(f"FTP permission error downloading ItemsConfig: {e}")
+        except Exception as download_error:
+            logger.error(f"Error during file download or parsing: {download_error}")
             return jsonify({
                 'success': False,
-                'message': f'FTP permission denied: {str(e)}'
-            })
-            
-        except (socket.timeout, socket.gaierror, ConnectionRefusedError) as e:
-            logger.error(f"FTP connection error downloading ItemsConfig: {e}")
-            return jsonify({
-                'success': False,
-                'message': f'Cannot connect to FTP server: {str(e)}'
+                'message': f'Download or parsing error: {str(download_error)}'
             })
             
         finally:

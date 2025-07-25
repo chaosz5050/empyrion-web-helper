@@ -5,6 +5,27 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.2] - 2025-07-25
+
+### Fixed - POI Regeneration System
+- **🔧 Bulk Regeneration Data Bug** - Fixed critical issue where system processed only 286 entities instead of expected 475
+  - Root cause: Empty database with no entities table caused system to have zero entity data
+  - Added automatic fallback to fetch live entity data from server when database is empty
+  - System now processes ALL entities including previously missing entity 2015
+  - Prevents partial regeneration runs due to incomplete cached data
+
+- **⏱️ Server Command Timing** - Improved RCON command reliability
+  - Increased delay between regeneration commands from 100ms to 200ms
+  - Prevents server from dropping commands during bulk operations
+  - Reduces failed regenerations due to server overload
+  - Better stability for large entity counts (475+ entities)
+
+### Technical Improvements
+- Enhanced entity data availability checking with comprehensive fallback logic
+- Improved error handling for database initialization and entity retrieval
+- Better logging for diagnosing entity data sources (cached vs live)
+- Optimized bulk regeneration timing for server stability
+
 ## [v0.5.1] - 2025-07-23
 
 ### Added

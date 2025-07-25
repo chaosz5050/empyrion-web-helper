@@ -416,14 +416,11 @@ class MessagingManager:
     def start_message_scheduler(self):
         """
         Start the scheduled message timer for sending scheduled messages.
-        """
-        if self.message_timer:
-            self.message_timer.cancel()
         
-        self.message_timer = Timer(30.0, self._check_scheduled_messages)
-        self.message_timer.daemon = True
-        self.message_timer.start()
-        logger.info("Message scheduler started")
+        NOTE: This scheduler is disabled to prevent duplicate messages.
+        BackgroundService handles all scheduled message sending.
+        """
+        logger.info("Message scheduler disabled - BackgroundService handles scheduling")
     
     def stop_message_scheduler(self):
         """
@@ -437,40 +434,12 @@ class MessagingManager:
     def _check_scheduled_messages(self):
         """
         Check and send scheduled messages if their schedule interval has elapsed.
+        
+        NOTE: This method is disabled in MessagingManager to prevent duplicate messages.
+        BackgroundService handles all scheduled message checking and sending.
         """
-        try:
-            current_time = datetime.now()
-            
-            for i, msg_data in enumerate(self.scheduled_messages):
-                if not isinstance(msg_data, dict):
-                    continue
-                
-                if not msg_data.get('enabled', False):
-                    continue
-                
-                message_text = msg_data.get('text', '').strip()
-                if not message_text:
-                    continue
-                
-                schedule = msg_data.get('schedule', 'Every 5 minutes')
-                
-                if self._should_send_message(i, schedule, current_time):
-                    success = self.send_global_message(message_text, message_type='scheduled')
-                    if success:
-                        self.last_message_check[i] = current_time
-                        logger.info(f"Scheduled message {i+1} sent: {message_text}")
-                    else:
-                        logger.error(f"Failed to send scheduled message {i+1}: {message_text}")
-            
-            # Schedule next check
-            self.start_message_scheduler()
-            
-        except Exception as e:
-            logger.error(f"Error checking scheduled messages: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            # Restart scheduler anyway
-            self.start_message_scheduler()
+        logger.debug("MessagingManager._check_scheduled_messages() called but disabled - BackgroundService handles this")
+        return
     
     def _should_send_message(self, msg_index: int, schedule: str, current_time: datetime) -> bool:
         """
