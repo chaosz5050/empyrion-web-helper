@@ -217,6 +217,7 @@ class MessagingManager:
         
         try:
             # Use the connection handler's send_command method
+            logger.info(f"🔥 MESSAGING DEBUG: About to send command: say '{message}' (type: {message_type})")
             result = self.connection_handler.send_command(f"say '{message}'")
             
             success = result and not result.startswith('Error:')

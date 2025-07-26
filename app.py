@@ -1,7 +1,7 @@
 # FILE LOCATION: /app.py (root directory)
 #!/usr/bin/env python3
 """
-Empyrion Web Helper v0.5.2
+Empyrion Web Helper v0.5.4
 A web-based admin tool for Empyrion Galactic Survival servers.
 
 This Flask-based application provides a web interface for server administration, with
@@ -2594,7 +2594,7 @@ def test_itemsconfig_connection():
                     'file_exists': file_exists,
                     'file_info': file_info,
                     'connection_type': connection_result.connection_type,
-                    'message': f'{connection_result.connection_type.upper()} connection successful. ItemsConfig.ecf {'found' if file_exists else 'not found'} in {items_config_path}'
+                    'message': f'{connection_result.connection_type.upper()} connection successful. ItemsConfig.ecf {"found" if file_exists else "not found"} in {items_config_path}'
                 })
             
         except Exception as connection_error:
@@ -2852,6 +2852,117 @@ def regenerate_poi():
 
 # POI Management endpoint removed - wipe command only destroys POIs without regenerating them
 # For POI regeneration, use 'regenerate <entityid>' in-game console or manual playfield file deletion
+
+@app.route('/api/poi-timer/status', methods=['GET'])
+def get_poi_timer_status():
+    """Get current POI timer settings and next run time"""
+    try:
+        enabled = player_db.get_poi_timer_enabled()
+        interval = player_db.get_poi_timer_interval()
+        last_run_str = player_db.get_poi_last_run()
+        
+        # Calculate next run time
+        next_run = None
+        if enabled and last_run_str:
+            try:
+                from datetime import datetime, timedelta
+                last_run = datetime.fromisoformat(last_run_str)
+                
+                interval_seconds = {
+                    '12h': 12 * 3600,
+                    '24h': 24 * 3600,
+                    '1w': 7 * 24 * 3600,
+                    '2w': 14 * 24 * 3600,
+                    '1m': 30 * 24 * 3600
+                }.get(interval, 24 * 3600)
+                
+                next_run_dt = last_run + timedelta(seconds=interval_seconds)
+                next_run = next_run_dt.isoformat()
+                
+            except Exception as e:
+                logger.error(f"Error calculating next POI run time: {e}")
+        
+        return jsonify({
+            'success': True,
+            'enabled': enabled,
+            'interval': interval,
+            'last_run': last_run_str,
+            'next_run': next_run
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting POI timer status: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to get POI timer status'
+        })
+
+@app.route('/api/poi-timer/configure', methods=['POST'])
+def configure_poi_timer():
+    """Configure POI timer settings"""
+    try:
+        data = request.get_json(force=True)
+        enabled = data.get('enabled', False)
+        interval = data.get('interval', '24h')
+        
+        # Validate interval
+        valid_intervals = ['12h', '24h', '1w', '2w', '1m']
+        if interval not in valid_intervals:
+            return jsonify({
+                'success': False,
+                'message': f'Invalid interval. Must be one of: {", ".join(valid_intervals)}'
+            })
+        
+        # Save settings
+        success_enabled = player_db.set_poi_timer_enabled(enabled)
+        success_interval = player_db.set_poi_timer_interval(interval)
+        
+        if success_enabled and success_interval:
+            logger.info(f"POI timer configured: enabled={enabled}, interval={interval}")
+            return jsonify({
+                'success': True,
+                'message': f'POI timer {"enabled" if enabled else "disabled"} with interval {interval}',
+                'enabled': enabled,
+                'interval': interval
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save POI timer settings'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error configuring POI timer: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to configure POI timer'
+        })
+
+@app.route('/api/poi-timer/reset', methods=['POST'])
+def reset_poi_timer():
+    """Reset POI timer last run time (force next check to trigger if enabled)"""
+    try:
+        # Clear the last run time, which will make the timer think it's due on next check
+        success = player_db.set_app_setting('poi_last_run', '')
+        
+        if success:
+            logger.info("POI timer last run time reset")
+            return jsonify({
+                'success': True,
+                'message': 'POI timer reset - next regeneration will trigger on next timer check'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to reset POI timer'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error resetting POI timer: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to reset POI timer'
+        })
 
 
 if __name__ == '__main__':

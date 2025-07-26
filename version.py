@@ -4,13 +4,13 @@ Version information for Empyrion Web Helper.
 This module provides version constants for the application.
 """
 
-__version__ = "0.5.3"
-__version_info__ = (0, 5, 3)
+__version__ = "0.5.4"
+__version_info__ = (0, 5, 4)
 
 # Version history markers for development tracking
 MAJOR = 0  # Incompatible API changes
 MINOR = 5  # Backward-compatible functionality additions  
-PATCH = 3  # Backward-compatible bug fixes
+PATCH = 4  # Backward-compatible bug fixes
 
 def get_version():
     """Return the current version string."""

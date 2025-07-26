@@ -221,6 +221,17 @@ class BackgroundService:
                     if self.is_connected and self.messaging_manager and self.is_running:
                         self._check_scheduled_messages()
                     
+                    # Check POI timer every 30 minutes (1800 seconds)
+                    if self.is_connected and self.is_running:
+                        # Only check POI timer every 60 iterations (30 seconds * 60 = 30 minutes)
+                        if not hasattr(self, '_poi_timer_counter'):
+                            self._poi_timer_counter = 0
+                        self._poi_timer_counter += 1
+                        
+                        if self._poi_timer_counter >= 60:  # 30 minutes
+                            self._check_poi_timer()
+                            self._poi_timer_counter = 0
+                    
                     # Check every 30 seconds (scheduled message interval)
                     self.stop_event.wait(30)
                     
@@ -233,6 +244,290 @@ class BackgroundService:
             logger.error(f"Fatal error in scheduler loop: {e}", exc_info=True)
         
         logger.info("📅 Message scheduler loop stopped")
+    
+    def _check_poi_timer(self):
+        """Check if POI regeneration is due and execute if needed"""
+        try:
+            # Check if POI timer is enabled
+            if not self.player_db.get_poi_timer_enabled():
+                logger.debug("POI timer is disabled, skipping check")
+                return
+            
+            # Get timer settings
+            interval = self.player_db.get_poi_timer_interval()
+            last_run_str = self.player_db.get_poi_last_run()
+            
+            logger.debug(f"POI timer check: interval={interval}, last_run={last_run_str}")
+            
+            # Calculate if regeneration is due
+            if self._is_poi_regeneration_due(interval, last_run_str):
+                logger.info(f"⚡ POI regeneration is due (interval: {interval}), starting automatic regeneration")
+                self._execute_automatic_poi_regeneration()
+            else:
+                logger.debug("POI regeneration not yet due")
+                
+        except Exception as e:
+            logger.error(f"Error checking POI timer: {e}", exc_info=True)
+    
+    def _is_poi_regeneration_due(self, interval: str, last_run_str: str) -> bool:
+        """Check if POI regeneration is due based on interval and last run time"""
+        if not last_run_str:
+            logger.info("No last run time found, POI regeneration is due")
+            return True
+        
+        try:
+            from datetime import datetime, timedelta
+            last_run = datetime.fromisoformat(last_run_str)
+            now = datetime.now()
+            
+            # Calculate interval in seconds
+            interval_seconds = {
+                '12h': 12 * 3600,
+                '24h': 24 * 3600, 
+                '1w': 7 * 24 * 3600,
+                '2w': 14 * 24 * 3600,
+                '1m': 30 * 24 * 3600
+            }.get(interval, 24 * 3600)  # Default to 24h
+            
+            next_run = last_run + timedelta(seconds=interval_seconds)
+            is_due = now >= next_run
+            
+            logger.debug(f"POI timer check: last_run={last_run}, next_run={next_run}, now={now}, is_due={is_due}")
+            return is_due
+            
+        except Exception as e:
+            logger.error(f"Error parsing POI timer dates: {e}")
+            return True  # If we can't parse, assume it's due
+    
+    def _execute_automatic_poi_regeneration(self):
+        """Execute automatic POI regeneration on all active playfields"""
+        try:
+            logger.info("🚀 Starting automatic POI regeneration")
+            
+            # Send server message to notify players about potential lag
+            self._send_poi_regeneration_notification()
+            
+            # First, refresh entity data (equivalent to clicking "Refresh Entity Data")
+            logger.info("📡 Refreshing entity data from server...")
+            entities = self.connection_handler.get_entities()
+            if entities:
+                count = self.player_db.update_entities(entities)
+                logger.info(f"📡 Refreshed {count} entities from server")
+            else:
+                logger.warning("Failed to refresh entity data, continuing with cached data")
+            
+            # Get all active playfields (equivalent to clicking "Load Active Playfields") 
+            logger.info("🌍 Loading active playfields...")
+            active_playfields = self._get_active_playfields_for_regeneration()
+            
+            if not active_playfields:
+                logger.warning("No active playfields found, skipping POI regeneration")
+                return
+                
+            logger.info(f"🌍 Found {len(active_playfields)} active playfields")
+            
+            # Execute regeneration on all playfields (equivalent to selecting all and clicking regenerate)
+            playfield_names = [pf['name'] for pf in active_playfields]
+            logger.info(f"⚡ Starting regeneration on playfields: {playfield_names}")
+            
+            success_count, total_count = self._regenerate_npc_entities_on_playfields(playfield_names)
+            
+            # Update last run time
+            self.player_db.set_poi_last_run()
+            
+            # Send completion message to players
+            self._send_poi_regeneration_completion(success_count, total_count)
+            
+            logger.info(f"✅ Automatic POI regeneration completed: {success_count}/{total_count} entities regenerated")
+            
+        except Exception as e:
+            logger.error(f"Error executing automatic POI regeneration: {e}", exc_info=True)
+    
+    def _get_active_playfields_for_regeneration(self) -> List[Dict]:
+        """Get active playfields with entity counts (similar to app.py get_active_playfields)"""
+        try:
+            servers_result = self.connection_handler.send_command("servers")
+            if not servers_result:
+                logger.error("Failed to get server information")
+                return []
+            
+            # Parse servers output to extract playfields (same logic as app.py)
+            playfields = []
+            lines = servers_result.split('\n')
+            current_pid = None
+            
+            for line in lines:
+                line = line.strip()
+                if 'PID:' in line:
+                    current_pid = line.split('PID:')[1].strip().split()[0]
+                elif line.startswith("*'") and line.endswith("'"):
+                    playfield_name = line[2:-1]  # Remove *' and '
+                    if current_pid:
+                        playfields.append({
+                            'name': playfield_name,
+                            'pid': current_pid
+                        })
+            
+            return playfields
+            
+        except Exception as e:
+            logger.error(f"Error getting active playfields: {e}")
+            return []
+    
+    def _regenerate_npc_entities_on_playfields(self, playfield_names: List[str]) -> tuple[int, int]:
+        """Regenerate NPC entities on specified playfields (similar to app.py bulk regeneration logic)"""
+        try:
+            # Get playfield PIDs (same logic as app.py)
+            servers_result = self.connection_handler.send_command("servers")
+            if not servers_result:
+                logger.error("Failed to get server information for regeneration")
+                return 0, 0
+            
+            playfield_pids = {}
+            lines = servers_result.split('\n')
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if line.startswith("*'") and line.endswith("'"):
+                    playfield_name = line[2:-1]
+                    if playfield_name in playfield_names:
+                        # Look backwards to find the PID
+                        for j in range(i-1, max(i-10, -1), -1):
+                            prev_line = lines[j].strip()
+                            if 'PID:' in prev_line:
+                                pid = prev_line.split('PID:')[1].strip().split()[0]
+                                playfield_pids[playfield_name] = pid
+                                break
+            
+            logger.info(f"Playfield PID mapping: {playfield_pids}")
+            
+            # Get entities and filter for NPC entities on selected playfields
+            entities_response = self.player_db.get_entities()
+            entities = entities_response.get('entities', []) if entities_response.get('success') else []
+            
+            if not entities:
+                logger.info("No cached entities found, fetching live data...")
+                live_entities = self.connection_handler.get_entities()
+                if live_entities:
+                    entities = live_entities
+                else:
+                    logger.error("Failed to get entity data for regeneration")
+                    return 0, 0
+            
+            # Filter entities for regeneration (same logic as app.py)
+            entities_to_regenerate = []
+            for entity in entities:
+                playfield = entity.get('playfield', '')
+                faction = entity.get('faction', '')
+                
+                # Only regenerate on selected playfields
+                if playfield not in playfield_names:
+                    continue
+                
+                # Skip player entities (preserve player structures)
+                if self._is_player_faction(faction):
+                    continue
+                
+                entities_to_regenerate.append(entity)
+            
+            logger.info(f"Found {len(entities_to_regenerate)} NPC/Neutral entities to regenerate")
+            
+            # Execute regeneration commands
+            success_count = 0
+            total_count = len(entities_to_regenerate)
+            
+            for entity in entities_to_regenerate:
+                try:
+                    entity_id = entity.get('id')
+                    playfield = entity.get('playfield', '')
+                    pid = playfield_pids.get(playfield)
+                    
+                    if not pid or not entity_id:
+                        continue
+                    
+                    # Use same regeneration command as manual process
+                    command = f"remoteex pf={pid} regenerate {entity_id}"
+                    result = self.connection_handler.send_command(command)
+                    
+                    if result and "regenerated" in result.lower():
+                        success_count += 1
+                        logger.debug(f"Regenerated entity {entity_id} on {playfield}")
+                    else:
+                        logger.debug(f"Failed to regenerate entity {entity_id}: {result}")
+                    
+                    # Small delay to avoid overwhelming the server
+                    time.sleep(0.1)
+                    
+                except Exception as e:
+                    logger.error(f"Error regenerating entity {entity.get('id')}: {e}")
+            
+            return success_count, total_count
+            
+        except Exception as e:
+            logger.error(f"Error in regenerate NPC entities: {e}")
+            return 0, 0
+    
+    def _is_player_faction(self, faction: str) -> bool:
+        """Check if faction represents a player-owned entity"""
+        if not faction:
+            return False
+        
+        # Same logic as app.py - preserve player entities
+        faction_lower = faction.lower()
+        
+        # Known player faction patterns
+        player_patterns = ['player', 'private', 'admin']
+        for pattern in player_patterns:
+            if pattern in faction_lower:
+                return True
+        
+        # Check for player-like faction codes (usually numbers or player names)
+        if faction.isdigit() or len(faction) > 10:
+            return True
+            
+        return False
+    
+    def _send_poi_regeneration_notification(self):
+        """Send server message to notify players about POI regeneration"""
+        try:
+            if self.connection_handler and self.connection_handler.is_connection_alive():
+                # Send a friendly message to all players about the upcoming regeneration
+                message = "🔄 Server maintenance in progress: POI regeneration may cause brief lag. Thank you for your patience!"
+                command = f'say "{message}"'
+                
+                result = self.connection_handler.send_command(command)
+                if result:
+                    logger.info(f"Sent POI regeneration notification to players: {message}")
+                else:
+                    logger.warning("Failed to send POI regeneration notification to players")
+            else:
+                logger.warning("Cannot send POI regeneration notification - not connected to server")
+                
+        except Exception as e:
+            logger.error(f"Error sending POI regeneration notification: {e}")
+    
+    def _send_poi_regeneration_completion(self, success_count: int, total_count: int):
+        """Send server message to notify players that POI regeneration is complete"""
+        try:
+            if self.connection_handler and self.connection_handler.is_connection_alive():
+                # Send a completion message to all players
+                if success_count > 0:
+                    message = f"✅ POI regeneration complete! {success_count} structures regenerated. Server performance restored."
+                else:
+                    message = "✅ POI regeneration complete! Server performance restored."
+                
+                command = f'say "{message}"'
+                
+                result = self.connection_handler.send_command(command)
+                if result:
+                    logger.info(f"Sent POI regeneration completion notification: {message}")
+                else:
+                    logger.warning("Failed to send POI regeneration completion notification")
+            else:
+                logger.warning("Cannot send POI regeneration completion notification - not connected to server")
+                
+        except Exception as e:
+            logger.error(f"Error sending POI regeneration completion notification: {e}")
     
     def _attempt_connection(self):
         """
@@ -419,20 +714,23 @@ class BackgroundService:
                     if previous_status == 'Offline' and current_status == 'Online':
                         logger.info(f"👋 Player joined: {player_name}")
                         if self.is_running:  # Only send if service is running
-                            self.messaging_manager.send_welcome_message(player_name)
+                            result = self.messaging_manager.send_welcome_message(player_name)
+                            if not result.get('success', False):
+                                logger.error(f"❌ Failed to send welcome message for {player_name}: {result.get('message', 'Unknown error')}")
                     
                     # Player left
                     elif previous_status == 'Online' and current_status == 'Offline':
                         logger.info(f"👋 Player left: {player_name}")
                         if self.is_running:  # Only send if service is running
-                            self.messaging_manager.send_goodbye_message(player_name)
+                            result = self.messaging_manager.send_goodbye_message(player_name)
+                            if not result.get('success', False):
+                                logger.error(f"❌ Failed to send goodbye message for {player_name}: {result.get('message', 'Unknown error')}")
                 
                 else:
-                    # New player joining for first time
+                    # New player detected (not in previous_players) - but don't send welcome yet
+                    # They'll get welcome message on next cycle when detected as Offline -> Online
                     if current_status == 'Online':
-                        logger.info(f"👋 New player joined: {player_name}")
-                        if self.is_running:  # Only send if service is running
-                            self.messaging_manager.send_welcome_message(player_name)
+                        logger.info(f"👋 New player detected: {player_name} (welcome message will be sent on next status change detection)")
             
             # Update previous players for next cycle
             self.previous_players = current_players_dict.copy()
@@ -472,15 +770,15 @@ class BackgroundService:
                 
                 if self._should_send_scheduled_message(i, schedule, current_time):
                     if self.is_running:  # Double-check before sending
-                        success = self.messaging_manager.send_global_message(
+                        result = self.messaging_manager.send_global_message(
                             message_text, message_type='scheduled'
                         )
-                        if success:
+                        if result.get('success', False):
                             # Update last sent time in messaging manager
                             self.messaging_manager.last_message_check[i] = current_time
                             logger.info(f"📢 Scheduled message {i+1} sent: {message_text}")
                         else:
-                            logger.error(f"❌ Failed to send scheduled message {i+1}")
+                            logger.error(f"❌ Failed to send scheduled message {i+1}: {result.get('message', 'Unknown error')}")
             
         except Exception as e:
             logger.error(f"❌ Error checking scheduled messages: {e}", exc_info=True)

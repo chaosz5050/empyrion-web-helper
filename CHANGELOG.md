@@ -5,6 +5,26 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2025-07-26
+
+### Fixed
+- **Critical Message Duplication Bug** - Fixed scheduled and welcome/goodbye messages being logged as "sent" even when they failed
+  - **Root Cause**: Background service incorrectly evaluated return values from `send_global_message()`
+  - **Issue**: Method returns `{'success': False, 'message': 'error'}` but code checked `if success:` instead of `if success['success']`
+  - **Impact**: Non-empty dictionaries always evaluate to `True`, causing failed messages to be marked as sent
+  - **Solution**: Changed to `result.get('success', False)` for proper boolean evaluation
+  - **Files Modified**: 
+    - `background_service.py` lines 769-777 (scheduled messages)
+    - `background_service.py` lines 717-727 (welcome/goodbye messages)
+- **Enhanced Error Reporting** - Failed messages now properly log error details instead of false success messages
+- **Improved Message Debugging** - Added comprehensive debug logging to trace message sending pipeline
+
+### Technical Details
+- The "duplication" was actually false positive logging - messages appeared to send twice but were failing silently
+- Fix ensures only genuinely successful messages are recorded as sent
+- Enhanced error handling provides better visibility into messaging failures
+- Debug logging helps identify future messaging issues
+
 ## [0.5.3] - 2025-01-25
 
 ### Added
