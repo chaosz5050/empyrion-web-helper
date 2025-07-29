@@ -43,11 +43,20 @@ function showCredentialConfigModal(settings) {
         const rcon_password = form.rcon_password.value.trim();
         const ftp_user = form.ftp_user.value.trim();
         const ftp_password = form.ftp_password.value.trim();
+        const ftp_host = form.ftp_host.value.trim();
+        const ftp_remote_log_path = form.ftp_remote_log_path.value.trim();
+        const ftp_mod_path = form.ftp_mod_path.value.trim();
+        const server_host = form.server_host.value.trim();
+        const server_port = form.server_port.value.trim();
         const update_interval = form.update_interval.value.trim();
         let errors = [];
         if (rcon_password.length < 4) errors.push('RCON password must be at least 4 characters.');
         if (ftp_user.length < 3) errors.push('FTP username must be at least 3 characters.');
         if (ftp_password.length < 4) errors.push('FTP password must be at least 4 characters.');
+        if (!ftp_host) errors.push('FTP host is required.');
+        if (!ftp_remote_log_path) errors.push('FTP remote log path is required.');
+        if (!server_host) errors.push('Server host is required.');
+        if (!server_port || isNaN(server_port)) errors.push('Server port must be a valid number.');
         if (isNaN(update_interval) || parseInt(update_interval) < 10) errors.push('Update interval must be at least 10 seconds.');
         if (errors.length) {
             errorsDiv.innerHTML = errors.join('<br>');
@@ -61,7 +70,12 @@ function showCredentialConfigModal(settings) {
             body: JSON.stringify({
                 rcon_password,
                 ftp_user,
-                ftp_password
+                ftp_password,
+                ftp_host,
+                ftp_remote_log_path,
+                ftp_mod_path,
+                server_host,
+                server_port
             })
         }).then(r => {
             if (!r.ok) return r.json().then(j => {throw j;});

@@ -330,7 +330,9 @@ class BackgroundService:
             playfield_names = [pf['name'] for pf in active_playfields]
             logger.info(f"⚡ Starting regeneration on playfields: {playfield_names}")
             
-            success_count, total_count = self._regenerate_npc_entities_on_playfields(playfield_names)
+            # REMOVED: regeneration replaced with wipe system
+            success_count, total_count = 0, 0
+            logger.info("POI regeneration disabled - use wipe system instead")
             
             # Update last run time
             self.player_db.set_poi_last_run()
@@ -374,98 +376,6 @@ class BackgroundService:
             logger.error(f"Error getting active playfields: {e}")
             return []
     
-    def _regenerate_npc_entities_on_playfields(self, playfield_names: List[str]) -> tuple[int, int]:
-        """Regenerate NPC entities on specified playfields (similar to app.py bulk regeneration logic)"""
-        try:
-            # Get playfield PIDs (same logic as app.py)
-            servers_result = self.connection_handler.send_command("servers")
-            if not servers_result:
-                logger.error("Failed to get server information for regeneration")
-                return 0, 0
-            
-            playfield_pids = {}
-            lines = servers_result.split('\n')
-            
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if line.startswith("*'") and line.endswith("'"):
-                    playfield_name = line[2:-1]
-                    if playfield_name in playfield_names:
-                        # Look backwards to find the PID
-                        for j in range(i-1, max(i-10, -1), -1):
-                            prev_line = lines[j].strip()
-                            if 'PID:' in prev_line:
-                                pid = prev_line.split('PID:')[1].strip().split()[0]
-                                playfield_pids[playfield_name] = pid
-                                break
-            
-            logger.info(f"Playfield PID mapping: {playfield_pids}")
-            
-            # Get entities and filter for NPC entities on selected playfields
-            entities_response = self.player_db.get_entities()
-            entities = entities_response.get('entities', []) if entities_response.get('success') else []
-            
-            if not entities:
-                logger.info("No cached entities found, fetching live data...")
-                live_entities = self.connection_handler.get_entities()
-                if live_entities:
-                    entities = live_entities
-                else:
-                    logger.error("Failed to get entity data for regeneration")
-                    return 0, 0
-            
-            # Filter entities for regeneration (same logic as app.py)
-            entities_to_regenerate = []
-            for entity in entities:
-                playfield = entity.get('playfield', '')
-                faction = entity.get('faction', '')
-                
-                # Only regenerate on selected playfields
-                if playfield not in playfield_names:
-                    continue
-                
-                # Skip player entities (preserve player structures)
-                if self._is_player_faction(faction):
-                    continue
-                
-                entities_to_regenerate.append(entity)
-            
-            logger.info(f"Found {len(entities_to_regenerate)} NPC/Neutral entities to regenerate")
-            
-            # Execute regeneration commands
-            success_count = 0
-            total_count = len(entities_to_regenerate)
-            
-            for entity in entities_to_regenerate:
-                try:
-                    entity_id = entity.get('id')
-                    playfield = entity.get('playfield', '')
-                    pid = playfield_pids.get(playfield)
-                    
-                    if not pid or not entity_id:
-                        continue
-                    
-                    # Use same regeneration command as manual process
-                    command = f"remoteex pf={pid} regenerate {entity_id}"
-                    result = self.connection_handler.send_command(command)
-                    
-                    if result and "regenerated" in result.lower():
-                        success_count += 1
-                        logger.debug(f"Regenerated entity {entity_id} on {playfield}")
-                    else:
-                        logger.debug(f"Failed to regenerate entity {entity_id}: {result}")
-                    
-                    # Small delay to avoid overwhelming the server
-                    time.sleep(0.1)
-                    
-                except Exception as e:
-                    logger.error(f"Error regenerating entity {entity.get('id')}: {e}")
-            
-            return success_count, total_count
-            
-        except Exception as e:
-            logger.error(f"Error in regenerate NPC entities: {e}")
-            return 0, 0
     
     def _is_player_faction(self, faction: str) -> bool:
         """Check if faction represents a player-owned entity"""
@@ -688,20 +598,16 @@ class BackgroundService:
     
     def _detect_status_changes(self, current_players: List[Dict]):
         """
-        Detect player status changes.
-
-        Compares current and previous player lists to identify joins and leaves.
-
-        Args:
-            current_players (list of dict): The current list of player records.
+        DISABLED: Welcome/goodbye messages now handled by PlayerStatusMod.
+        This method still updates player tracking but doesn't send messages.
         """
-        if not self.messaging_manager or not self.is_running:
+        if not self.is_running:
             return
         
         try:
             current_players_dict = {p['steam_id']: p for p in current_players}
             
-            # Check for players joining (offline -> online)
+            # Still track player changes for database purposes, but don't send messages
             for player in current_players:
                 steam_id = player['steam_id']
                 player_name = player['name']
@@ -710,27 +616,14 @@ class BackgroundService:
                 if steam_id in self.previous_players:
                     previous_status = self.previous_players[steam_id]['status']
                     
-                    # Player joined
+                    # Log status changes but don't send messages
                     if previous_status == 'Offline' and current_status == 'Online':
-                        logger.info(f"👋 Player joined: {player_name}")
-                        if self.is_running:  # Only send if service is running
-                            result = self.messaging_manager.send_welcome_message(player_name)
-                            if not result.get('success', False):
-                                logger.error(f"❌ Failed to send welcome message for {player_name}: {result.get('message', 'Unknown error')}")
-                    
-                    # Player left
+                        logger.info(f"👋 Player joined: {player_name} (message handled by PlayerStatusMod)")
                     elif previous_status == 'Online' and current_status == 'Offline':
-                        logger.info(f"👋 Player left: {player_name}")
-                        if self.is_running:  # Only send if service is running
-                            result = self.messaging_manager.send_goodbye_message(player_name)
-                            if not result.get('success', False):
-                                logger.error(f"❌ Failed to send goodbye message for {player_name}: {result.get('message', 'Unknown error')}")
-                
+                        logger.info(f"👋 Player left: {player_name} (message handled by PlayerStatusMod)")
                 else:
-                    # New player detected (not in previous_players) - but don't send welcome yet
-                    # They'll get welcome message on next cycle when detected as Offline -> Online
                     if current_status == 'Online':
-                        logger.info(f"👋 New player detected: {player_name} (welcome message will be sent on next status change detection)")
+                        logger.info(f"👋 New player detected: {player_name} (message handled by PlayerStatusMod)")
             
             # Update previous players for next cycle
             self.previous_players = current_players_dict.copy()
@@ -740,48 +633,11 @@ class BackgroundService:
     
     def _check_scheduled_messages(self):
         """
-        Check scheduled messages.
-
-        Loads scheduled messages and sends them at appropriate intervals.
+        DISABLED: Scheduled messages now handled by PlayerStatusMod.
+        This method is kept for compatibility but does nothing.
         """
-        if not self.messaging_manager or not self.is_running:
-            return
-            
-        try:
-            # Load current scheduled messages
-            scheduled_messages = self.messaging_manager.load_scheduled_messages()
-            current_time = datetime.now()
-            
-            for i, msg_data in enumerate(scheduled_messages):
-                if not self.is_running:  # Check if we should stop
-                    break
-                    
-                if not isinstance(msg_data, dict):
-                    continue
-                
-                if not msg_data.get('enabled', False):
-                    continue
-                
-                message_text = msg_data.get('text', '').strip()
-                if not message_text:
-                    continue
-                
-                schedule = msg_data.get('schedule', 'Every 5 minutes')
-                
-                if self._should_send_scheduled_message(i, schedule, current_time):
-                    if self.is_running:  # Double-check before sending
-                        result = self.messaging_manager.send_global_message(
-                            message_text, message_type='scheduled'
-                        )
-                        if result.get('success', False):
-                            # Update last sent time in messaging manager
-                            self.messaging_manager.last_message_check[i] = current_time
-                            logger.info(f"📢 Scheduled message {i+1} sent: {message_text}")
-                        else:
-                            logger.error(f"❌ Failed to send scheduled message {i+1}: {result.get('message', 'Unknown error')}")
-            
-        except Exception as e:
-            logger.error(f"❌ Error checking scheduled messages: {e}", exc_info=True)
+        logger.debug("Scheduled message checking disabled - handled by PlayerStatusMod")
+        return
     
     def _should_send_scheduled_message(self, msg_index: int, schedule: str, current_time: datetime) -> bool:
         """

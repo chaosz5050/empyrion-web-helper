@@ -1151,6 +1151,37 @@ class PlayerDatabase:
             logger.error(f"Error retrieving app setting {key}: {e}")
         return default
 
+    # POI Timer Settings Methods
+    def get_poi_timer_enabled(self) -> bool:
+        """Get POI timer enabled status"""
+        return self.get_app_setting('poi_timer_enabled', 'false').lower() == 'true'
+    
+    def set_poi_timer_enabled(self, enabled: bool) -> bool:
+        """Set POI timer enabled status"""
+        return self.set_app_setting('poi_timer_enabled', 'true' if enabled else 'false')
+    
+    def get_poi_timer_interval(self) -> str:
+        """Get POI timer interval (12h, 24h, 1w, 2w, 1m)"""
+        return self.get_app_setting('poi_timer_interval', '24h')
+    
+    def set_poi_timer_interval(self, interval: str) -> bool:
+        """Set POI timer interval"""
+        valid_intervals = ['12h', '24h', '1w', '2w', '1m']
+        if interval not in valid_intervals:
+            logger.error(f"Invalid POI timer interval: {interval}. Must be one of: {valid_intervals}")
+            return False
+        return self.set_app_setting('poi_timer_interval', interval)
+    
+    def get_poi_last_run(self) -> Optional[str]:
+        """Get last POI regeneration timestamp (ISO format)"""
+        return self.get_app_setting('poi_last_run', None)
+    
+    def set_poi_last_run(self, timestamp: str = None) -> bool:
+        """Set last POI regeneration timestamp (ISO format). If None, uses current time."""
+        if timestamp is None:
+            timestamp = datetime.now().isoformat()
+        return self.set_app_setting('poi_last_run', timestamp)
+
     def set_ftp_test_success(self) -> bool:
         """
         Record that FTP connection test was successful.

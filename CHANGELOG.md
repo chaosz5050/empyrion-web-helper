@@ -5,25 +5,46 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.4] - 2025-07-26
+## [0.5.4] - 2025-07-28
+
+### Added
+- **FTP-Based Mod Configuration Sync** - Revolutionary bidirectional messaging synchronization
+  - Real-time configuration upload to server mod via FTP after every save operation
+  - Download functionality to retrieve latest configuration from server
+  - Automatic conversion between web interface format and mod format
+  - Enhanced load buttons with "Loading..." state and server download integration
+  - New `/messaging/download-from-server` endpoint for configuration retrieval
+- **Enhanced Button State Management** - Professional user feedback system
+  - Save buttons show "Uploading..." during FTP operations 
+  - Load buttons show "Loading..." during download operations
+  - Proper error handling and button state restoration in all scenarios
+  - Visual feedback prevents user confusion during network operations
+
+### Changed
+- **Messaging System Architecture** - Complete integration with PlayerStatusMod
+  - Load operations now fetch latest configuration from server automatically
+  - Save operations automatically sync to server mod for immediate effect
+  - Bidirectional sync ensures web interface and mod stay synchronized
+  - Configuration persistence across server restarts and mod reloads
 
 ### Fixed
-- **Critical Message Duplication Bug** - Fixed scheduled and welcome/goodbye messages being logged as "sent" even when they failed
-  - **Root Cause**: Background service incorrectly evaluated return values from `send_global_message()`
-  - **Issue**: Method returns `{'success': False, 'message': 'error'}` but code checked `if success:` instead of `if success['success']`
-  - **Impact**: Non-empty dictionaries always evaluate to `True`, causing failed messages to be marked as sent
-  - **Solution**: Changed to `result.get('success', False)` for proper boolean evaluation
-  - **Files Modified**: 
-    - `background_service.py` lines 769-777 (scheduled messages)
-    - `background_service.py` lines 717-727 (welcome/goodbye messages)
-- **Enhanced Error Reporting** - Failed messages now properly log error details instead of false success messages
-- **Improved Message Debugging** - Added comprehensive debug logging to trace message sending pipeline
+- **Load Button Functionality** - Fixed non-functional load buttons
+  - Previously only loaded from local config file
+  - Now downloads latest configuration from FTP server before loading
+  - Handles missing local files gracefully by fetching from server
+- **JavaScript Syntax Error** - Fixed extra closing brace in messaging.js causing script failures
+- **Configuration Loss Recovery** - System now recovers from deleted local configuration files
 
 ### Technical Details
-- The "duplication" was actually false positive logging - messages appeared to send twice but were failing silently
-- Fix ensures only genuinely successful messages are recorded as sent
-- Enhanced error handling provides better visibility into messaging failures
-- Debug logging helps identify future messaging issues
+- **PlayerStatusMod Integration**: Advanced messaging features require PlayerStatusMod installed on server
+- **FTP Transport Layer**: Uses existing FTP infrastructure for reliable configuration delivery
+- **Format Conversion**: Automatic translation between `<playername>` and `{playername}` formats
+- **Error Resilience**: Graceful fallback when server download fails, using local config as backup
+
+### Requirements
+- **⚠️ IMPORTANT**: PlayerStatusMod must be installed on Empyrion server for advanced messaging features
+- Without mod: Only basic global messaging works
+- With mod: Full welcome/goodbye messages, scheduled messages, and real-time sync
 
 ## [0.5.3] - 2025-01-25
 

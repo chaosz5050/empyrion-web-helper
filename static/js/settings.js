@@ -156,6 +156,8 @@ window.SettingsManager = {
             const ftpHost = await this.getAppSetting('ftp_host');
             const itemsConfigPath = await this.getAppSetting('items_config_path');
             const playfieldsPath = await this.getAppSetting('playfields_path');
+            const modConfigPath = await this.getAppSetting('ftp_mod_path');
+            const gameoptionsPath = await this.getAppSetting('gameoptions_path');
             
             if (ftpHost) {
                 // Parse host:port format
@@ -165,6 +167,8 @@ window.SettingsManager = {
             }
             if (itemsConfigPath) document.getElementById('itemsConfigPath').value = itemsConfigPath;
             if (playfieldsPath) document.getElementById('playfieldsPath').value = playfieldsPath;
+            if (modConfigPath) document.getElementById('modConfigPath').value = modConfigPath;
+            if (gameoptionsPath) document.getElementById('gameoptionsPath').value = gameoptionsPath;
             
             
         } catch (error) {
@@ -346,6 +350,8 @@ window.SettingsManager = {
         const password = document.getElementById('ftpPassword').value.trim();
         const itemsConfigPath = document.getElementById('itemsConfigPath').value.trim();
         const playfieldsPath = document.getElementById('playfieldsPath').value.trim();
+        const modConfigPath = document.getElementById('modConfigPath').value.trim();
+        const gameoptionsPath = document.getElementById('gameoptionsPath').value.trim();
 
         // Check if host and paths are provided (always required)
         if (!host || !itemsConfigPath || !playfieldsPath) {
@@ -367,6 +373,12 @@ window.SettingsManager = {
             await this.setAppSetting('ftp_host', `${host}:${port}`);
             await this.setAppSetting('items_config_path', itemsConfigPath);
             await this.setAppSetting('playfields_path', playfieldsPath);
+            if (modConfigPath) {
+                await this.setAppSetting('ftp_mod_path', modConfigPath);
+            }
+            if (gameoptionsPath) {
+                await this.setAppSetting('gameoptions_path', gameoptionsPath);
+            }
 
             // Only update credentials if new ones are provided
             if (username && password) {
@@ -645,6 +657,8 @@ window.SettingsManager = {
     async validateFtpPaths() {
         const itemsConfigPath = document.getElementById('itemsConfigPath').value.trim();
         const playfieldsPath = document.getElementById('playfieldsPath').value.trim();
+        const modConfigPath = document.getElementById('modConfigPath').value.trim();
+        const gameoptionsPath = document.getElementById('gameoptionsPath').value.trim();
         
         if (!itemsConfigPath || !playfieldsPath) {
             showToast('Please fill in both items config path and playfields path', 'error');
@@ -663,12 +677,24 @@ window.SettingsManager = {
             }
             
             // Test paths via FTP
+            const requestBody = {
+                items_config_path: itemsConfigPath,
+                playfields_path: playfieldsPath
+            };
+            
+            // Add mod path if provided (optional)
+            if (modConfigPath) {
+                requestBody.mod_path = modConfigPath;
+            }
+            
+            // Add gameoptions path if provided (optional)
+            if (gameoptionsPath) {
+                requestBody.gameoptions_path = gameoptionsPath;
+            }
+            
             const validationData = await apiCall('/api/ftp/validate-paths', {
                 method: 'POST',
-                body: JSON.stringify({
-                    items_config_path: itemsConfigPath,
-                    playfields_path: playfieldsPath
-                })
+                body: JSON.stringify(requestBody)
             });
             
             if (validationData.success) {

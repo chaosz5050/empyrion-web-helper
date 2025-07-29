@@ -46,7 +46,7 @@ function escapeHtml(text) {
 // Tab navigation system
 function showTab(tabName) {
     // Hide all panels
-    const panels = ['playersPanel', 'entitiesPanel', 'itemsconfigPanel', 'testPanel', 'messagingPanel', 'logsPanel', 'settingsPanel'];
+    const panels = ['playersPanel', 'entitiesPanel', 'itemsconfigPanel', 'wipePanel', 'gameoptionsPanel', 'messagingPanel', 'logsPanel', 'settingsPanel'];
     panels.forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (panel) {
@@ -92,6 +92,11 @@ function showTab(tabName) {
             window.SettingsManager.loadCurrentSettings();
         } else if (window.SettingsManager && typeof window.SettingsManager.loadAllSettings === 'function') {
             window.SettingsManager.loadAllSettings();
+        }
+    } else if (tabName === 'gameoptions') {
+        // Initialize GameOptions manager if it exists
+        if (window.gameOptionsManager && typeof window.gameOptionsManager.renderOptionsForm === 'function') {
+            window.gameOptionsManager.renderOptionsForm();
         }
     }
 }

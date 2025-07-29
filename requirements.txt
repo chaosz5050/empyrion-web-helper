@@ -35,6 +35,10 @@ requests
 # Enables automatic FTP/SFTP detection for different hosting providers
 paramiko
 
+# YAML parsing for gameoptions.yaml editing
+# Enables GameOptions tab for scenario configuration editing
+PyYAML
+
 # ============================================================================
 # BUILT-IN PYTHON MODULES (No installation required)
 # ============================================================================

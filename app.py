@@ -84,7 +84,7 @@ def initialize_app():
     
     # Initialize messaging manager
     config_file_path = 'empyrion_helper.conf'
-    messaging_manager = MessagingManager(config_file=config_file_path)
+    messaging_manager = MessagingManager(player_db=player_db, config_file=config_file_path)
     
     # Create instance directory if it doesn't exist
     if not os.path.exists('instance'):
@@ -98,7 +98,7 @@ def initialize_app():
     # Initialize background service
     background_service = BackgroundService(config_manager, player_db, messaging_manager)
     
-    logger.info("Empyrion Web Helper v0.5.1 initialized with background service architecture")
+    logger.info("Empyrion Web Helper v0.5.4 initialized with background service architecture")
     logger.info(f"Target server: {config_manager.get('host')}:{config_manager.get('telnet_port')}")
     
     # Check credential status
@@ -145,7 +145,6 @@ def stop_background_service():
     Returns:
         bool: True if the service was stopped, False otherwise.
     """
-    """Stop the background service"""
     global background_service
     if background_service:
         background_service.stop()
@@ -157,7 +156,6 @@ def cleanup_on_exit():
 
     Ensures background services are stopped and resources are released.
     """
-    """Clean shutdown handler for normal exit only"""
     logger.info("🛑 Application shutting down, stopping background service...")
     stop_background_service()
     
@@ -171,7 +169,6 @@ def index():
     Returns:
         Response: Rendered HTML for the main page.
     """
-    """Main page"""
     if player_db:
         db_players = player_db.get_all_players()
     else:
@@ -199,7 +196,6 @@ def serve_static(filename):
     Returns:
         Response: The static file response.
     """
-    """Serve static files (like favicon)"""
     return send_from_directory('.', filename)
 
 @app.route('/status')
@@ -210,7 +206,6 @@ def get_status():
     Returns:
         Response: JSON with status information.
     """
-    """Get current service and connection status"""
     if not background_service:
         return jsonify({
             'success': True,
@@ -236,7 +231,6 @@ def start_service():
     Returns:
         Response: JSON indicating success or failure.
     """
-    """Start the background service (only needed if credentials were just configured)"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not initialized'})
     
@@ -257,7 +251,6 @@ def stop_service():
     Returns:
         Response: JSON indicating success or failure.
     """
-    """Stop the background service"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not initialized'})
     
@@ -273,7 +266,6 @@ def connect():
     Returns:
         Response: JSON indicating connection status.
     """
-    """Legacy connect route - now managed by background service"""
     if not background_service:
         return jsonify({'success': False, 'message': 'Background service not available'})
     
@@ -291,7 +283,6 @@ def disconnect():
     Returns:
         Response: JSON indicating disconnection status.
     """
-    """Legacy disconnect route - now managed by background service"""
     return jsonify({'success': True, 'message': 'Connection managed by background service'})
 
 @app.route('/players')
@@ -303,7 +294,6 @@ def get_players():
     Returns:
         Response: JSON with player list and statistics.
     """
-    """Get current player list from database (no longer queries server directly)"""
     if not player_db:
         return jsonify({'success': False, 'message': 'Database not initialized'})
     
@@ -326,7 +316,6 @@ def get_all_players():
     Returns:
         Response: JSON with all player records and statistics.
     """
-    """Get all players from database with filtering"""
     if not player_db:
         return jsonify({'success': False, 'message': 'Database not initialized'})
     
@@ -975,88 +964,6 @@ def classify_entity_faction(faction):
         # Unknown 3-letter codes are likely player factions (ID 100+)
         return 'Player', f'Player Faction: {faction}'
 
-@app.route('/api/test/regenerate-2015', methods=['POST'])
-def test_regenerate_2015():
-    """Test regeneration of entity ID 2015 using remoteex regenerate command."""
-    logger.info("Test regeneration of entity 2015 requested")
-    
-    try:
-        # Check if background service is available and connected
-        if not background_service:
-            return jsonify({
-                'success': False,
-                'message': 'Background service not available'
-            })
-        
-        connection_handler = background_service.get_connection_handler()
-        if not connection_handler or not connection_handler.is_connection_alive():
-            return jsonify({
-                'success': False,
-                'message': 'Not connected to server'
-            })
-        
-        # First get playfield server info to find the PID for 'Mard Orntell'
-        servers_command = "servers"
-        logger.info(f"Getting playfield server info: {servers_command}")
-        
-        servers_result = connection_handler.send_command(servers_command)
-        if not servers_result:
-            return jsonify({
-                'success': False,
-                'message': 'Failed to get playfield server information'
-            })
-        
-        # Parse servers output to find PID for 'Mard Orntell'
-        playfield_pid = None
-        for line in servers_result.split('\n'):
-            if "'Mard Orntell'" in line:
-                # Look for PID in previous lines or current context
-                lines = servers_result.split('\n')
-                for i, server_line in enumerate(lines):
-                    if "'Mard Orntell'" in server_line:
-                        # Look backwards for PID line
-                        for j in range(i-1, max(i-5, -1), -1):
-                            if 'PID:' in lines[j]:
-                                pid_part = lines[j].split('PID:')[1].strip()
-                                playfield_pid = pid_part.split()[0]  # Get first part before any spaces
-                                break
-                        break
-                break
-        
-        if not playfield_pid:
-            return jsonify({
-                'success': False,
-                'message': f'Could not find PID for playfield "Mard Orntell" in servers output: {servers_result}'
-            })
-        
-        # Send remoteex regenerate command using the found PID
-        regenerate_command = f"remoteex pf={playfield_pid} regenerate 2015"
-        logger.info(f"Executing RCON command: {regenerate_command}")
-        
-        result = connection_handler.send_command(regenerate_command)
-        
-        if result and isinstance(result, str):
-            logger.info(f"Test regenerate command result: {result}")
-            return jsonify({
-                'success': True,
-                'message': 'Entity 2015 regeneration command sent successfully',
-                'server_response': result.strip(),
-                'command': regenerate_command
-            })
-        else:
-            logger.warning(f"Unexpected result from test regenerate command: {result}")
-            return jsonify({
-                'success': False,
-                'message': 'No response from server or command failed',
-                'command': regenerate_command
-            })
-        
-    except Exception as e:
-        logger.error(f"Error in test regeneration: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': 'An internal error occurred during test regeneration'
-        })
 
 @app.route('/api/test/active-playfields', methods=['GET'])
 def get_active_playfields():
@@ -1133,21 +1040,53 @@ def get_active_playfields():
         result_playfields = []
         for pf in playfields:
             pf_name = pf['name']
+            logger.info(f"Processing playfield: '{pf_name}'")
             
             # Try exact match first
             stats = playfield_stats.get(pf_name, None)
+            logger.info(f"Exact match for '{pf_name}': {stats}")
             
             # If no exact match, try with "(loaded)" suffix
             if stats is None:
                 loaded_name = f"{pf_name} (loaded)"
-                stats = playfield_stats.get(loaded_name, {
+                stats = playfield_stats.get(loaded_name, None)
+                if stats and stats['total_count'] > 0:
+                    logger.info(f"Found entities for '{pf_name}' using loaded name '{loaded_name}'")
+            
+            # Debug the stats before fuzzy matching
+            logger.info(f"Before fuzzy match for '{pf_name}': stats={stats}")
+            
+            # If still no match, try fuzzy matching (remove numbers, extra spaces, etc.)
+            if stats is None or (stats and stats['total_count'] == 0):
+                # Try to find similar playfield names
+                import re
+                normalized_pf_name = re.sub(r'\s*\d+\s*', ' ', pf_name).strip()
+                logger.info(f"Trying fuzzy match for '{pf_name}' (normalized: '{normalized_pf_name}')")
+                
+                for db_playfield, db_stats in playfield_stats.items():
+                    normalized_db_name = re.sub(r'\s*\d+\s*', ' ', db_playfield).strip()
+                    logger.info(f"Comparing '{normalized_pf_name}' with '{normalized_db_name}' from '{db_playfield}'")
+                    
+                    # Check if normalized names match
+                    if normalized_pf_name.lower() == normalized_db_name.lower():
+                        stats = db_stats
+                        logger.info(f"Found entities for '{pf_name}' using fuzzy match with '{db_playfield}' (normalized: '{normalized_pf_name}' == '{normalized_db_name}')")
+                        break
+                    
+                    # Also try partial matching (contains)
+                    elif normalized_pf_name.lower() in normalized_db_name.lower() or normalized_db_name.lower() in normalized_pf_name.lower():
+                        stats = db_stats
+                        logger.info(f"Found entities for '{pf_name}' using partial match with '{db_playfield}' ('{normalized_pf_name}' partial match '{normalized_db_name}')")
+                        break
+            
+            # If still no match, create empty stats
+            if stats is None:
+                stats = {
                     'npc_count': 0,
                     'player_count': 0,
                     'neutral_count': 0,
                     'total_count': 0
-                })
-                if stats['total_count'] > 0:
-                    logger.info(f"Found entities for '{pf_name}' using loaded name '{loaded_name}'")
+                }
             
             logger.info(f"Playfield '{pf_name}' final stats: {stats}")
             
@@ -1162,12 +1101,16 @@ def get_active_playfields():
         
         logger.info(f"Found {len(result_playfields)} active playfields")
         
-        return jsonify({
+        response_data = {
             'success': True,
             'playfields': result_playfields,
             'total_active_playfields': len(result_playfields),
             'raw_servers_output': servers_result
-        })
+        }
+        
+        logger.info(f"API Response: {len(result_playfields)} playfields, first few: {result_playfields[:2] if result_playfields else 'None'}")
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error getting active playfields: {e}", exc_info=True)
@@ -1176,379 +1119,7 @@ def get_active_playfields():
             'message': 'Failed to get active playfields'
         })
 
-@app.route('/api/test/bulk-regenerate-stream', methods=['GET'])
-def bulk_regenerate_stream():
-    """Stream bulk regeneration progress using Server-Sent Events"""
-    import json
-    import time
-    from flask import Response
-    
-    if not background_service:
-        return jsonify({'success': False, 'message': 'Background service not available'})
-    
-    # Get playfields from query parameter
-    playfields_param = request.args.get('playfields', '[]')
-    try:
-        selected_playfields = json.loads(playfields_param)
-    except:
-        return jsonify({'success': False, 'message': 'Invalid playfields parameter'})
-    
-    if not selected_playfields:
-        return jsonify({'success': False, 'message': 'No playfields selected'})
-    
-    def generate_progress():
-        try:
-            connection_handler = background_service.get_connection_handler()
-            if not connection_handler or not connection_handler.is_connection_alive():
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Not connected to server'})}\n\n"
-                return
-            
-            logger.info(f"Starting streaming bulk regeneration for playfields: {selected_playfields}")
-            
-            # Get active playfield PIDs - same logic as bulk_regenerate_npc_entities
-            servers_result = connection_handler.send_command("servers")
-            if not servers_result:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to get server information'})}\n\n"
-                return
-            
-            # Parse PIDs for selected playfields
-            playfield_pids = {}
-            lines = servers_result.split('\n')
-            
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if line.startswith("*'") and line.endswith("'"):
-                    playfield_name = line[2:-1]
-                    if playfield_name in selected_playfields:
-                        for j in range(i-1, max(i-10, -1), -1):
-                            prev_line = lines[j].strip()
-                            if 'PID:' in prev_line:
-                                pid = prev_line.split('PID:')[1].strip().split()[0]
-                                playfield_pids[playfield_name] = pid
-                                break
-            
-            # Get entities - same logic as bulk_regenerate_npc_entities
-            entities_response = player_db.get_entities()
-            if not entities_response.get('success') or len(entities_response.get('entities', [])) == 0:
-                logger.info("Database is empty or failed, fetching live entity data from server...")
-                live_entities = connection_handler.get_entities()
-                if not live_entities:
-                    yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to retrieve live entity data from server'})}\n\n"
-                    return
-                entities = live_entities
-            else:
-                entities = entities_response.get('entities', [])
-            
-            entities_to_regenerate = []
-            
-            for entity in entities:
-                entity_playfield = entity.get('playfield', '')
-                
-                # Check if entity is on a selected playfield
-                is_on_selected_playfield = False
-                for selected_pf in selected_playfields:
-                    if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
-                        is_on_selected_playfield = True
-                        break
-                
-                if not is_on_selected_playfield:
-                    continue
-                
-                # Classify entity faction
-                faction = entity.get('faction', '')
-                category, description = classify_entity_faction(faction)
-                
-                # Only regenerate NPC and Neutral entities
-                if category in ['NPC', 'Neutral']:
-                    # Find the PID for this entity's playfield
-                    entity_pid = None
-                    for selected_pf in selected_playfields:
-                        if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
-                            entity_pid = playfield_pids.get(selected_pf)
-                            break
-                    
-                    if entity_pid:
-                        entities_to_regenerate.append({
-                            'id': entity.get('id'),
-                            'name': entity.get('name'),
-                            'playfield': entity_playfield,
-                            'pid': entity_pid,
-                            'faction': faction,
-                            'faction_description': description
-                        })
-            
-            total_entities = len(entities_to_regenerate)
-            
-            # Send start event
-            yield f"data: {json.dumps({'type': 'start', 'total': total_entities})}\n\n"
-            
-            if total_entities == 0:
-                yield f"data: {json.dumps({'type': 'complete', 'regenerated_count': 0, 'failed_count': 0, 'total_processed': 0})}\n\n"
-                return
-            
-            # Process entities with streaming progress
-            successful_count = 0
-            failed_count = 0
-            start_time = time.time()
-            
-            for i, entity in enumerate(entities_to_regenerate):
-                try:
-                    regenerate_command = f"remoteex pf={entity['pid']} regenerate {entity['id']}"
-                    
-                    result = connection_handler.send_command(regenerate_command)
-                    
-                    current = i + 1
-                    success = bool(result and isinstance(result, str))
-                    
-                    if success:
-                        successful_count += 1
-                    else:
-                        failed_count += 1
-                    
-                    # Calculate ETA
-                    elapsed = time.time() - start_time
-                    avg_time_per_entity = elapsed / current
-                    remaining_entities = total_entities - current
-                    eta_seconds = remaining_entities * avg_time_per_entity
-                    
-                    # Send progress event
-                    progress_data = {
-                        'type': 'progress',
-                        'processed': current,
-                        'total': total_entities,
-                        'entity_id': entity['id'],
-                        'entity_name': entity['name'],
-                        'success': success,
-                        'successful': successful_count,
-                        'failed_count': failed_count,
-                        'eta_seconds': int(eta_seconds) if eta_seconds > 0 else 0
-                    }
-                    
-                    yield f"data: {json.dumps(progress_data)}\n\n"
-                    
-                    # Small delay between commands
-                    time.sleep(0.2)
-                    
-                except Exception as e:
-                    failed_count += 1
-                    logger.error(f"Error regenerating entity {entity['id']}: {e}")
-                    
-                    # Send error event but continue processing
-                    error_data = {
-                        'type': 'progress',
-                        'processed': i + 1,
-                        'total': total_entities,
-                        'entity_id': entity['id'],
-                        'entity_name': entity['name'],
-                        'success': False,
-                        'successful': successful_count,
-                        'failed_count': failed_count,
-                        'error': str(e)
-                    }
-                    yield f"data: {json.dumps(error_data)}\n\n"
-            
-            # Send completion event
-            complete_data = {
-                'type': 'complete',
-                'regenerated_count': successful_count,
-                'failed_count': failed_count,
-                'total_processed': total_entities
-            }
-            
-            yield f"data: {json.dumps(complete_data)}\n\n"
-            
-            logger.info(f"Streaming regeneration complete: {successful_count} successful, {failed_count} failed")
-            
-        except Exception as e:
-            logger.error(f"Error in streaming regeneration: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-    
-    return Response(generate_progress(), mimetype='text/event-stream',
-                   headers={'Cache-Control': 'no-cache', 'Connection': 'keep-alive'})
-
-@app.route('/api/test/bulk-regenerate', methods=['POST'])
-def bulk_regenerate_npc_entities():
-    """Execute bulk regeneration of NPC entities on selected playfields"""
-    if not background_service:
-        return jsonify({'success': False, 'message': 'Background service not available'})
-    
-    try:
-        data = request.get_json(force=True)
-        selected_playfields = data.get('playfields', [])
-        
-        if not selected_playfields:
-            return jsonify({'success': False, 'message': 'No playfields selected'})
-        
-        connection_handler = background_service.get_connection_handler()
-        if not connection_handler or not connection_handler.is_connection_alive():
-            return jsonify({'success': False, 'message': 'Not connected to server'})
-        
-        logger.info(f"Starting bulk regeneration for playfields: {selected_playfields}")
-        
-        # Get active playfield PIDs
-        servers_result = connection_handler.send_command("servers")
-        if not servers_result:
-            return jsonify({'success': False, 'message': 'Failed to get server information'})
-        
-        # Parse PIDs for selected playfields
-        playfield_pids = {}
-        lines = servers_result.split('\n')
-        
-        for i, line in enumerate(lines):
-            line = line.strip()
-            # Look for playfield names first
-            if line.startswith("*'") and line.endswith("'"):
-                playfield_name = line[2:-1]  # Remove *' and '
-                if playfield_name in selected_playfields:
-                    # Look backwards to find the PID for this playfield
-                    for j in range(i-1, max(i-10, -1), -1):
-                        prev_line = lines[j].strip()
-                        if 'PID:' in prev_line:
-                            pid = prev_line.split('PID:')[1].strip().split()[0]
-                            playfield_pids[playfield_name] = pid
-                            logger.info(f"Mapped playfield '{playfield_name}' to PID {pid}")
-                            break
-        
-        logger.info(f"Final playfield PID mapping: {playfield_pids}")
-        
-        # Get entities and filter for NPC entities on selected playfields
-        entities_response = player_db.get_entities()
-        if not entities_response.get('success') or len(entities_response.get('entities', [])) == 0:
-            # Database is empty or failed, fetch live entity data
-            logger.info("Database is empty or failed, fetching live entity data from server...")
-            live_entities = connection_handler.get_entities()
-            if not live_entities:
-                return jsonify({'success': False, 'message': 'Failed to retrieve live entity data from server'})
-            entities = live_entities
-        else:
-            entities = entities_response.get('entities', [])
-        entities_to_regenerate = []
-        
-        for entity in entities:
-            entity_playfield = entity.get('playfield', '')
-            
-            # Check if entity is on a selected playfield (handle both formats)
-            is_on_selected_playfield = False
-            for selected_pf in selected_playfields:
-                if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
-                    is_on_selected_playfield = True
-                    break
-            
-            if not is_on_selected_playfield:
-                continue
-            
-            # Classify entity faction
-            faction = entity.get('faction', '')
-            category, description = classify_entity_faction(faction)
-            
-            # Only regenerate NPC and Neutral entities (preserve Player entities)
-            if category in ['NPC', 'Neutral']:
-                # Find the PID for this entity's playfield
-                entity_pid = None
-                for selected_pf in selected_playfields:
-                    if entity_playfield == selected_pf or entity_playfield == f"{selected_pf} (loaded)":
-                        entity_pid = playfield_pids.get(selected_pf)
-                        break
-                
-                if entity_pid:
-                    entities_to_regenerate.append({
-                        'id': entity.get('id'),
-                        'name': entity.get('name'),
-                        'playfield': entity_playfield,
-                        'pid': entity_pid,
-                        'faction': faction,
-                        'faction_description': description
-                    })
-        
-        logger.info(f"Found {len(entities_to_regenerate)} NPC+Neutral entities to regenerate")
-        
-        if len(entities_to_regenerate) == 0:
-            return jsonify({
-                'success': True,
-                'message': 'No NPC+Neutral entities found to regenerate',
-                'regenerated_count': 0,
-                'failed_count': 0,
-                'results': []
-            })
-        
-        # Execute regeneration commands
-        successful_regenerations = []
-        failed_regenerations = []
-        commands_sent = 0
-        replies_received = 0
-        
-        logger.info(f"=== BULK REGENERATION DEBUG START ===")
-        logger.info(f"Total entities to process: {len(entities_to_regenerate)}")
-        
-        for i, entity in enumerate(entities_to_regenerate):
-            try:
-                regenerate_command = f"remoteex pf={entity['pid']} regenerate {entity['id']}"
-                logger.info(f"RCON SEND ({i+1}/{len(entities_to_regenerate)}): {regenerate_command}")
-                commands_sent += 1
-                
-                result = connection_handler.send_command(regenerate_command)
-                
-                if result and isinstance(result, str):
-                    replies_received += 1
-                    logger.info(f"RCON REPLY ({i+1}): {result.strip()}")
-                    successful_regenerations.append({
-                        'entity_id': entity['id'],
-                        'entity_name': entity['name'],
-                        'playfield': entity['playfield'],
-                        'command': regenerate_command,
-                        'server_response': result.strip()
-                    })
-                else:
-                    logger.warning(f"RCON NO REPLY ({i+1}): Command sent but no response received for entity {entity['id']}")
-                    failed_regenerations.append({
-                        'entity_id': entity['id'],
-                        'entity_name': entity['name'],
-                        'playfield': entity['playfield'],
-                        'command': regenerate_command,
-                        'error': 'No response from server'
-                    })
-                
-                # Small delay between commands to avoid overwhelming the server
-                import time
-                time.sleep(0.2)  # 200ms delay
-                
-            except Exception as e:
-                failed_regenerations.append({
-                    'entity_id': entity['id'],
-                    'entity_name': entity['name'],
-                    'playfield': entity['playfield'],
-                    'command': regenerate_command,
-                    'error': str(e)
-                })
-                logger.error(f"Error regenerating entity {entity['id']}: {e}")
-        
-        # Debug summary
-        logger.info(f"=== BULK REGENERATION DEBUG SUMMARY ===")
-        logger.info(f"Commands sent: {commands_sent}")
-        logger.info(f"Replies received: {replies_received}")
-        logger.info(f"Success rate: {replies_received}/{commands_sent} ({100*replies_received/commands_sent:.1f}%)" if commands_sent > 0 else "Success rate: N/A")
-        logger.info(f"Successful regenerations: {len(successful_regenerations)}")
-        logger.info(f"Failed regenerations: {len(failed_regenerations)}")
-        logger.info(f"=== BULK REGENERATION DEBUG END ===")
-        
-        logger.info(f"Bulk regeneration complete: {len(successful_regenerations)} successful, {len(failed_regenerations)} failed")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Successfully regenerated {len(successful_regenerations)} NPC+Neutral entities',
-            'regenerated_count': len(successful_regenerations),
-            'failed_count': len(failed_regenerations),
-            'total_processed': len(entities_to_regenerate),
-            'successful_regenerations': successful_regenerations,
-            'failed_regenerations': failed_regenerations
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in bulk regeneration: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': 'An internal error occurred during bulk regeneration'
-        })
+# REMOVED: bulk regeneration endpoint - replaced with wipe system
 
 @app.route('/api/test/player-structures', methods=['GET'])
 def get_player_structures():
@@ -1702,6 +1273,38 @@ def save_scheduled_messages():
     except Exception as e:
         logger.error(f"Error saving scheduled messages: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/messaging/test-upload', methods=['POST'])
+def test_mod_config_upload():
+    """Test endpoint to manually trigger mod config upload."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        result = messaging_manager._upload_mod_config_to_server()
+        if result:
+            return jsonify({'success': True, 'message': 'Mod configuration uploaded successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to upload mod configuration - check logs'})
+    except Exception as e:
+        logger.error(f"Error in test upload: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Upload error: {str(e)}'})
+
+@app.route('/messaging/download-from-server', methods=['POST'])
+def download_mod_config_from_server():
+    """Download mod configuration from server via FTP and reload local settings."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        result = messaging_manager._download_mod_config_from_server()
+        if result:
+            return jsonify({'success': True, 'message': 'Configuration downloaded from server and reloaded successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to download configuration from server - check logs'})
+    except Exception as e:
+        logger.error(f"Error in download from server: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Download error: {str(e)}'})
 
 @app.route('/messaging/history', methods=['GET'])
 def get_message_history():
@@ -1897,6 +1500,7 @@ def api_credential_status():
     server_port = player_db.get_app_setting('server_port')
     ftp_host = player_db.get_app_setting('ftp_host')
     ftp_remote_log_path = player_db.get_app_setting('ftp_remote_log_path')
+    ftp_mod_path = player_db.get_app_setting('ftp_mod_path')
     empyrion_root = player_db.get_app_setting('empyrion_root')
     scenario_name = player_db.get_app_setting('scenario_name')
     
@@ -1907,6 +1511,7 @@ def api_credential_status():
         'server_port': bool(server_port),
         'ftp_host': bool(ftp_host),
         'ftp_remote_log_path': bool(ftp_remote_log_path),
+        'ftp_mod_path': bool(ftp_mod_path),
         'empyrion_root': bool(empyrion_root),
         'scenario_name': bool(scenario_name),
         'advanced_ftp': bool(empyrion_root and scenario_name)  # Both new settings configured
@@ -1937,12 +1542,16 @@ def api_get_ftp_credentials():
     try:
         ftp_creds = player_db.get_credential('ftp')
         ftp_host = player_db.get_app_setting('ftp_host')
+        ftp_remote_log_path = player_db.get_app_setting('ftp_remote_log_path')
+        ftp_mod_path = player_db.get_app_setting('ftp_mod_path')
         
         return jsonify({
             'success': True,
             'host': ftp_host or '',
             'username': ftp_creds.get('username', '') if ftp_creds else '',
-            'password': ftp_creds.get('password', '') if ftp_creds else ''
+            'password': ftp_creds.get('password', '') if ftp_creds else '',
+            'remote_log_path': ftp_remote_log_path or '',
+            'mod_path': ftp_mod_path or ''
         })
     except Exception as e:
         logger.error(f"Error getting FTP credentials: {e}")
@@ -2013,6 +1622,17 @@ def api_set_credentials():
             player_db.set_app_setting('ftp_remote_log_path', ftp_remote_log_path.strip())
             updated.append('ftp_remote_log_path')
 
+    # FTP MOD PATH (For mod configuration uploads)
+    ftp_mod_path = data.get('ftp_mod_path')
+    if ftp_mod_path is not None:
+        if not isinstance(ftp_mod_path, str) or not ftp_mod_path.strip():
+            errors['ftp_mod_path'] = 'FTP mod path is required.'
+        else:
+            # Normalize path (remove trailing slash)
+            mod_path = ftp_mod_path.strip().rstrip('/')
+            player_db.set_app_setting('ftp_mod_path', mod_path)
+            updated.append('ftp_mod_path')
+
     # NEW FTP ROOT PATH SETTINGS (For playfield wipe automation)
     empyrion_root = data.get('empyrion_root')
     scenario_name = data.get('scenario_name')
@@ -2060,6 +1680,7 @@ def validate_ftp_paths():
         data = request.get_json(force=True)
         items_config_path = data.get('items_config_path', '').strip()
         playfields_path = data.get('playfields_path', '').strip()
+        mod_path = data.get('mod_path', '').strip()
         
         if not items_config_path or not playfields_path:
             return jsonify({
@@ -2092,6 +1713,10 @@ def validate_ftp_paths():
             'items_config_path': items_config_path,
             'playfields_path': playfields_path
         }
+        
+        # Add mod path if provided (optional)
+        if mod_path:
+            paths['mod_path'] = mod_path
         
         logger.info(f"🔍 Validating direct paths with auto-detection")
         
@@ -2485,6 +2110,263 @@ def deploy_wipe_files():
         })
 
 # ===============================
+# GameOptions API Endpoints
+# ===============================
+
+@app.route('/api/gameoptions/load', methods=['POST'])
+def load_gameoptions():
+    """Load gameoptions.yaml file via FTP/SFTP with auto-detection."""
+    try:
+        import socket
+        import yaml
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        gameoptions_path = data.get('gameoptions_path', '').strip()
+        
+        if not gameoptions_path:
+            return jsonify({
+                'success': False, 
+                'message': 'GameOptions path is required'
+            })
+            
+        # If path doesn't end with .yaml, assume it's a directory and append the filename
+        if not gameoptions_path.endswith('.yaml') and not gameoptions_path.endswith('.yml'):
+            if not gameoptions_path.endswith('/'):
+                gameoptions_path += '/'
+            gameoptions_path += 'gameoptions.yaml'
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port for auto-detection
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port for auto-detection
+            
+        logger.info(f"Loading gameoptions.yaml from {gameoptions_path}")
+        
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for gameoptions loading")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # Download the gameoptions.yaml file using StringIO
+                    from io import StringIO, BytesIO
+                    
+                    logger.info(f"Attempting to download file: {gameoptions_path}")
+                    
+                    # First try as text file
+                    try:
+                        temp_buffer = BytesIO()
+                        client.download_file(gameoptions_path, temp_buffer)
+                        temp_buffer.seek(0)
+                        file_content = temp_buffer.read().decode('utf-8')
+                    except UnicodeDecodeError:
+                        # If decode fails, try with different encoding
+                        temp_buffer.seek(0)
+                        file_content = temp_buffer.read().decode('utf-8-sig')
+                    except Exception as download_error:
+                        logger.error(f"Download error for {gameoptions_path}: {download_error}")
+                        return jsonify({
+                            'success': False,
+                            'message': f'Cannot download file: {str(download_error)}. Check that the file exists at: {gameoptions_path}'
+                        })
+                    
+                    if not file_content:
+                        return jsonify({
+                            'success': False,
+                            'message': 'gameoptions.yaml file is empty or not found'
+                        })
+                    
+                    # Parse YAML content
+                    try:
+                        yaml_data = yaml.safe_load(file_content)
+                        
+                        return jsonify({
+                            'success': True,
+                            'data': yaml_data,
+                            'raw_content': file_content,
+                            'message': 'GameOptions loaded successfully'
+                        })
+                        
+                    except yaml.YAMLError as yaml_error:
+                        logger.error(f"YAML parsing error: {yaml_error}")
+                        return jsonify({
+                            'success': False,
+                            'message': f'Invalid YAML format: {str(yaml_error)}',
+                            'raw_content': file_content  # Include raw content for debugging
+                        })
+                    
+                except Exception as file_error:
+                    logger.error(f"Error downloading gameoptions.yaml: {file_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot read file: {str(file_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error loading gameoptions: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error loading gameoptions: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error loading gameoptions'
+        })
+
+@app.route('/api/gameoptions/save', methods=['POST'])
+def save_gameoptions():
+    """Save gameoptions.yaml file via FTP/SFTP with auto-detection."""
+    try:
+        import socket
+        import yaml
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        gameoptions_path = data.get('gameoptions_path', '').strip()
+        yaml_data = data.get('yaml_data')
+        
+        if not gameoptions_path:
+            return jsonify({
+                'success': False, 
+                'message': 'GameOptions path is required'
+            })
+            
+        # If path doesn't end with .yaml, assume it's a directory and append the filename
+        if not gameoptions_path.endswith('.yaml') and not gameoptions_path.endswith('.yml'):
+            if not gameoptions_path.endswith('/'):
+                gameoptions_path += '/'
+            gameoptions_path += 'gameoptions.yaml'
+            
+        if yaml_data is None:
+            return jsonify({
+                'success': False, 
+                'message': 'YAML data is required'
+            })
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port for auto-detection
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port for auto-detection
+        
+        # Convert YAML data to string
+        try:
+            yaml_content = yaml.dump(yaml_data, default_flow_style=False, indent=2, sort_keys=False)
+        except Exception as yaml_error:
+            return jsonify({
+                'success': False,
+                'message': f'Error generating YAML: {str(yaml_error)}'
+            })
+            
+        logger.info(f"Saving gameoptions.yaml to {gameoptions_path}")
+        
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            logger.info(f"Connected using {connection_result.connection_type.upper()} for gameoptions saving")
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # Upload the gameoptions.yaml file using BytesIO
+                    from io import BytesIO
+                    
+                    # Convert string content to bytes and upload
+                    yaml_bytes = yaml_content.encode('utf-8')
+                    upload_buffer = BytesIO(yaml_bytes)
+                    
+                    client.upload_file(upload_buffer, gameoptions_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'GameOptions saved successfully'
+                    })
+                    
+                except Exception as file_error:
+                    logger.error(f"Error uploading gameoptions.yaml: {file_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot write file: {str(file_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error saving gameoptions: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error saving gameoptions: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error saving gameoptions'
+        })
+
+# ===============================
 # Items Config API Endpoints
 # ===============================
 
@@ -2794,61 +2676,6 @@ def download_itemsconfig():
 # POI Regeneration API Endpoints
 # ===============================
 
-@app.route('/api/regenerate-poi', methods=['POST'])
-def regenerate_poi():
-    """Regenerate a specific POI by entity ID."""
-    logger.info("POI regeneration requested")
-    
-    try:
-        data = request.get_json(force=True)
-        entity_id = data.get('entity_id')
-        
-        if not entity_id:
-            return jsonify({
-                'success': False,
-                'message': 'Entity ID is required'
-            }), 400
-        
-        # Check if background service is available and connected
-        if not background_service:
-            return jsonify({
-                'success': False,
-                'message': 'Background service not available'
-            })
-        
-        connection_handler = background_service.get_connection_handler()
-        if not connection_handler or not connection_handler.is_connection_alive():
-            return jsonify({
-                'success': False,
-                'message': 'Not connected to server'
-            })
-        
-        # Send regenerate command
-        regenerate_command = f"regenerate {entity_id}"
-        logger.info(f"Executing RCON command: {regenerate_command}")
-        
-        result = connection_handler.send_command(regenerate_command)
-        
-        if result and isinstance(result, str):
-            logger.info(f"Regenerate command result: {result}")
-            return jsonify({
-                'success': True,
-                'message': f'POI {entity_id} regeneration command sent successfully',
-                'server_response': result.strip()
-            })
-        else:
-            logger.warning(f"Unexpected result from regenerate command: {result}")
-            return jsonify({
-                'success': False,
-                'message': 'No response from server or command failed'
-            })
-        
-    except Exception as e:
-        logger.error(f"Error regenerating POI: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': 'An internal error occurred while regenerating POI'
-        })
 
 # POI Management endpoint removed - wipe command only destroys POIs without regenerating them
 # For POI regeneration, use 'regenerate <entityid>' in-game console or manual playfield file deletion
@@ -2967,7 +2794,7 @@ def reset_poi_timer():
 
 if __name__ == '__main__':
     # Initialize the application
-    logger.info("🚀 Starting Empyrion Web Helper v0.5.1...")
+    logger.info("🚀 Starting Empyrion Web Helper v0.5.4...")
     
     init_success = initialize_app()
     
@@ -2983,6 +2810,12 @@ if __name__ == '__main__':
                 # --- One-time, silent geolocation refresh after service start ---
                 import threading
                 def silent_geo_refresh():
+                    """
+                    Perform a one-time silent geolocation refresh for existing players.
+                    
+                    Updates country data for players with missing geolocation information
+                    and notifies the frontend via WebSocket when updates are completed.
+                    """
                     logger.info("🌍 Running one-time geolocation refresh for players with missing country data...")
                     try:
                         updated_count = player_db.refresh_geolocation_for_existing_players()

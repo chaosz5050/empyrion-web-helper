@@ -54,6 +54,20 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+temp/
+
+# Archive and compressed files
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# Application logs
+*.log
+app_output.log
+
+# Documentation and development files
+MESSAGE_DUPLICATION_SOLUTION.md
 
 # Claude Code instructions (contains implementation details)
 CLAUDE.md

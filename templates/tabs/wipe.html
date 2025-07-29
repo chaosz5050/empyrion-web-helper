@@ -1,0 +1,188 @@
+<!-- FILE LOCATION: /templates/tabs/wipe.html -->
+<div class="panel" id="wipePanel" style="display: none;">
+    <h2>🗑️ Playfield Wipe System</h2>
+    <p class="panel-description">Deploy wipe files to reset playfield content on next server restart or playfield reload.</p>
+    
+    <!-- Control Panel -->
+    <div class="konsole-section">
+        <div class="konsole-section-header">
+            <h3>🗑️ Playfield Wipe Deployment</h3>
+            <p>Deploy wipeinfo.txt files to reset playfield content on next server restart or playfield reload.</p>
+        </div>
+        
+        <div class="konsole-controls">
+            <button id="loadPlayfieldsBtn" class="konsole-btn konsole-btn-primary" onclick="WipeManager.loadActivePlayfields()">
+                🌍 Load Active Playfields
+            </button>
+        </div>
+        
+        <!-- Playfield Selection -->
+        <div id="playfieldSelection" class="konsole-playfield-selection" style="display: none; margin-top: 20px;">
+            <h4>🎯 Select Playfields for Wipe:</h4>
+            <div id="playfieldList" class="konsole-playfield-list">
+                <!-- Playfields will be populated here -->
+            </div>
+            
+            <!-- Wipe Type Selection -->
+            <div class="konsole-wipe-options" style="margin-top: 20px;">
+                <h4>🔧 Wipe Options:</h4>
+                <div class="konsole-checkbox-grid">
+                    <label class="konsole-checkbox-item">
+                        <input type="checkbox" id="wipePOI" class="konsole-checkbox" checked>
+                        <span class="konsole-checkbox-label">POI (Points of Interest)</span>
+                    </label>
+                    <label class="konsole-checkbox-item">
+                        <input type="checkbox" id="wipeDeposit" class="konsole-checkbox">
+                        <span class="konsole-checkbox-label">Deposits (Resource nodes)</span>
+                    </label>
+                    <label class="konsole-checkbox-item">
+                        <input type="checkbox" id="wipeTerrain" class="konsole-checkbox">
+                        <span class="konsole-checkbox-label">Terrain (Voxel changes)</span>
+                    </label>
+                    <label class="konsole-checkbox-item">
+                        <input type="checkbox" id="wipeAll" class="konsole-checkbox">
+                        <span class="konsole-checkbox-label">All (Complete playfield reset)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="konsole-controls" style="margin-top: 20px;">
+                <button id="deployWipeBtn" class="konsole-btn konsole-btn-danger" onclick="WipeManager.deployWipeFiles()" disabled>
+                    🗑️ Deploy Wipe Files
+                </button>
+                <button id="selectAllBtn" class="konsole-btn konsole-btn-secondary" onclick="WipeManager.selectAllPlayfields()" style="margin-left: 10px;">
+                    ☑️ Select All
+                </button>
+                <button id="clearSelectionBtn" class="konsole-btn konsole-btn-secondary" onclick="WipeManager.clearPlayfieldSelection()" style="margin-left: 10px;">
+                    ❌ Clear Selection
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Display -->
+        <div id="wipeStatus" class="konsole-status-bar" style="margin-top: 15px; display: none;">
+            <div class="status-content">
+                <span id="wipeStatusText">Ready</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Wipe-specific styles */
+.konsole-playfield-selection {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 20px;
+}
+
+.konsole-playfield-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.konsole-playfield-item {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.konsole-playfield-item:hover {
+    border-color: var(--accent-blue);
+    background: rgba(64, 164, 223, 0.1);
+}
+
+.konsole-playfield-item.selected {
+    border-color: var(--accent-green);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.konsole-playfield-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.konsole-playfield-checkbox {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.konsole-playfield-name {
+    font-weight: bold;
+    color: var(--accent-blue);
+    font-size: 16px;
+}
+
+.konsole-wipe-options {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 20px;
+}
+
+.konsole-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.konsole-checkbox-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.konsole-checkbox-item:hover {
+    border-color: var(--accent-blue);
+    background: rgba(64, 164, 223, 0.1);
+}
+
+.konsole-checkbox {
+    margin-right: 10px;
+    transform: scale(1.2);
+    accent-color: var(--accent-blue);
+}
+
+.konsole-checkbox-label {
+    font-weight: bold;
+    color: var(--text-color);
+    user-select: none;
+}
+
+.konsole-status-bar {
+    padding: 10px 15px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.konsole-status-bar.loading {
+    border-color: var(--accent-blue);
+    background: linear-gradient(90deg, var(--input-bg) 0%, rgba(64, 164, 223, 0.1) 50%, var(--input-bg) 100%);
+    animation: loading-pulse 2s infinite;
+}
+
+@keyframes loading-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.status-content {
+    width: 100%;
+}
+</style>

@@ -116,6 +116,17 @@
                         <small class="konsole-help-text">Path to your scenario's Playfields directory for wipe automation</small>
                     </div>
                     
+                    <div class="konsole-form-group">
+                        <label for="modConfigPath">Mod Config Path:</label>
+                        <input type="text" id="modConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Mods/PlayerStatusMod">
+                        <small class="konsole-help-text">Path to your mod directory for automated configuration updates</small>
+                    </div>
+                    
+                    <div class="konsole-form-group">
+                        <label for="gameoptionsPath">GameOptions Path:</label>
+                        <input type="text" id="gameoptionsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)">
+                        <small class="konsole-help-text">Path to your scenario directory or full path to gameoptions.yaml file (file will be auto-appended if directory path provided)</small>
+                    </div>
                     
                     <div class="konsole-form-actions">
                         <button onclick="validateFtpPaths()" class="konsole-btn konsole-btn-secondary">Validate Paths</button>

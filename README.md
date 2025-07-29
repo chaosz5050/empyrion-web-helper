@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.5.3
+# 🚀 Empyrion Web Helper v0.5.4
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.5.3-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.5.4-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -42,13 +42,16 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **Comprehensive Pagination** - Configurable display options (50/100/250/500 items per page)
 - **Real-time Connection Testing** - Verify FTP connectivity and file availability before editing
 
-### 📢 **Independent Messaging System**
+### 📢 **Advanced Messaging System**
 - **24/7 Operation** - Messages work without web browser open (background service)
 - **Smart Welcome/Goodbye** - Personalized messages with `<playername>` placeholders
 - **Scheduled Announcements** - Automated recurring messages (10 minutes to 24 hours, up to 10 messages)
 - **Global Messaging** - Send immediate messages to all online players
 - **Message History** - Complete logging with delivery tracking and statistics
 - **Real-time Triggers** - Welcome/goodbye sent on actual server events, not polling
+- **FTP Configuration Sync** - Bidirectional sync between web interface and server mod
+
+> **⚠️ IMPORTANT**: Advanced messaging features require the **PlayerStatusMod** to be installed on your Empyrion server. Without this mod, only basic global messaging will work.
 
 ### 🔒 **Enterprise-Grade Security**
 - **AES-256 Encryption** - All passwords encrypted in database storage
@@ -397,4 +400,4 @@ For more details, see the [full license text](https://creativecommons.org/licens
 
 **Built with ❤️ for the Empyrion Galactic Survival community by Chaosz Software**
 
-*Empyrion Web Helper v0.5.3 - Professional server management with universal compatibility, enterprise-grade security, and advanced theming system*
+*Empyrion Web Helper v0.5.4 - Professional server management with advanced messaging sync, universal compatibility, and enterprise-grade security*

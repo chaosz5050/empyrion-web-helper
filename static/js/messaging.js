@@ -79,7 +79,29 @@ window.MessagingManager = {
 
     // Custom Player Status Messages
     async loadCustomMessages() {
+        const loadButton = document.querySelector('button[onclick="loadCustomMessages()"]');
+        const originalText = loadButton ? loadButton.textContent : 'Load Saved Messages';
+        
+        // Update button state to show loading
+        if (loadButton) {
+            loadButton.textContent = 'Loading...';
+            loadButton.disabled = true;
+        }
+
         try {
+            // First try to download from server to get latest config
+            try {
+                const downloadResult = await apiCall('/messaging/download-from-server', { method: 'POST' });
+                if (downloadResult.success) {
+                    showToast('Downloaded latest configuration from server', 'success');
+                } else {
+                    console.warn('Could not download from server, using local config:', downloadResult.message);
+                }
+            } catch (downloadError) {
+                console.warn('Could not download from server, using local config:', downloadError);
+            }
+            
+            // Load the configuration (now updated from server if successful)
             const data = await apiCall('/messaging/custom');
             
             if (data.success && data.messages) {
@@ -102,9 +124,17 @@ window.MessagingManager = {
                 }
                 
                 debugLog('Custom messages loaded');
+                showToast('Custom messages loaded successfully', 'success');
             }
         } catch (error) {
             console.error('Error loading custom messages:', error);
+            showToast('Error loading custom messages: ' + error, 'error');
+        } finally {
+            // Restore button state
+            if (loadButton) {
+                loadButton.textContent = originalText;
+                loadButton.disabled = false;
+            }
         }
     },
 
@@ -129,6 +159,14 @@ window.MessagingManager = {
             return;
         }
         
+        // Update button state to show uploading
+        const saveButton = document.querySelector('button[onclick="saveCustomMessages()"]');
+        const originalText = saveButton ? saveButton.textContent : 'Save Custom Messages';
+        if (saveButton) {
+            saveButton.textContent = 'Uploading...';
+            saveButton.disabled = true;
+        }
+
         try {
             const data = await apiCall('/messaging/custom', {
                 method: 'POST',
@@ -141,13 +179,19 @@ window.MessagingManager = {
             });
             
             if (data.success) {
-                showToast('Custom messages saved successfully', 'success');
+                showToast('Custom messages saved and uploaded successfully', 'success');
             } else {
                 showToast(data.message || 'Failed to save custom messages', 'error');
             }
         } catch (error) {
             console.error('Error saving custom messages:', error);
             showToast('Error saving custom messages: ' + error, 'error');
+        } finally {
+            // Restore button state
+            if (saveButton) {
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
+            }
         }
     },
 
@@ -182,7 +226,29 @@ window.MessagingManager = {
 
     // Scheduled Messages
     async loadScheduledMessages() {
+        const loadButton = document.querySelector('button[onclick="loadScheduledMessages()"]');
+        const originalText = loadButton ? loadButton.textContent : 'Load Schedule';
+        
+        // Update button state to show loading  
+        if (loadButton) {
+            loadButton.textContent = 'Loading...';
+            loadButton.disabled = true;
+        }
+
         try {
+            // First try to download from server to get latest config
+            try {
+                const downloadResult = await apiCall('/messaging/download-from-server', { method: 'POST' });
+                if (downloadResult.success) {
+                    showToast('Downloaded latest configuration from server', 'success');
+                } else {
+                    console.warn('Could not download from server, using local config:', downloadResult.message);
+                }
+            } catch (downloadError) {
+                console.warn('Could not download from server, using local config:', downloadError);
+            }
+            
+            // Load the configuration (now updated from server if successful)
             const data = await apiCall('/messaging/scheduled');
             
             if (data.success && data.messages) {
@@ -192,12 +258,20 @@ window.MessagingManager = {
                 );
                 this.renderScheduledMessages();
                 debugLog('Scheduled messages loaded:', this.scheduledMessagesData.length);
+                showToast('Scheduled messages loaded successfully', 'success');
             }
         } catch (error) {
             console.error('Error loading scheduled messages:', error);
+            showToast('Error loading scheduled messages: ' + error, 'error');
             // Initialize with empty data - just one empty message
             this.scheduledMessagesData = [];
             this.renderScheduledMessages();
+        } finally {
+            // Restore button state
+            if (loadButton) {
+                loadButton.textContent = originalText;
+                loadButton.disabled = false;
+            }
         }
     },
 
@@ -219,6 +293,14 @@ window.MessagingManager = {
             });
         });
         
+        // Update button state to show uploading
+        const saveButton = document.querySelector('button[onclick="saveScheduledMessages()"]');
+        const originalText = saveButton ? saveButton.textContent : 'Save Scheduled Messages';
+        if (saveButton) {
+            saveButton.textContent = 'Uploading...';
+            saveButton.disabled = true;
+        }
+
         try {
             const data = await apiCall('/messaging/scheduled', {
                 method: 'POST',
@@ -226,7 +308,7 @@ window.MessagingManager = {
             });
             
             if (data.success) {
-                showToast('Scheduled messages saved successfully', 'success');
+                showToast('Scheduled messages saved and uploaded successfully', 'success');
                 this.scheduledMessagesData = messages;
             } else {
                 showToast(data.message || 'Failed to save scheduled messages', 'error');
@@ -234,6 +316,12 @@ window.MessagingManager = {
         } catch (error) {
             console.error('Error saving scheduled messages:', error);
             showToast('Error saving scheduled messages: ' + error, 'error');
+        } finally {
+            // Restore button state
+            if (saveButton) {
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
+            }
         }
     },
 

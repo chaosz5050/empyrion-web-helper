@@ -1,0 +1,537 @@
+<!-- GameOptions Tab - Exact Copy from Scenario Editor -->
+<div class="konsole-panel" id="gameoptionsPanel">
+    <div class="konsole-content">
+        <!-- Header Section with Load/Save Controls -->
+        <div class="konsole-section">
+            <div class="konsole-section-header">
+                <h3>🎮 GameOptions.yaml Editor</h3>
+                <div class="button-group">
+                    <button id="loadGameOptionsBtn" class="konsole-btn konsole-btn-primary" title="Load gameoptions.yaml from server">
+                        📡 Load GameOptions
+                    </button>
+                    <button id="saveGameOptionsBtn" class="konsole-btn konsole-btn-success" title="Save gameoptions.yaml to server">
+                        💾 Save GameOptions
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Status Bar -->
+            <div id="gameoptionsStatus" class="konsole-status-bar" style="display: none;">
+                <span id="gameoptionsStatusText">Ready</span>
+            </div>
+        </div>
+
+        <!-- Exact HTML structure from scenario editor -->
+        <div class="konsole-section konsole-section-full">
+            <div class="game-options-container">
+                <div class="game-options-header">
+                    <h4>Game Configuration Options</h4>
+                </div>
+                
+                <div class="game-options-search">
+                    <input type="text" id="options-search" placeholder="Search options..." class="options-search-input">
+                </div>
+                
+                <div id="game-options-content" class="game-options-content">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EXACT CSS FROM SCENARIO EDITOR -->
+<style>
+/* CSS Variables - Theme Foundation */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #888888;
+    --accent-blue: #0066cc;
+    --accent-green: #00cc66;
+    --accent-red: #cc0000;
+    --accent-orange: #ff9900;
+    --border-color: #555555;
+    
+    /* Interactive States & Effects */
+    --hover-overlay: rgba(255, 255, 255, 0.05);
+    --hover-overlay-light: rgba(255, 255, 255, 0.1);
+    --hover-overlay-medium: rgba(255, 255, 255, 0.15);
+    --focus-ring: rgba(0, 102, 204, 0.2);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    
+    /* Spacing System */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --space-xxl: 32px;
+}
+
+.game-options-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 700px;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-options-header {
+    background: var(--bg-tertiary);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.game-options-header h4 {
+    color: var(--accent-blue);
+    font-size: 16px;
+    margin: 0;
+}
+
+.game-options-search {
+    background: var(--bg-secondary);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.options-search-input {
+    width: 100%;
+    padding: var(--space-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: var(--space-sm);
+}
+
+.options-search-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.profile-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.profile-filter-btn {
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-filter-btn:hover {
+    background: var(--hover-overlay-light);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.profile-filter-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: white;
+}
+
+.game-options-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
+}
+
+/* ValidFor Tabs */
+.validfor-tabs-container {
+    margin-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.validfor-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0;
+}
+
+.validfor-tab {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    color: var(--text-secondary);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+}
+
+.validfor-tab:hover {
+    background: var(--hover-overlay-light);
+    color: var(--text-primary);
+}
+
+.validfor-tab.active {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+    z-index: 1;
+}
+
+.validfor-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--bg-secondary);
+}
+
+/* Category Sections */
+.game-options-category {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: var(--space-md);
+    overflow: hidden;
+}
+
+.game-options-category.collapsed .category-content {
+    display: none;
+}
+
+.category-header {
+    background: var(--bg-secondary);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.category-header:hover {
+    background: var(--hover-overlay);
+}
+
+.category-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.category-icon {
+    font-size: 14px;
+}
+
+.category-title h3 {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.category-count {
+    color: var(--text-muted);
+    font-size: 12px;
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.category-toggle {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--space-sm);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.category-toggle:hover {
+    background: var(--hover-overlay-light);
+    color: var(--text-primary);
+}
+
+.toggle-icon {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.category-content {
+    padding: var(--space-sm);
+}
+
+/* Individual Options */
+.game-option {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    position: relative;
+}
+
+.option-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0;
+}
+
+.option-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-width: 180px;
+    flex-shrink: 0;
+}
+
+.option-unit {
+    color: var(--text-muted);
+    font-weight: normal;
+    font-size: 11px;
+}
+
+.option-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+}
+
+.value-source {
+    font-size: 16px;
+    padding: 2px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.value-source.scenario {
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+}
+
+.value-source.default {
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+}
+
+.help-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-btn:hover {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: white;
+}
+
+/* Form Controls */
+.option-control {
+    flex: 1;
+    margin: 0 var(--space-md);
+}
+
+.option-select,
+.option-input {
+    width: 100%;
+    padding: var(--space-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    color: var(--text-primary);
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.option-select:focus,
+.option-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.option-select.custom-value,
+.option-input.custom-value {
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.option-select.default-value,
+.option-input.default-value {
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.range-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.option-range {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.option-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.option-range::-webkit-slider-thumb:hover {
+    background: var(--accent-green);
+    transform: scale(1.1);
+}
+
+.range-display {
+    width: 60px;
+    text-align: center;
+    padding: var(--space-xs);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+/* Tooltips */
+.option-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin-top: var(--space-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-content {
+    padding: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.tooltip-meta {
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-color);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.tooltip-meta strong {
+    color: var(--text-secondary);
+}
+
+/* Mobile responsiveness for game options */
+@media (max-width: 768px) {
+    .game-options-content {
+        padding: var(--space-sm);
+    }
+    
+    .profile-filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .validfor-tabs {
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+    
+    .validfor-tab {
+        padding: var(--space-xs) var(--space-sm);
+        font-size: 12px;
+    }
+    
+    .option-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-xs);
+    }
+    
+    .option-label {
+        min-width: auto;
+    }
+    
+    .option-control {
+        margin: 0;
+    }
+    
+    .option-meta {
+        align-self: flex-end;
+    }
+    
+    .range-control {
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+    
+    .option-range {
+        width: 100%;
+    }
+    
+    .range-display {
+        width: 50px;
+    }
+}
+</style>
+
+<!-- Include GameOptions JavaScript -->
+<script src="/static/js/game-options-config.js"></script>
+<script src="/static/js/gameoptions.js"></script>

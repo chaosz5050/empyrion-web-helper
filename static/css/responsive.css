@@ -502,5 +502,47 @@
 }
 
 /* =============================================================================
+   TOAST NOTIFICATIONS
+   ============================================================================= */
+
+.toast {
+    position: fixed;
+    top: var(--space-xl);
+    right: var(--space-xl);
+    z-index: 1000;
+    padding: var(--space-md);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+    min-width: 300px;
+    max-width: 500px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success {
+    background-color: var(--accent-green);
+}
+
+.toast.error {
+    background-color: var(--accent-red);
+}
+
+.toast.info {
+    background-color: var(--accent-blue);
+}
+
+.toast.warning {
+    background-color: var(--accent-orange);
+}
+
+/* =============================================================================
    END OF RESPONSIVE CSS
    ============================================================================= */

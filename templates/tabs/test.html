@@ -38,6 +38,67 @@
             </div>
         </div>
         
+        <!-- POI Timer Section -->
+        <div class="konsole-section" style="margin-top: 30px;">
+            <div class="konsole-section-header">
+                <h3>⏰ Automatic POI Regeneration Timer</h3>
+                <p>Schedule automatic POI regeneration to run periodically in the background.</p>
+            </div>
+            
+            <div class="konsole-timer-controls">
+                <div class="konsole-timer-settings">
+                    <div class="konsole-timer-enable">
+                        <input type="checkbox" id="poiTimerEnabled" class="konsole-timer-checkbox">
+                        <label for="poiTimerEnabled" class="konsole-timer-label">
+                            <span class="konsole-timer-toggle">Enable Automatic POI Regeneration</span>
+                        </label>
+                    </div>
+                    
+                    <div class="konsole-timer-interval" id="timerIntervalContainer" style="display: none;">
+                        <label for="poiTimerInterval" class="konsole-form-label">Regeneration Interval:</label>
+                        <select id="poiTimerInterval" class="konsole-form-select">
+                            <option value="12h">Every 12 hours</option>
+                            <option value="24h" selected>Every 24 hours</option>
+                            <option value="1w">Every week</option>
+                            <option value="2w">Every 2 weeks</option>
+                            <option value="1m">Every month</option>
+                        </select>
+                    </div>
+                    
+                    <div class="konsole-timer-actions">
+                        <button id="saveTimerBtn" class="konsole-btn konsole-btn-primary" onclick="TestManager.saveTimerSettings()" disabled>
+                            💾 Save Timer Settings
+                        </button>
+                        <button id="resetTimerBtn" class="konsole-btn konsole-btn-secondary" onclick="TestManager.resetTimer()" style="margin-left: 10px;" disabled>
+                            🔄 Reset Timer (Force Run)
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Timer Status Display -->
+                <div class="konsole-timer-status" id="timerStatusContainer" style="display: none;">
+                    <div class="konsole-timer-info">
+                        <div class="konsole-timer-stat">
+                            <span class="konsole-timer-stat-label">Status:</span>
+                            <span id="timerStatusText" class="konsole-timer-stat-value">Disabled</span>
+                        </div>
+                        <div class="konsole-timer-stat">
+                            <span class="konsole-timer-stat-label">Interval:</span>
+                            <span id="timerIntervalText" class="konsole-timer-stat-value">-</span>
+                        </div>
+                        <div class="konsole-timer-stat">
+                            <span class="konsole-timer-stat-label">Last Run:</span>
+                            <span id="timerLastRunText" class="konsole-timer-stat-value">Never</span>
+                        </div>
+                        <div class="konsole-timer-stat">
+                            <span class="konsole-timer-stat-label">Next Run:</span>
+                            <span id="timerNextRunText" class="konsole-timer-stat-value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Status Display -->
         <div id="testStatus" class="konsole-status-bar" style="margin-top: 15px; display: none;">
             <div class="status-content">
@@ -408,6 +469,121 @@
 }
 
 .konsole-playfield-stat-value.player {
+    color: var(--accent-green);
+}
+
+/* POI Timer Styles */
+.konsole-timer-controls {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+}
+
+.konsole-timer-settings {
+    margin-bottom: var(--space-lg);
+}
+
+.konsole-timer-enable {
+    margin-bottom: var(--space-lg);
+}
+
+.konsole-timer-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-right: var(--space-md);
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+}
+
+.konsole-timer-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.konsole-timer-toggle {
+    user-select: none;
+}
+
+.konsole-timer-interval {
+    margin-bottom: var(--space-lg);
+    padding: var(--space-lg);
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.konsole-form-label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.konsole-form-select {
+    width: 100%;
+    max-width: 250px;
+    padding: var(--space-md);
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.konsole-form-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.konsole-timer-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.konsole-timer-status {
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--space-lg);
+    margin-top: var(--space-lg);
+}
+
+.konsole-timer-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-lg);
+}
+
+.konsole-timer-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md);
+    background: var(--input-bg);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent-blue);
+}
+
+.konsole-timer-stat-label {
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+.konsole-timer-stat-value {
+    font-weight: bold;
+    color: var(--accent-green);
+}
+
+.konsole-timer-stat-value.disabled {
+    color: var(--text-muted);
+}
+
+.konsole-timer-stat-value.enabled {
     color: var(--accent-green);
 }
 </style>

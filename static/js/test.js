@@ -16,6 +16,7 @@ window.TestManager = {
     init() {
         debugLog('Test manager initialized');
         this.updateLastTestDisplay();
+        this.initPoiTimer();
     },
 
     async pullPlayerStructures() {
@@ -683,6 +684,231 @@ Are you sure you want to proceed?
             }
         } else {
             progressEta.textContent = '';
+        }
+    },
+
+    // POI Timer Management Methods
+    async initPoiTimer() {
+        debugLog('Initializing POI timer');
+        
+        // Set up event listeners
+        this.setupTimerEventListeners();
+        
+        // Load current timer status
+        await this.loadTimerStatus();
+    },
+
+    setupTimerEventListeners() {
+        const enabledCheckbox = document.getElementById('poiTimerEnabled');
+        const intervalContainer = document.getElementById('timerIntervalContainer');
+        const saveBtn = document.getElementById('saveTimerBtn');
+        const resetBtn = document.getElementById('resetTimerBtn');
+
+        if (enabledCheckbox) {
+            enabledCheckbox.addEventListener('change', (e) => {
+                const enabled = e.target.checked;
+                intervalContainer.style.display = enabled ? 'block' : 'none';
+                saveBtn.disabled = false;
+                resetBtn.disabled = !enabled;
+                
+                debugLog(`POI timer enabled changed: ${enabled}`);
+            });
+        }
+
+        const intervalSelect = document.getElementById('poiTimerInterval');
+        if (intervalSelect) {
+            intervalSelect.addEventListener('change', () => {
+                saveBtn.disabled = false;
+                debugLog('POI timer interval changed');
+            });
+        }
+    },
+
+    async loadTimerStatus() {
+        try {
+            debugLog('Loading POI timer status');
+            const data = await apiCall('/api/poi-timer/status');
+            
+            if (data.success) {
+                this.updateTimerUI(data);
+                debugLog('POI timer status loaded:', data);
+            } else {
+                console.error('Failed to load timer status:', data.message);
+                showToast('Failed to load timer status', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading timer status:', error);
+            showToast('Error loading timer status: ' + error, 'error');
+        }
+    },
+
+    updateTimerUI(timerData) {
+        const enabledCheckbox = document.getElementById('poiTimerEnabled');
+        const intervalSelect = document.getElementById('poiTimerInterval');
+        const intervalContainer = document.getElementById('timerIntervalContainer');
+        const statusContainer = document.getElementById('timerStatusContainer');
+        const resetBtn = document.getElementById('resetTimerBtn');
+
+        // Update checkbox
+        if (enabledCheckbox) {
+            enabledCheckbox.checked = timerData.enabled;
+        }
+
+        // Update interval selector
+        if (intervalSelect) {
+            intervalSelect.value = timerData.interval || '24h';
+        }
+
+        // Show/hide interval container
+        if (intervalContainer) {
+            intervalContainer.style.display = timerData.enabled ? 'block' : 'none';
+        }
+
+        // Show/hide status container
+        if (statusContainer) {
+            statusContainer.style.display = 'block';
+        }
+
+        // Enable/disable reset button
+        if (resetBtn) {
+            resetBtn.disabled = !timerData.enabled;
+        }
+
+        // Update status text elements
+        this.updateTimerStatusText(timerData);
+    },
+
+    updateTimerStatusText(timerData) {
+        const statusText = document.getElementById('timerStatusText');
+        const intervalText = document.getElementById('timerIntervalText');
+        const lastRunText = document.getElementById('timerLastRunText');
+        const nextRunText = document.getElementById('timerNextRunText');
+
+        if (statusText) {
+            statusText.textContent = timerData.enabled ? 'Enabled' : 'Disabled';
+            statusText.className = `konsole-timer-stat-value ${timerData.enabled ? 'enabled' : 'disabled'}`;
+        }
+
+        if (intervalText) {
+            const intervalNames = {
+                '12h': 'Every 12 hours',
+                '24h': 'Every 24 hours', 
+                '1w': 'Every week',
+                '2w': 'Every 2 weeks',
+                '1m': 'Every month'
+            };
+            intervalText.textContent = intervalNames[timerData.interval] || 'Every 24 hours';
+        }
+
+        if (lastRunText) {
+            if (timerData.last_run) {
+                try {
+                    const lastRun = new Date(timerData.last_run);
+                    lastRunText.textContent = lastRun.toLocaleString();
+                } catch (e) {
+                    lastRunText.textContent = 'Invalid date';
+                }
+            } else {
+                lastRunText.textContent = 'Never';
+            }
+        }
+
+        if (nextRunText) {
+            if (timerData.enabled && timerData.next_run) {
+                try {
+                    const nextRun = new Date(timerData.next_run);
+                    nextRunText.textContent = nextRun.toLocaleString();
+                } catch (e) {
+                    nextRunText.textContent = 'Invalid date';
+                }
+            } else {
+                nextRunText.textContent = timerData.enabled ? '-' : 'Disabled';
+            }
+        }
+    },
+
+    async saveTimerSettings() {
+        const enabledCheckbox = document.getElementById('poiTimerEnabled');
+        const intervalSelect = document.getElementById('poiTimerInterval');
+        const saveBtn = document.getElementById('saveTimerBtn');
+
+        if (!enabledCheckbox || !intervalSelect) {
+            showToast('Timer UI elements not found', 'error');
+            return;
+        }
+
+        const enabled = enabledCheckbox.checked;
+        const interval = intervalSelect.value;
+
+        debugLog(`Saving timer settings: enabled=${enabled}, interval=${interval}`);
+
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = '💾 Saving...';
+
+        try {
+            const data = await apiCall('/api/poi-timer/configure', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    enabled: enabled,
+                    interval: interval
+                })
+            });
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                
+                // Reload timer status to get updated next run time
+                await this.loadTimerStatus();
+                
+                debugLog('Timer settings saved successfully');
+            } else {
+                showToast(data.message || 'Failed to save timer settings', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving timer settings:', error);
+            showToast('Error saving timer settings: ' + error, 'error');
+        } finally {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = true; // Keep disabled until next change
+        }
+    },
+
+    async resetTimer() {
+        const resetBtn = document.getElementById('resetTimerBtn');
+        
+        if (!confirm('Reset POI timer? This will force the next regeneration to run on the next timer check (within 30 minutes if enabled).')) {
+            return;
+        }
+
+        const originalText = resetBtn.textContent;
+        resetBtn.disabled = true;
+        resetBtn.textContent = '🔄 Resetting...';
+
+        try {
+            const data = await apiCall('/api/poi-timer/reset', {
+                method: 'POST'
+            });
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                
+                // Reload timer status to reflect the reset
+                await this.loadTimerStatus();
+                
+                debugLog('Timer reset successfully');
+            } else {
+                showToast(data.message || 'Failed to reset timer', 'error');
+            }
+        } catch (error) {
+            console.error('Error resetting timer:', error);
+            showToast('Error resetting timer: ' + error, 'error');
+        } finally {
+            resetBtn.textContent = originalText;
+            resetBtn.disabled = false;
         }
     }
 };

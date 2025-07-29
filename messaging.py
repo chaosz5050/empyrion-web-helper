@@ -20,6 +20,7 @@ import configparser
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from threading import Timer
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,9 @@ class MessagingManager:
         self.scheduled_messages = []
         self.last_message_check = {}
         self.message_timer = None
+        
+        # Path to mod configuration file
+        self.mod_config_path = "temp/StarSalvage/Content/Mods/PlayerStatusMod/PlayerStatusConfig.json"
         
         # Initialize database (only for message history)
         self._init_message_database()
@@ -155,6 +159,254 @@ class MessagingManager:
             logger.error(f"Error saving messaging config: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+    
+    def _write_mod_config(self):
+        """Write current message settings to mod configuration file."""
+        try:
+            config_data = {
+                "welcome_enabled": self.welcome_enabled,
+                "welcome_message": self.welcome_message_template.replace('<playername>', '{playername}'),
+                "goodbye_enabled": self.goodbye_enabled,
+                "goodbye_message": self.goodbye_message_template.replace('<playername>', '{playername}'),
+                "scheduled_messages": []
+            }
+            
+            # Convert scheduled messages to mod format
+            for msg in self.scheduled_messages:
+                if isinstance(msg, dict) and msg.get('enabled', False):
+                    schedule_str = msg.get('schedule', 'Every 30 minutes')
+                    # Extract minutes from schedule string
+                    import re
+                    match = re.search(r'(\d+)', schedule_str)
+                    if match:
+                        if 'hour' in schedule_str.lower():
+                            interval_minutes = int(match.group(1)) * 60
+                        else:
+                            interval_minutes = int(match.group(1))
+                    else:
+                        interval_minutes = 30
+                    
+                    config_data["scheduled_messages"].append({
+                        "enabled": True,
+                        "text": msg.get('text', ''),
+                        "interval_minutes": interval_minutes,
+                        "last_sent": "1970-01-01T00:00:00"  # Reset timing
+                    })
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.mod_config_path), exist_ok=True)
+            
+            # Write configuration
+            with open(self.mod_config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"Mod configuration written to {self.mod_config_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error writing mod configuration: {e}")
+            return False
+
+    def _download_mod_config_from_server(self):
+        """Download mod configuration from server via FTP."""
+        logger.info("[Mod Config Download] Starting download process...")
+        
+        if not self.player_db:
+            logger.error("[Mod Config Download] No player database available for FTP credentials")
+            return False
+            
+        try:
+            # Get FTP credentials and mod path
+            ftp_creds = self.player_db.get_credential('ftp')
+            ftp_host = self.player_db.get_app_setting('ftp_host')
+            ftp_mod_path = self.player_db.get_app_setting('ftp_mod_path')
+            
+            logger.info(f"[Mod Config Download] FTP creds: {'✅' if ftp_creds else '❌'}, Host: {ftp_host}, Mod path: {ftp_mod_path}")
+            
+            if not ftp_creds or not ftp_host or not ftp_mod_path:
+                logger.warning("[Mod Config Download] FTP credentials or mod path not configured, cannot download from server")
+                return False
+                
+            # Upload via FTP using EnhancedConnectionManager (same as other FTP operations)
+            from connection_manager import EnhancedConnectionManager, UniversalFileClient
+            
+            # Parse host and port
+            if ':' in ftp_host:
+                host, port = ftp_host.split(':', 1)
+                port = int(port)
+            else:
+                host = ftp_host
+                port = 22  # Default for auto-detection
+                
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, ftp_creds['username'], ftp_creds['password'])
+            
+            if not connection_result.success:
+                logger.error(f"[Mod Config Download] Cannot connect to server: {connection_result.message}")
+                return False
+                
+            logger.info(f"[Mod Config Download] Connected using {connection_result.connection_type.upper()}")
+            
+            # Create UniversalFileClient with detected connection type
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                ftp_creds['username'], ftp_creds['password']
+            )
+            
+            # Download from server
+            remote_path = f"{ftp_mod_path}/PlayerStatusConfig.json"
+            logger.info(f"[Mod Config Download] Downloading from: {remote_path}")
+            
+            # Use the client to download
+            with client.connect() as file_client:
+                # Download to memory buffer
+                json_buffer = io.BytesIO()
+                file_client.download_file(remote_path, json_buffer)
+                json_buffer.seek(0)
+                
+                # Parse JSON content
+                json_content = json_buffer.read().decode('utf-8')
+                config_data = json.loads(json_content)
+                
+                # Update local configuration
+                self.welcome_enabled = config_data.get('welcome_enabled', True)
+                self.welcome_message_template = config_data.get('welcome_message', 'Welcome to Space Cowboys, <playername>!').replace('{playername}', '<playername>')
+                self.goodbye_enabled = config_data.get('goodbye_enabled', True)
+                self.goodbye_message_template = config_data.get('goodbye_message', 'Player <playername> has left our galaxy').replace('{playername}', '<playername>')
+                
+                # Convert scheduled messages from mod format
+                self.scheduled_messages = []
+                for i, msg in enumerate(config_data.get('scheduled_messages', []), 1):
+                    # Convert interval_minutes back to schedule string
+                    interval_minutes = msg.get('interval_minutes', 30)
+                    if interval_minutes >= 60:
+                        hours = interval_minutes // 60
+                        schedule = f"Every {hours} hour{'s' if hours > 1 else ''}"
+                    else:
+                        schedule = f"Every {interval_minutes} minutes"
+                    
+                    self.scheduled_messages.append({
+                        'id': i,
+                        'enabled': msg.get('enabled', False),
+                        'text': msg.get('text', ''),
+                        'schedule': schedule
+                    })
+                
+                # Save updated configuration to local conf file
+                success = self._save_config()
+                
+                if success:
+                    logger.info(f"[Mod Config Download] ✅ Successfully downloaded and applied mod configuration from server: {remote_path}")
+                    return True
+                else:
+                    logger.error("[Mod Config Download] Downloaded config but failed to save locally")
+                    return False
+                
+        except Exception as e:
+            logger.error(f"Error downloading mod configuration from server: {e}")
+            return False
+
+    def _upload_mod_config_to_server(self):
+        """Upload mod configuration to server via FTP."""
+        logger.info("[Mod Config Upload] Starting upload process...")
+        
+        if not self.player_db:
+            logger.error("[Mod Config Upload] No player database available for FTP credentials")
+            return False
+            
+        try:
+            # Get FTP credentials and mod path
+            ftp_creds = self.player_db.get_credential('ftp')
+            ftp_host = self.player_db.get_app_setting('ftp_host')
+            ftp_mod_path = self.player_db.get_app_setting('ftp_mod_path')
+            
+            logger.info(f"[Mod Config Upload] FTP creds: {'✅' if ftp_creds else '❌'}, Host: {ftp_host}, Mod path: {ftp_mod_path}")
+            
+            if not ftp_creds or not ftp_host or not ftp_mod_path:
+                logger.warning("[Mod Config Upload] FTP credentials or mod path not configured, skipping server upload")
+                return False
+                
+            # Generate config data
+            config_data = {
+                "welcome_enabled": self.welcome_enabled,
+                "welcome_message": self.welcome_message_template.replace('<playername>', '{playername}'),
+                "goodbye_enabled": self.goodbye_enabled,
+                "goodbye_message": self.goodbye_message_template.replace('<playername>', '{playername}'),
+                "scheduled_messages": []
+            }
+            
+            # Convert scheduled messages to mod format
+            for msg in self.scheduled_messages:
+                if isinstance(msg, dict) and msg.get('enabled', False):
+                    schedule_str = msg.get('schedule', 'Every 30 minutes')
+                    # Extract minutes from schedule string
+                    import re
+                    match = re.search(r'(\d+)', schedule_str)
+                    if match:
+                        if 'hour' in schedule_str.lower():
+                            interval_minutes = int(match.group(1)) * 60
+                        else:
+                            interval_minutes = int(match.group(1))
+                    else:
+                        interval_minutes = 30
+                    
+                    config_data["scheduled_messages"].append({
+                        "enabled": True,
+                        "text": msg.get('text', ''),
+                        "interval_minutes": interval_minutes,
+                        "last_sent": "1970-01-01T00:00:00"  # Reset timing
+                    })
+            
+            # Create JSON string
+            json_content = json.dumps(config_data, indent=2, ensure_ascii=False)
+            
+            # Upload via FTP using EnhancedConnectionManager (same as other FTP operations)
+            from connection_manager import EnhancedConnectionManager, UniversalFileClient
+            
+            # Parse host and port
+            if ':' in ftp_host:
+                host, port = ftp_host.split(':', 1)
+                port = int(port)
+            else:
+                host = ftp_host
+                port = 22  # Default for auto-detection
+                
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, ftp_creds['username'], ftp_creds['password'])
+            
+            if not connection_result.success:
+                logger.error(f"[Mod Config Upload] Cannot connect to server: {connection_result.message}")
+                return False
+                
+            logger.info(f"[Mod Config Upload] Connected using {connection_result.connection_type.upper()}")
+            
+            # Create UniversalFileClient with detected connection type
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                ftp_creds['username'], ftp_creds['password']
+            )
+            
+            # Create file-like object from JSON string
+            json_bytes = io.BytesIO(json_content.encode('utf-8'))
+            
+            # Upload to server
+            remote_path = f"{ftp_mod_path}/PlayerStatusConfig.json"
+            logger.info(f"[Mod Config Upload] Uploading to: {remote_path}")
+            
+            # Use the client to upload
+            with client.connect() as file_client:
+                file_client.upload_file(json_bytes, remote_path)
+            
+            logger.info(f"[Mod Config Upload] ✅ Successfully uploaded mod configuration to server: {remote_path}")
+            return True
+                
+        except Exception as e:
+            logger.error(f"Error uploading mod configuration to server: {e}")
             return False
     
     def _init_message_database(self):
@@ -294,8 +546,13 @@ class MessagingManager:
             # Save to config file (NOT database)
             result = self._save_config()
             
+            # Also write to mod config and upload to server
             if result:
-                logger.info("SUCCESS: Custom messages saved to empyrion_helper.conf")
+                self._write_mod_config()
+                self._upload_mod_config_to_server()
+            
+            if result:
+                logger.info("SUCCESS: Custom messages saved to empyrion_helper.conf and mod config")
                 return {'success': True, 'message': 'Custom messages saved successfully'}
             else:
                 logger.error("FAILED: Could not save custom messages to config file")
@@ -401,8 +658,13 @@ class MessagingManager:
             # Save to config file (NOT database)
             success = self._save_config()
             
+            # Also write to mod config and upload to server
             if success:
-                logger.info(f"SUCCESS: Saved {len(cleaned_messages)} scheduled messages to empyrion_helper.conf")
+                self._write_mod_config()
+                self._upload_mod_config_to_server()
+            
+            if success:
+                logger.info(f"SUCCESS: Saved {len(cleaned_messages)} scheduled messages to empyrion_helper.conf and mod config")
             else:
                 logger.error("FAILED: Could not save scheduled messages to config file")
             
