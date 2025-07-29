@@ -108,6 +108,48 @@ window.ItemsConfigManager = {
             downloadBtn.textContent = originalText;
         }
     },
+
+    async exportRawFile() {
+        if (!this.isConnected || !this.fileExists) {
+            showToast('Cannot export: connection failed or file not found', 'error');
+            return;
+        }
+        
+        debugLog('Exporting raw ItemsConfig.ecf file');
+        
+        const exportBtn = document.getElementById('exportRawFileBtn');
+        const originalText = exportBtn.textContent;
+        exportBtn.disabled = true;
+        exportBtn.textContent = '📥 Exporting...';
+        
+        try {
+            const data = await apiCall('/itemsconfig/export-raw', { method: 'POST' });
+            debugLog('Export response:', data);
+            
+            if (data.success) {
+                // Create download link and trigger download
+                const blob = new Blob([data.content], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.filename || 'ItemsConfig.ecf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Raw ItemsConfig.ecf file exported successfully', 'success');
+            } else {
+                showToast(data.message || 'Failed to export raw file', 'error');
+            }
+        } catch (error) {
+            console.error('Error exporting raw file:', error);
+            showToast('Error exporting raw file: ' + error, 'error');
+        } finally {
+            exportBtn.disabled = false;
+            exportBtn.textContent = originalText;
+        }
+    },
     
     updateConnectionStatus() {
         const statusElement = document.getElementById('itemsconfigConnectionStatus');
@@ -157,10 +199,12 @@ window.ItemsConfigManager = {
     updateUI() {
         // Update button states
         const downloadBtn = document.getElementById('downloadFileBtn');
+        const exportBtn = document.getElementById('exportRawFileBtn');
         const saveBtn = document.getElementById('saveChangesBtn');
         const uploadBtn = document.getElementById('uploadFileBtn');
         
         if (downloadBtn) downloadBtn.disabled = !this.isConnected || !this.fileExists;
+        if (exportBtn) exportBtn.disabled = !this.isConnected || !this.fileExists;
         if (saveBtn) saveBtn.disabled = Object.keys(this.modifiedItems).length === 0;
         if (uploadBtn) uploadBtn.disabled = Object.keys(this.modifiedItems).length === 0;
         

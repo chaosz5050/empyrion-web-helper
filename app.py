@@ -2600,9 +2600,60 @@ def download_itemsconfig():
             
             logger.info(f"Successfully downloaded ItemsConfig.ecf ({file_size_mb} MB)")
             
-            # Parse the downloaded ECF file
+            # Check file size before parsing (prevent huge files from hanging)
+            file_size_bytes = os.path.getsize(temp_file_path)
+            max_size_mb = 50  # 50MB limit
+            if file_size_bytes > max_size_mb * 1024 * 1024:
+                logger.warning(f"ItemsConfig.ecf file too large: {file_size_bytes / 1024 / 1024:.1f} MB (max: {max_size_mb} MB)")
+                return jsonify({
+                    'success': False,
+                    'message': f'ItemsConfig.ecf file is too large ({file_size_bytes / 1024 / 1024:.1f} MB). Maximum supported size is {max_size_mb} MB.'
+                })
+            
+            # Parse the downloaded ECF file with timeout protection
+            logger.info(f"Starting ECF parsing of {file_size_bytes / 1024 / 1024:.1f} MB file")
             parser = ECFParser()
-            parse_result = parser.parse_file(temp_file_path)
+            
+            # Add parsing timeout using signal (Unix only) or thread timeout
+            import signal
+            import threading
+            
+            parse_result = None
+            parse_error = None
+            
+            def parse_with_timeout():
+                nonlocal parse_result, parse_error
+                try:
+                    parse_result = parser.parse_file(temp_file_path)
+                except Exception as e:
+                    parse_error = e
+            
+            # Start parsing in thread with timeout
+            parse_thread = threading.Thread(target=parse_with_timeout)
+            parse_thread.daemon = True
+            parse_thread.start()
+            parse_thread.join(timeout=30)  # 30 second timeout
+            
+            if parse_thread.is_alive():
+                logger.error("ECF parsing timed out after 30 seconds")
+                return jsonify({
+                    'success': False,
+                    'message': 'ItemsConfig.ecf parsing timed out. The file may be corrupted or too complex to process.'
+                })
+            
+            if parse_error:
+                logger.error(f"ECF parsing failed: {parse_error}")
+                return jsonify({
+                    'success': False,
+                    'message': f'Failed to parse ItemsConfig.ecf: {str(parse_error)}'
+                })
+            
+            if not parse_result:
+                logger.error("ECF parsing returned no result")
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to parse ItemsConfig.ecf: No data returned from parser'
+                })
             
             # Convert parsed items to our frontend format
             formatted_items = []
@@ -2670,6 +2721,107 @@ def download_itemsconfig():
         return jsonify({
             'success': False,
             'message': 'An internal error occurred downloading or parsing the file.'
+        })
+
+@app.route('/itemsconfig/export-raw', methods=['POST'])
+def export_raw_itemsconfig():
+    """Export raw ItemsConfig.ecf file for download via FTP/FTPS/SFTP with automatic detection."""
+    logger.info("Exporting raw ItemsConfig.ecf file via auto-detected connection")
+    
+    try:
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        # Get FTP credentials and configuration path
+        ftp_host = player_db.get_app_setting('ftp_host')
+        ftp_user = player_db.get_ftp_credentials().get('username')
+        ftp_password = player_db.get_ftp_credentials().get('password')
+        ftp_config_path = player_db.get_app_setting('ftp_remote_log_path')
+        
+        if not all([ftp_host, ftp_user, ftp_password]):
+            return jsonify({
+                'success': False,
+                'message': 'Server credentials not configured. Please check Settings.'
+            })
+        
+        if not ftp_config_path:
+            return jsonify({
+                'success': False,
+                'message': 'Remote server path not set. Please configure it in Settings.'
+            })
+        
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 21
+        else:
+            host = ftp_host
+            port = 21
+        
+        logger.info(f"Exporting raw ItemsConfig.ecf from {host}:{port}")
+        
+        # Auto-detect connection type and establish connection
+        connection_manager = EnhancedConnectionManager()
+        connection_result = connection_manager.detect_and_connect(host, port, ftp_user, ftp_password)
+        
+        if not connection_result.success:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to connect to server: {connection_result.message}'
+            })
+        
+        logger.info(f"Connected using {connection_result.connection_type.upper()}")
+        
+        try:
+            # Create UniversalFileClient
+            client = UniversalFileClient(
+                connection_result.connection_type, 
+                host, 
+                port, 
+                ftp_user, 
+                ftp_password
+            )
+            
+            with client.connect():
+                # Check if file exists in the configured path
+                remote_file_path = f"{ftp_config_path}/ItemsConfig.ecf" if ftp_config_path != '.' else 'ItemsConfig.ecf'
+                
+                # Download the raw file content to memory
+                from io import BytesIO
+                file_buffer = BytesIO()
+                
+                logger.info(f"Downloading raw ItemsConfig.ecf content")
+                client.download_file(remote_file_path, file_buffer)
+                file_buffer.seek(0)
+                
+                # Read the raw content
+                raw_content = file_buffer.read().decode('utf-8')
+                file_size_kb = len(raw_content.encode('utf-8')) / 1024
+                
+                logger.info(f"Successfully exported raw ItemsConfig.ecf ({file_size_kb:.1f} KB)")
+                
+                return jsonify({
+                    'success': True,
+                    'content': raw_content,
+                    'filename': 'ItemsConfig.ecf',
+                    'size': f'{file_size_kb:.1f} KB',
+                    'message': f'Raw ItemsConfig.ecf exported successfully ({file_size_kb:.1f} KB)'
+                })
+            
+        except Exception as download_error:
+            logger.error(f"Error downloading raw ItemsConfig.ecf: {download_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Failed to download raw file: {str(download_error)}'
+            })
+            
+    except Exception as ex:
+        logger.error(f"Error in itemsconfig raw export: {ex}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'An error occurred: {str(ex)}'
         })
 
 # ===============================

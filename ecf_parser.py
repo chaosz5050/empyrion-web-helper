@@ -43,14 +43,22 @@ class ECFParser:
             logger.info(f"Parsing ECF file: {file_path} ({len(content)} characters)")
             
             # Parse all item blocks
+            logger.info("Extracting item blocks from ECF content...")
             raw_items = self._extract_item_blocks(content)
             logger.info(f"Found {len(raw_items)} item blocks")
+            
+            if len(raw_items) > 10000:
+                logger.warning(f"Large number of item blocks detected: {len(raw_items)}. This may take a while to process.")
             
             # Process items and templates
             items = []
             templates = {}
             
-            for raw_item in raw_items:
+            logger.info("Processing item blocks...")
+            for i, raw_item in enumerate(raw_items):
+                # Log progress for large files
+                if i > 0 and i % 1000 == 0:
+                    logger.info(f"Processed {i}/{len(raw_items)} item blocks ({i/len(raw_items)*100:.1f}%)")
                 processed_item = self._process_item_block(raw_item)
                 if processed_item:
                     if processed_item.get('is_template'):
@@ -58,8 +66,12 @@ class ECFParser:
                     
                     items.append(processed_item)
             
+            logger.info(f"Finished processing {len(raw_items)} item blocks. Found {len(templates)} templates.")
+            
             # Resolve template inheritance
+            logger.info("Resolving template inheritance...")
             resolved_items = self._resolve_template_inheritance(items, templates)
+            logger.info(f"Template inheritance resolved. Final item count: {len(resolved_items)}")
             
             logger.info(f"Successfully parsed {len(resolved_items)} items ({len(templates)} templates)")
             
