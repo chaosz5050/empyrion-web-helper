@@ -5,6 +5,36 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2025-07-30
+
+### Added
+- **Split FTP Settings Interface** - Improved settings organization and scalability
+  - New "FTP Auth" panel for connection credentials (Host, Port, Username, Password)
+  - New "FTP Paths" panel for server path configurations (ItemsConfig, Playfields, ModConfig, GameOptions)
+  - Separate save buttons: "Save FTP Settings" for auth and "Save Paths" for path configurations
+  - Better UI scalability for future path additions without cramping the interface
+
+### Fixed
+- **Message History Bug** - Resolved missing message history in messaging tab
+  - Fixed issue where messages weren't stored in database when server was disconnected
+  - Messages are now always logged to history regardless of connection status
+  - Failed messages are properly marked as unsuccessful in history
+  - "Refresh History" button now displays recent messages correctly
+- **ResizeObserver Error** - Suppressed harmless browser console errors
+  - Added error suppression for ResizeObserver loop warnings when switching to GameOptions tab
+  - Improved initialization timing to prevent DOM layout conflicts
+
+### Changed
+- **Settings Panel Organization** - Enhanced user experience for server configuration
+  - FTP settings split into logical authentication vs path configuration sections
+  - Reduced visual clutter in settings interface
+  - Improved workflow for administrators managing multiple server paths
+
+### Technical Details
+- **Message Storage**: Messages are stored in `message_history` table even when RCON connection fails
+- **Settings Architecture**: Maintains backward compatibility while improving UI organization
+- **Error Handling**: Enhanced client-side error suppression for better user experience
+
 ## [0.5.4] - 2025-07-28
 
 ### Added

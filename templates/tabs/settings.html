@@ -18,7 +18,12 @@
                 
                 <div class="konsole-nav-item" data-target="ftp-settings">
                     <div class="konsole-nav-icon">📁</div>
-                    <div class="konsole-nav-label">FTP</div>
+                    <div class="konsole-nav-label">FTP Auth</div>
+                </div>
+                
+                <div class="konsole-nav-item" data-target="ftp-paths-settings">
+                    <div class="konsole-nav-icon">🗂️</div>
+                    <div class="konsole-nav-label">FTP Paths</div>
                 </div>
                 
                 <div class="konsole-nav-item" data-target="misc-settings">
@@ -73,11 +78,11 @@
                 </div>
             </div>
             
-            <!-- FTP Settings Panel -->
+            <!-- FTP Authentication Panel -->
             <div class="konsole-content-panel" id="ftp-settings">
                 <div class="konsole-content-header">
-                    <h3>FTP Configuration</h3>
-                    <p>Configure FTP/SFTP access for server file management. The system automatically detects and supports both FTP and SFTP protocols.</p>
+                    <h3>FTP Authentication</h3>
+                    <p>Configure FTP/SFTP connection credentials. The system automatically detects and supports both FTP and SFTP protocols.</p>
                 </div>
                 
                 <div class="konsole-form-section">
@@ -104,6 +109,21 @@
                         </div>
                     </div>
                     
+                    <div class="konsole-form-actions">
+                        <button onclick="SettingsManager.testFtpConnection()" class="konsole-btn konsole-btn-secondary">Test Connection</button>
+                        <button onclick="SettingsManager.saveFtpAuth()" class="konsole-btn konsole-btn-primary">Save FTP Settings</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FTP Paths Panel -->
+            <div class="konsole-content-panel" id="ftp-paths-settings">
+                <div class="konsole-content-header">
+                    <h3>FTP Path Configuration</h3>
+                    <p>Configure server file paths for different features and modules.</p>
+                </div>
+                
+                <div class="konsole-form-section">
                     <div class="konsole-form-group">
                         <label for="itemsConfigPath">ItemsConfig Path:</label>
                         <input type="text" id="itemsConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Configuration">
@@ -130,8 +150,7 @@
                     
                     <div class="konsole-form-actions">
                         <button onclick="validateFtpPaths()" class="konsole-btn konsole-btn-secondary">Validate Paths</button>
-                        <button onclick="SettingsManager.testFtpConnection()" class="konsole-btn konsole-btn-secondary">Test Connection</button>
-                        <button onclick="SettingsManager.saveFtpSettings()" class="konsole-btn konsole-btn-primary">Save FTP Settings</button>
+                        <button onclick="SettingsManager.saveFtpPaths()" class="konsole-btn konsole-btn-primary">Save Paths</button>
                     </div>
                 </div>
             </div>

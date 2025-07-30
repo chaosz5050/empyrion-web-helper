@@ -465,6 +465,8 @@ class MessagingManager:
         
         if not self.connection_handler:
             logger.error("No connection handler available for messaging")
+            # Still log the message attempt in history as failed
+            self._store_message_log(message, message_type, success=False)
             return {'success': False, 'message': 'An internal error occurred. Please try again later.'}
         
         try:

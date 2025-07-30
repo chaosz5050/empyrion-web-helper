@@ -426,6 +426,114 @@ window.SettingsManager = {
         }
     },
 
+    // New split functions for FTP Auth and Paths
+    async saveFtpAuth() {
+        const host = document.getElementById('ftpHost').value.trim();
+        const port = document.getElementById('ftpPort').value.trim() || '21';
+        const username = document.getElementById('ftpUsername').value.trim();
+        const password = document.getElementById('ftpPassword').value.trim();
+
+        if (!host) {
+            showToast('Please provide FTP host', 'error');
+            return;
+        }
+
+        // Check if credentials are already configured
+        const credentialsConfigured = this.settingsData.ftp?.configured;
+        
+        // Only require credentials if not already configured
+        if (!credentialsConfigured && (!username || !password)) {
+            showToast('Please provide FTP username and password for first-time setup', 'error');
+            return;
+        }
+
+        try {
+            // Save FTP host settings
+            await this.setAppSetting('ftp_host', `${host}:${port}`);
+
+            // Only update credentials if new ones are provided
+            if (username && password) {
+                const credData = await apiCall('/api/credentials/set', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        ftp_user: username,
+                        ftp_password: password
+                    })
+                });
+
+                if (!credData.success) {
+                    showToast('Failed to save FTP credentials', 'error');
+                    return;
+                }
+                
+                // Update UI to show credentials are configured
+                this.settingsData.ftp = { configured: true };
+                document.getElementById('ftpUsername').placeholder = '••••••••••••';
+                document.getElementById('ftpPassword').placeholder = '••••••••••••';
+                document.getElementById('ftpUsername').value = '';
+                document.getElementById('ftpPassword').value = '';
+                
+                showToast('FTP authentication saved successfully', 'success');
+            } else {
+                showToast('FTP host settings saved successfully (credentials unchanged)', 'success');
+            }
+            
+            // Clear FTP test status when settings change (need to retest)
+            await apiCall('/api/settings/ftp_test_status', {
+                method: 'POST',
+                body: JSON.stringify({ value: '' })
+            });
+            
+            this.updateStatusDisplay();
+            
+            // Immediately update FTP status in header to reflect changes
+            if (typeof updateFtpConnectionStatus === 'function') {
+                updateFtpConnectionStatus();
+            }
+
+        } catch (error) {
+            console.error('Error saving FTP authentication:', error);
+            showToast('Error saving FTP authentication', 'error');
+        }
+    },
+
+    async saveFtpPaths() {
+        const itemsConfigPath = document.getElementById('itemsConfigPath').value.trim();
+        const playfieldsPath = document.getElementById('playfieldsPath').value.trim();
+        const modConfigPath = document.getElementById('modConfigPath').value.trim();
+        const gameoptionsPath = document.getElementById('gameoptionsPath').value.trim();
+
+        // Check if required paths are provided
+        if (!itemsConfigPath || !playfieldsPath) {
+            showToast('Please provide items config path and playfields path', 'error');
+            return;
+        }
+
+        try {
+            // Save path settings
+            await this.setAppSetting('items_config_path', itemsConfigPath);
+            await this.setAppSetting('playfields_path', playfieldsPath);
+            if (modConfigPath) {
+                await this.setAppSetting('ftp_mod_path', modConfigPath);
+            }
+            if (gameoptionsPath) {
+                await this.setAppSetting('gameoptions_path', gameoptionsPath);
+            }
+
+            showToast('FTP paths saved successfully', 'success');
+            
+            // Clear FTP test status when settings change (need to retest)
+            await apiCall('/api/settings/ftp_test_status', {
+                method: 'POST',
+                body: JSON.stringify({ value: '' })
+            });
+
+        } catch (error) {
+            console.error('Error saving FTP paths:', error);
+            showToast('Error saving FTP paths', 'error');
+        }
+    },
+
     async testFtpConnection() {
         showToast('Loading FTP test...', 'info');
         
