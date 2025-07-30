@@ -5,6 +5,61 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-07-30
+
+### Added
+- **🖥️ Server Configuration Editor** - Complete dedicated.yaml management system
+  - **FTP File Browser** - Navigate server directories to select dedicated.yaml files
+  - **File Validation** - Validates server config files contain required fields (Srv_Port, Srv_Name)
+  - **GameOptions-Style UI** - Professional form interface with dropdowns, help tooltips, and search
+  - **Auto-Loading Workflow** - Configuration loads automatically after file validation for intuitive UX
+  - **Complete Schema Support** - All ServerConfig and GameConfig parameters with proper data types
+    - Boolean controls (True/False dropdowns)
+    - Number inputs with validation ranges
+    - String inputs for names, passwords, and paths
+    - Enum dropdowns for predefined values (Blueprint restrictions, Game modes)
+  - **Comprehensive Configuration Coverage**:
+    - **Server Settings**: Port, Name, Max Players, Description, Public visibility
+    - **Security**: EAC, Telnet/RCON, Password protection, Steam Family Sharing controls
+    - **Performance**: Heartbeat timeouts, Playfield boot timeouts, Reserved playfields
+    - **Game Config**: Game mode, World seed, Custom scenarios
+- **Enhanced FTP Integration** - Robust directory browsing and file operations
+  - **4 New API Endpoints**: `/api/ftp/browse`, `/api/serverconfig/validate`, `/api/serverconfig/load`, `/api/serverconfig/save`
+  - **Smart File Detection** - Automatically identifies YAML files and directories
+  - **Error Recovery** - Graceful handling of connection issues and missing files
+  - **Path Normalization** - Proper handling of root directory and subdirectories
+
+### Changed
+- **🎯 Streamlined User Experience** - Intuitive server configuration workflow
+  - **One-Step Loading** - Select file → Auto-validate → Auto-load (no separate Load button)
+  - **Clear FTP Messaging** - All loading messages specify "FTP" so users understand delays
+  - **File Browser Integration** - "Load Config" button directly in file browser for immediate action
+- **📡 Enhanced Status Communication** - Better user feedback throughout operations
+  - "Loading from FTP server..." instead of generic "Loading directory..."
+  - "Browse FTP Files" button clearly indicates remote operation
+  - Validation and loading status messages specify FTP operations
+
+### Technical Details
+- **🔧 Server Config Architecture** - Professional configuration management
+  - Reuses existing FTP infrastructure for consistent connection handling
+  - Dynamic form generation based on loaded configuration structure
+  - Type-safe handling of booleans, numbers, strings, and enums
+  - Comprehensive metadata system with descriptions and validation rules
+- **🌐 Navigation Integration** - Seamless addition to existing interface
+  - New "Server Config" tab positioned between GameOptions and Messaging
+  - Consistent konsole-style theming matching existing design standards
+  - Search functionality across all configuration options
+- **🔍 File Browser Implementation** - Robust FTP directory navigation
+  - Handles string filenames from connection manager correctly
+  - Smart file type detection and sorting (directories first, then YAML files)
+  - Hidden file filtering with parent directory navigation support
+  - Comprehensive error handling with fallback to filename-based type guessing
+
+### Requirements
+- **✅ Zero New Dependencies** - Uses existing FTP infrastructure and connection manager
+- **🔗 FTP Configuration** - Requires FTP credentials configured in Settings > FTP Auth
+- **📁 Server Access** - Needs read/write access to server's dedicated.yaml location
+
 ## [0.5.5] - 2025-07-30
 
 ### Added

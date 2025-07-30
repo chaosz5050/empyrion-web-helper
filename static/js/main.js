@@ -4,6 +4,59 @@
  * Copyright (c) 2025 Chaosz Software
  */
 
+// Client-side error logging to server
+function logClientError(type, errorData) {
+    try {
+        fetch('/api/log/client-error', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                type: type,
+                error: errorData,
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(() => {}); // Silent fail if logging fails
+    } catch (e) {
+        // Silent fail - don't create infinite error loops
+    }
+}
+
+// Capture JavaScript errors
+window.addEventListener('error', function(event) {
+    logClientError('JavaScript Error', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack
+    });
+});
+
+// Capture unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+    logClientError('Unhandled Promise Rejection', {
+        reason: event.reason,
+        stack: event.reason?.stack
+    });
+});
+
+// Suppress ResizeObserver errors globally (harmless browser warnings)
+let resizeObserverErrorDebounce = null;
+const originalConsoleError = console.error;
+console.error = function(...args) {
+    // Suppress ResizeObserver loop completed errors
+    if (args[0] && args[0].includes && args[0].includes('ResizeObserver loop completed')) {
+        clearTimeout(resizeObserverErrorDebounce);
+        resizeObserverErrorDebounce = setTimeout(() => {
+            // Only log once per second to avoid spam
+        }, 1000);
+        return;
+    }
+    originalConsoleError.apply(console, args);
+};
+
 // Application initialization
 document.addEventListener('DOMContentLoaded', function() {
     debugLog('Empyrion Web Helper v0.5.0 - Background Service Architecture');

@@ -1,0 +1,507 @@
+<!-- ServerConfig Tab - Empyrion dedicated.yaml Editor -->
+<div class="konsole-panel" id="serverconfigPanel">
+    <div class="konsole-content">
+        <!-- Header Section with FTP Browser and Load/Save Controls -->
+        <div class="konsole-section">
+            <div class="konsole-section-header">
+                <h3>🖥️ Server Configuration Editor</h3>
+                <div class="button-group">
+                    <button id="browseServerConfigBtn" class="konsole-btn konsole-btn-secondary" title="Browse FTP for dedicated.yaml files">
+                        📁 Browse FTP Files
+                    </button>
+                    <button id="saveServerConfigBtn" class="konsole-btn konsole-btn-success" title="Save dedicated.yaml to server" disabled>
+                        💾 Save Config
+                    </button>
+                </div>
+            </div>
+            
+            <!-- File Browser Section -->
+            <div id="serverConfigFileBrowser" class="file-browser-section" style="display: none;">
+                <div class="file-browser-header">
+                    <h4>📁 Select dedicated.yaml file</h4>
+                    <button id="closeFileBrowserBtn" class="konsole-btn konsole-btn-small">✕</button>
+                </div>
+                <div class="file-browser-path">
+                    <span class="path-label">Path:</span>
+                    <span id="currentFilePath">/</span>
+                </div>
+                <div id="fileBrowserContent" class="file-browser-content">
+                    <div class="loading-spinner">🔄 Loading directory...</div>
+                </div>
+                <div class="file-browser-footer">
+                    <div class="selected-file">
+                        <span class="selected-label">Selected:</span>
+                        <span id="selectedFileName">None</span>
+                    </div>
+                    <button id="selectFileBtn" class="konsole-btn konsole-btn-primary" disabled>Load Config</button>
+                </div>
+            </div>
+            
+            <!-- Status Bar -->
+            <div id="serverconfigStatus" class="konsole-status-bar" style="display: none;">
+                <span id="serverconfigStatusText">Ready</span>
+            </div>
+        </div>
+
+        <!-- Server Configuration Form -->
+        <div class="konsole-section konsole-section-full">
+            <div class="server-config-container">
+                <div class="server-config-header">
+                    <h4>Dedicated Server Configuration</h4>
+                    <div class="config-file-info">
+                        <span id="configFileDisplay">No file loaded</span>
+                    </div>
+                </div>
+                
+                <div class="server-config-search">
+                    <input type="text" id="server-config-search" placeholder="Search configuration options..." class="options-search-input" disabled>
+                </div>
+                
+                <div id="server-config-content" class="server-config-content">
+                    <div class="no-config-message">
+                        <h3>📄 No configuration loaded</h3>
+                        <p>Click "Browse FTP Files" to select a dedicated.yaml file from your server</p>
+                        <div class="config-help">
+                            <h4>What is dedicated.yaml?</h4>
+                            <ul>
+                                <li>Main server configuration file for Empyrion dedicated servers</li>
+                                <li>Contains ServerConfig and GameConfig sections</li>
+                                <li>Controls server name, port, max players, security settings, and more</li>
+                                <li>Usually located in your server's root directory</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Server Config Specific Styles -->
+<style>
+/* File Browser Styles */
+.file-browser-section {
+    background: var(--bg-secondary, #2d2d2d);
+    border: 1px solid var(--border-color, #555);
+    border-radius: 6px;
+    margin: 10px 0;
+    padding: 0;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.file-browser-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary, #3d3d3d);
+    border-bottom: 1px solid var(--border-color, #555);
+}
+
+.file-browser-header h4 {
+    margin: 0;
+    color: var(--text-primary, #ffffff);
+    font-size: 14px;
+}
+
+.file-browser-path {
+    padding: 8px 16px;
+    background: var(--bg-primary, #1a1a1a);
+    border-bottom: 1px solid var(--border-color, #555);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.path-label {
+    color: var(--text-secondary, #cccccc);
+    margin-right: 8px;
+}
+
+.file-browser-content {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 2px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.file-item:hover {
+    background: var(--bg-tertiary, #3d3d3d);
+}
+
+.file-item.selected {
+    background: var(--accent-color, #4a9eff);
+    color: white;
+}
+
+.file-item.directory {
+    color: var(--directory-color, #ffd700);
+}
+
+.file-item.yaml-file {
+    color: var(--yaml-color, #90ee90);
+}
+
+.file-icon {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}
+
+.file-name {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.file-size {
+    color: var(--text-secondary, #cccccc);
+    font-size: 11px;
+    margin-left: 12px;
+}
+
+.file-browser-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary, #3d3d3d);
+    border-top: 1px solid var(--border-color, #555);
+}
+
+.selected-file {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.selected-label {
+    color: var(--text-secondary, #cccccc);
+    margin-right: 8px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary, #cccccc);
+}
+
+/* Server Config Container */
+.server-config-container {
+    background: var(--bg-secondary, #2d2d2d);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.server-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-tertiary, #3d3d3d);
+    border-bottom: 1px solid var(--border-color, #555);
+}
+
+.server-config-header h4 {
+    margin: 0;
+    color: var(--text-primary, #ffffff);
+    font-size: 16px;
+}
+
+.config-file-info {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-secondary, #cccccc);
+    background: var(--bg-primary, #1a1a1a);
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+.server-config-search {
+    padding: 16px 20px;
+    background: var(--bg-secondary, #2d2d2d);
+    border-bottom: 1px solid var(--border-color, #555);
+}
+
+.server-config-content {
+    padding: 20px;
+    min-height: 400px;
+}
+
+.no-config-message {
+    text-align: center;
+    color: var(--text-secondary, #cccccc);
+    padding: 60px 20px;
+}
+
+.no-config-message h3 {
+    color: var(--text-primary, #ffffff);
+    margin-bottom: 16px;
+}
+
+.no-config-message p {
+    margin-bottom: 24px;
+    font-size: 14px;
+}
+
+.config-help {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto;
+    background: var(--bg-tertiary, #3d3d3d);
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #555);
+}
+
+.config-help h4 {
+    color: var(--text-primary, #ffffff);
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.config-help ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.config-help li {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* Reuse GameOptions styles for configuration form */
+.server-config-category {
+    margin-bottom: 24px;
+    background: var(--bg-primary, #1a1a1a);
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #555);
+    overflow: hidden;
+}
+
+.server-config-category.collapsed .category-content {
+    display: none;
+}
+
+.category-header {
+    padding: 12px 16px;
+    background: var(--bg-tertiary, #3d3d3d);
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border-color, #555);
+}
+
+.category-header:hover {
+    background: var(--bg-hover, #4d4d4d);
+}
+
+.category-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.category-title h3 {
+    margin: 0;
+    color: var(--text-primary, #ffffff);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.category-icon {
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.category-count {
+    color: var(--text-secondary, #cccccc);
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.category-toggle {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #cccccc);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.category-toggle:hover {
+    background: var(--bg-secondary, #2d2d2d);
+    color: var(--text-primary, #ffffff);
+}
+
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.category-content {
+    padding: 16px;
+}
+
+/* Server Config Option Styles */
+.server-config-option {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg-secondary, #2d2d2d);
+    border-radius: 4px;
+    border: 1px solid var(--border-color, #555);
+}
+
+.option-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.option-label {
+    color: var(--text-primary, #ffffff);
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.option-unit {
+    color: var(--text-secondary, #cccccc);
+    font-weight: normal;
+    font-size: 11px;
+}
+
+.option-control {
+    flex: 1;
+    min-width: 200px;
+}
+
+.option-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.value-source {
+    font-size: 16px;
+    cursor: help;
+}
+
+.value-source.scenario {
+    color: var(--custom-color, #ffd700);
+}
+
+.value-source.default {
+    color: var(--default-color, #cccccc);
+}
+
+.help-btn {
+    background: var(--bg-tertiary, #3d3d3d);
+    border: 1px solid var(--border-color, #555);
+    color: var(--text-secondary, #cccccc);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.help-btn:hover {
+    background: var(--accent-color, #4a9eff);
+    color: white;
+    border-color: var(--accent-color, #4a9eff);
+}
+
+/* Form Controls */
+.option-input,
+.option-select {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-primary, #1a1a1a);
+    border: 1px solid var(--border-color, #555);
+    border-radius: 3px;
+    color: var(--text-primary, #ffffff);
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.option-input:focus,
+.option-select:focus {
+    outline: none;
+    border-color: var(--accent-color, #4a9eff);
+    background: var(--bg-focus, #222222);
+}
+
+.option-input.default-value {
+    border-color: var(--default-color, #cccccc);
+    background: var(--bg-primary, #1a1a1a);
+}
+
+.option-input.custom-value {
+    border-color: var(--custom-color, #ffd700);
+    background: var(--bg-custom, #2a2a00);
+}
+
+.range-control {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.option-range {
+    flex: 1;
+}
+
+.range-display {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+/* Tooltips */
+.option-tooltip {
+    position: absolute;
+    background: var(--bg-tooltip, #000000);
+    border: 1px solid var(--border-color, #555);
+    border-radius: 4px;
+    padding: 12px;
+    max-width: 300px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    margin-top: 8px;
+}
+
+.tooltip-content {
+    color: var(--text-primary, #ffffff);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.tooltip-meta {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color, #555);
+    color: var(--text-secondary, #cccccc);
+    font-size: 11px;
+}
+</style>

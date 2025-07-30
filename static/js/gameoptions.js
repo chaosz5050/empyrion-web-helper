@@ -635,21 +635,6 @@ class GameOptionsManager {
 // Global instance
 let gameOptionsManager = null;
 
-// Debounced ResizeObserver error suppression
-let resizeObserverErrorDebounce = null;
-const originalConsoleError = console.error;
-console.error = function(...args) {
-    // Suppress ResizeObserver loop completed errors
-    if (args[0] && args[0].includes && args[0].includes('ResizeObserver loop completed')) {
-        clearTimeout(resizeObserverErrorDebounce);
-        resizeObserverErrorDebounce = setTimeout(() => {
-            // Only log once per second to avoid spam
-        }, 1000);
-        return;
-    }
-    originalConsoleError.apply(console, args);
-};
-
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     // Delay initialization slightly to avoid timing issues

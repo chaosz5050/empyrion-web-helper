@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.5.4
+# 🚀 Empyrion Web Helper v0.6.0
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.5.4-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.6.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -41,6 +41,19 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **Advanced ECF Parser** - Handles complex Empyrion Configuration File format with nested properties
 - **Comprehensive Pagination** - Configurable display options (50/100/250/500 items per page)
 - **Real-time Connection Testing** - Verify FTP connectivity and file availability before editing
+
+### 🖥️ **Server Configuration Editor**  
+- **FTP File Browser** - Navigate server directories to select dedicated.yaml files
+- **GameOptions-Style UI** - Professional form interface with dropdowns, tooltips, and search
+- **Auto-Loading Workflow** - Configuration loads automatically after file validation
+- **Complete Schema Support** - All ServerConfig and GameConfig parameters with proper data types
+- **Comprehensive Configuration Coverage**:
+  - **Server Settings**: Port, Name, Max Players, Description, Public visibility
+  - **Security**: EAC, Telnet/RCON, Password protection, Steam Family Sharing controls
+  - **Performance**: Heartbeat timeouts, Playfield boot timeouts, Reserved playfields
+  - **Game Config**: Game mode, World seed, Custom scenarios
+- **File Validation** - Ensures files contain required fields before loading
+- **Intuitive UX** - One-step loading with clear FTP messaging for user expectations
 
 ### 📢 **Advanced Messaging System**
 - **24/7 Operation** - Messages work without web browser open (background service)

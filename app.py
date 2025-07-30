@@ -2367,6 +2367,471 @@ def save_gameoptions():
         })
 
 # ===============================
+# Server Config API Endpoints
+# ===============================
+
+@app.route('/api/ftp/browse', methods=['POST'])
+def browse_ftp_directory():
+    """Browse FTP directory for file selection."""
+    try:
+        import socket
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        browse_path = data.get('path', '/').strip()
+        
+        # Normalize path - ensure it starts with /
+        if not browse_path.startswith('/'):
+            browse_path = '/' + browse_path
+        
+        # Remove trailing slash except for root
+        if browse_path != '/' and browse_path.endswith('/'):
+            browse_path = browse_path.rstrip('/')
+        
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22  # Default to SFTP port
+        else:
+            host = ftp_host
+            port = 22  # Default to SFTP port
+            
+        logger.info(f"Browsing FTP directory: {browse_path}")
+        
+        try:
+            # Auto-detect connection type and connect
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            # Use universal client for file operations
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # List directory contents (returns just filenames)
+                    filenames = client.list_directory(browse_path)
+                    logger.info(f"Found {len(filenames)} items in {browse_path}")
+                    
+                    # Get detailed info for each file
+                    file_list = []
+                    for filename in filenames:
+                        try:
+                            # Skip hidden files starting with '.'
+                            if filename.startswith('.') and filename not in ['..']:
+                                continue
+                                
+                            # Construct full path for file info
+                            if browse_path == '/':
+                                full_path = '/' + filename
+                            else:
+                                full_path = browse_path + '/' + filename
+                            
+                            # Get file metadata
+                            file_info = client.get_file_info(full_path)
+                            
+                            file_list.append({
+                                'name': filename,
+                                'type': 'directory' if file_info.get('is_directory', False) else 'file',
+                                'size': file_info.get('size', 0),
+                                'modified': file_info.get('modified', ''),
+                            })
+                        except Exception as file_error:
+                            # If we can't get file info, try to guess based on filename
+                            logger.warning(f"Could not get info for {filename}: {file_error}")
+                            
+                            # Try to guess if it's a directory (no extension)
+                            is_likely_dir = '.' not in filename or filename.endswith('/')
+                            
+                            file_list.append({
+                                'name': filename.rstrip('/'),  # Remove trailing slash if present
+                                'type': 'directory' if is_likely_dir else 'file',
+                                'size': 0,
+                                'modified': '',
+                            })
+                    
+                    return jsonify({
+                        'success': True,
+                        'files': file_list,
+                        'current_path': browse_path
+                    })
+                    
+                except Exception as browse_error:
+                    logger.error(f"Error browsing directory {browse_path}: {browse_error}", exc_info=True)
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot browse directory "{browse_path}": {str(browse_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error browsing FTP: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error browsing FTP directory: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error browsing directory'
+        })
+
+@app.route('/api/serverconfig/validate', methods=['POST'])
+def validate_server_config():
+    """Validate that a file is a valid server configuration file."""
+    try:
+        import yaml
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        file_path = data.get('file_path', '').strip()
+        
+        if not file_path:
+            return jsonify({'success': False, 'message': 'File path is required'})
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22
+        else:
+            host = ftp_host
+            port = 22
+            
+        logger.info(f"Validating server config file: {file_path}")
+        
+        try:
+            # Connect and validate file
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # Download and parse file
+                    from io import BytesIO
+                    temp_buffer = BytesIO()
+                    client.download_file(file_path, temp_buffer)
+                    temp_buffer.seek(0)
+                    file_content = temp_buffer.read().decode('utf-8')
+                    
+                    if not file_content:
+                        return jsonify({'success': False, 'message': 'File is empty'})
+                    
+                    # Parse YAML
+                    try:
+                        yaml_data = yaml.safe_load(file_content)
+                    except yaml.YAMLError as yaml_error:
+                        return jsonify({
+                            'success': False, 
+                            'message': f'Invalid YAML format: {str(yaml_error)}'
+                        })
+                    
+                    # Validate required fields for server config
+                    if not isinstance(yaml_data, dict):
+                        return jsonify({
+                            'success': False, 
+                            'message': 'File must contain a YAML dictionary'
+                        })
+                    
+                    # Check for required server config fields
+                    server_config = yaml_data.get('ServerConfig', {})
+                    if not isinstance(server_config, dict):
+                        return jsonify({
+                            'success': False, 
+                            'message': 'File must contain ServerConfig section'
+                        })
+                        
+                    # Validate required fields
+                    required_fields = ['Srv_Port', 'Srv_Name']
+                    missing_fields = []
+                    for field in required_fields:
+                        if field not in server_config:
+                            missing_fields.append(field)
+                    
+                    if missing_fields:
+                        return jsonify({
+                            'success': False, 
+                            'message': f'Missing required fields: {", ".join(missing_fields)}'
+                        })
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'Valid server configuration file',
+                        'server_name': server_config.get('Srv_Name', 'Unknown'),
+                        'server_port': server_config.get('Srv_Port', 'Unknown')
+                    })
+                    
+                except Exception as file_error:
+                    logger.error(f"Error validating file {file_path}: {file_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot read file: {str(file_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error validating server config: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error validating server config: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error validating file'
+        })
+
+@app.route('/api/serverconfig/load', methods=['POST'])
+def load_server_config():
+    """Load dedicated.yaml file via FTP/SFTP."""
+    try:
+        import yaml
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        config_path = data.get('file_path', '').strip()
+        
+        if not config_path:
+            return jsonify({'success': False, 'message': 'File path is required'})
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22
+        else:
+            host = ftp_host
+            port = 22
+            
+        logger.info(f"Loading server config from {config_path}")
+        
+        try:
+            # Connect and load file
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # Download file
+                    from io import BytesIO
+                    temp_buffer = BytesIO()
+                    client.download_file(config_path, temp_buffer)
+                    temp_buffer.seek(0)
+                    file_content = temp_buffer.read().decode('utf-8')
+                    
+                    if not file_content:
+                        return jsonify({'success': False, 'message': 'Configuration file is empty'})
+                    
+                    # Parse YAML
+                    try:
+                        config_data = yaml.safe_load(file_content)
+                        
+                        return jsonify({
+                            'success': True,
+                            'config': config_data,
+                            'raw_content': file_content,
+                            'message': 'Server configuration loaded successfully'
+                        })
+                        
+                    except yaml.YAMLError as yaml_error:
+                        logger.error(f"YAML parsing error: {yaml_error}")
+                        return jsonify({
+                            'success': False,
+                            'message': f'Invalid YAML format: {str(yaml_error)}',
+                            'raw_content': file_content
+                        })
+                    
+                except Exception as file_error:
+                    logger.error(f"Error loading server config: {file_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot read file: {str(file_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error loading server config: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error loading server config: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error loading server configuration'
+        })
+
+@app.route('/api/serverconfig/save', methods=['POST'])
+def save_server_config():
+    """Save dedicated.yaml file via FTP/SFTP."""
+    try:
+        import yaml
+        from connection_manager import EnhancedConnectionManager, UniversalFileClient
+        
+        data = request.get_json(force=True)
+        config_path = data.get('file_path', '').strip()
+        config_data = data.get('config_data', {})
+        
+        if not config_path:
+            return jsonify({'success': False, 'message': 'File path is required'})
+            
+        if not config_data:
+            return jsonify({'success': False, 'message': 'Configuration data is required'})
+            
+        # Get FTP credentials
+        credentials = player_db.get_ftp_credentials()
+        if not credentials or not credentials.get('username') or not credentials.get('password'):
+            return jsonify({'success': False, 'message': 'FTP credentials not configured'})
+            
+        ftp_host = player_db.get_app_setting('ftp_host')
+        if not ftp_host:
+            return jsonify({'success': False, 'message': 'FTP host not configured'})
+            
+        # Parse host and port
+        if ':' in ftp_host:
+            host, port_str = ftp_host.split(':', 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 22
+        else:
+            host = ftp_host
+            port = 22
+        
+        # Convert config data to YAML
+        try:
+            yaml_content = yaml.dump(config_data, default_flow_style=False, indent=2, sort_keys=False)
+        except Exception as yaml_error:
+            return jsonify({
+                'success': False,
+                'message': f'Error generating YAML: {str(yaml_error)}'
+            })
+            
+        logger.info(f"Saving server config to {config_path}")
+        
+        try:
+            # Connect and save file
+            manager = EnhancedConnectionManager()
+            connection_result = manager.detect_and_connect(host, port, credentials['username'], credentials['password'])
+            
+            if not connection_result.success:
+                return jsonify({
+                    'success': False,
+                    'message': f'Cannot connect to server: {connection_result.message}'
+                })
+            
+            client = UniversalFileClient(
+                connection_result.connection_type,
+                host, port,
+                credentials['username'], credentials['password']
+            )
+            
+            with client.connect():
+                try:
+                    # Upload file
+                    from io import BytesIO
+                    yaml_bytes = yaml_content.encode('utf-8')
+                    upload_buffer = BytesIO(yaml_bytes)
+                    
+                    client.upload_file(upload_buffer, config_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'Server configuration saved successfully'
+                    })
+                    
+                except Exception as file_error:
+                    logger.error(f"Error saving server config: {file_error}")
+                    return jsonify({
+                        'success': False,
+                        'message': f'Cannot write file: {str(file_error)}'
+                    })
+        
+        except Exception as connection_error:
+            logger.error(f"Connection error saving server config: {connection_error}")
+            return jsonify({
+                'success': False,
+                'message': f'Connection error: {str(connection_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error saving server config: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Internal error saving server configuration'
+        })
+
+# ===============================
 # Items Config API Endpoints
 # ===============================
 
@@ -2942,6 +3407,48 @@ def reset_poi_timer():
             'success': False,
             'message': 'Failed to reset POI timer'
         })
+
+# ============================================================================
+# CLIENT-SIDE ERROR LOGGING
+# ============================================================================
+
+@app.route('/api/log/client-error', methods=['POST'])
+def log_client_error():
+    """
+    Receive and log JavaScript errors from the client browser.
+    
+    This endpoint allows the frontend to send JavaScript errors, unhandled promise
+    rejections, and console errors to be logged in the server log file.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        # Extract error information
+        error_type = data.get('type', 'Unknown Error')
+        error_data = data.get('error', {})
+        url = data.get('url', 'Unknown URL')
+        user_agent = data.get('userAgent', 'Unknown Browser')
+        timestamp = data.get('timestamp', 'No timestamp')
+        
+        # Get key error details
+        message = error_data.get('message', 'No message')
+        filename = error_data.get('filename', 'Unknown file')
+        line_number = error_data.get('lineno', 'Unknown line')
+        stack = error_data.get('stack', 'No stack trace')
+        
+        # Format comprehensive error log entry
+        error_log = f"CLIENT ERROR: {error_type} | {message} | File: {filename}:{line_number} | URL: {url} | Stack: {stack}"
+        
+        # Log the client error using existing logger
+        logger.error(error_log)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        logger.error(f"Error logging client error: {e}")
+        return jsonify({'success': False, 'message': 'Failed to log client error'}), 500
 
 
 if __name__ == '__main__':
