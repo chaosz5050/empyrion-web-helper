@@ -1344,34 +1344,16 @@ def clear_message_history():
 
 @app.route('/messaging/test', methods=['POST'])
 def test_message():
-    """Send a test message."""
-    if not background_service:
-        return jsonify({'success': False, 'message': 'Background service not available'})
+    """
+    Send a test message.
     
-    connection_handler = background_service.get_connection_handler()
-    if not connection_handler or not connection_handler.is_connection_alive():
-        return jsonify({'success': False, 'message': 'Not connected to server'})
-    
-    if not messaging_manager:
-        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
-    
-    try:
-        data = request.get_json()
-        message_type = data.get('type')
-        player_name = data.get('player_name', 'TestPlayer')
-        
-        if message_type == 'welcome':
-            result = messaging_manager.send_welcome_message(player_name)
-        elif message_type == 'goodbye':
-            result = messaging_manager.send_goodbye_message(player_name)
-        else:
-            return jsonify({'success': False, 'message': 'Invalid message type'})
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Error sending test message: {e}", exc_info=True)
-        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+    DISABLED: To prevent RCON interference with PlayerStatusMod.
+    """
+    logger.warning("🚫 Test message sending DISABLED - handled by PlayerStatusMod to prevent duplicates")
+    return jsonify({
+        'success': False, 
+        'message': 'Test message sending disabled - handled by PlayerStatusMod to prevent duplicate messages'
+    })
 
 @app.route('/logging/stats', methods=['GET'])
 def get_logging_stats():
@@ -1457,17 +1439,9 @@ def clear_logs():
 def send_global_message():
     """
     Send a global message to all players via the messaging manager.
-
-    Returns:
-        Response: JSON indicating success or failure.
+    
+    Manual messaging re-enabled for admin use. Automatic messages (welcome/goodbye) remain disabled.
     """
-    if not background_service:
-        return jsonify({'success': False, 'message': 'Background service not available'})
-    
-    connection_handler = background_service.get_connection_handler()
-    if not connection_handler or not connection_handler.is_connection_alive():
-        return jsonify({'success': False, 'message': 'Not connected to server'})
-    
     if not messaging_manager:
         return jsonify({'success': False, 'message': 'Messaging manager not available'})
     
@@ -1478,15 +1452,34 @@ def send_global_message():
         if not message:
             return jsonify({'success': False, 'message': 'Message cannot be empty'})
         
-        success = messaging_manager.send_global_message(message, message_type='manual')
+        # Use direct RCON command instead of going through messaging manager to avoid conflicts
+        # This bypasses the background service connection and uses a direct connection
+        from connection import EmpyrionConnection
         
-        if success:
-            return jsonify({'success': True, 'message': 'Global message sent successfully'})
+        # Get connection settings
+        rcon_creds = player_db.get_credential('rcon') if player_db else None
+        server_host = player_db.get_app_setting('server_host') if player_db else None
+        server_port = player_db.get_app_setting('server_port') if player_db else None
+        
+        if not rcon_creds or not server_host or not server_port:
+            return jsonify({'success': False, 'message': 'RCON connection not configured'})
+        
+        # Create temporary connection for this message only
+        temp_conn = EmpyrionConnection(server_host, int(server_port), rcon_creds['password'])
+        if temp_conn.connect():
+            result = temp_conn.send_command(f"say '{message}'")
+            temp_conn.disconnect()
+            
+            if result and not result.startswith('Error:'):
+                logger.info(f"Manual global message sent: {message}")
+                return jsonify({'success': True, 'message': 'Message sent successfully'})
+            else:
+                return jsonify({'success': False, 'message': 'Failed to send message to server'})
         else:
-            return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+            return jsonify({'success': False, 'message': 'Could not connect to server'})
             
     except Exception as e:
-        logger.error(f"Error sending global message: {e}", exc_info=True)
+        logger.error(f"Error sending manual global message: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
 @app.route('/api/credentials/status', methods=['GET'])

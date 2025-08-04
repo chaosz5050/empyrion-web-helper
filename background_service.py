@@ -76,23 +76,23 @@ class BackgroundService:
     def start(self):
         """
         Start the background service.
-
-        Launches monitoring and scheduler threads for continuous operation.
-        Raises an exception if startup fails.
+        
+        Player monitoring re-enabled after fixing PlayerStatusMod duplicate messages.
+        Welcome/goodbye messages remain disabled to prevent conflicts with PlayerStatusMod.
         """
+        logger.info("🔄 Starting background service for player monitoring (messaging disabled)")
+        
         if self.is_running:
             logger.warning("Background service already running")
             return
         
-        self.is_running = True
+        self.is_running = True  # Re-enable for player monitoring
         self.stop_event.clear()
         
         # Reset connection state on startup
         self.is_connected = False
         self.connection_handler = None
         self.reconnect_attempts = 0
-        
-        logger.info("🚀 Starting Empyrion Web Helper background service")
         
         try:
             # Start monitoring thread

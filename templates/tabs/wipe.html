@@ -28,19 +28,19 @@
                 <h4>🔧 Wipe Options:</h4>
                 <div class="konsole-checkbox-grid">
                     <label class="konsole-checkbox-item">
-                        <input type="checkbox" id="wipePOI" class="konsole-checkbox" checked>
+                        <input type="checkbox" id="wipePOI" class="konsole-checkbox" checked onchange="WipeManager.handleWipeTypeChange()">
                         <span class="konsole-checkbox-label">POI (Points of Interest)</span>
                     </label>
                     <label class="konsole-checkbox-item">
-                        <input type="checkbox" id="wipeDeposit" class="konsole-checkbox">
+                        <input type="checkbox" id="wipeDeposit" class="konsole-checkbox" onchange="WipeManager.handleWipeTypeChange()">
                         <span class="konsole-checkbox-label">Deposits (Resource nodes)</span>
                     </label>
                     <label class="konsole-checkbox-item">
-                        <input type="checkbox" id="wipeTerrain" class="konsole-checkbox">
+                        <input type="checkbox" id="wipeTerrain" class="konsole-checkbox" onchange="WipeManager.handleWipeTypeChange()">
                         <span class="konsole-checkbox-label">Terrain (Voxel changes)</span>
                     </label>
                     <label class="konsole-checkbox-item">
-                        <input type="checkbox" id="wipeAll" class="konsole-checkbox">
+                        <input type="checkbox" id="wipeAll" class="konsole-checkbox" onchange="WipeManager.handleWipeTypeChange()">
                         <span class="konsole-checkbox-label">All (Complete playfield reset)</span>
                     </label>
                 </div>
@@ -152,8 +152,15 @@
 
 .konsole-checkbox {
     margin-right: 10px;
-    transform: scale(1.2);
-    accent-color: var(--accent-blue);
+    transform: scale(1.1);
+    accent-color: #40a4df;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative;
+    cursor: pointer;
 }
 
 .konsole-checkbox-label {

@@ -567,6 +567,9 @@ class MessagingManager:
     def send_welcome_message(self, player_name: str) -> Dict:
         """
         Send a welcome message for a player.
+        
+        **IMPORTANT**: Welcome/goodbye messages are now handled by PlayerStatusMod.
+        This method is disabled to prevent duplicate messages.
 
         Args:
             player_name (str): Name of the player to welcome.
@@ -574,18 +577,16 @@ class MessagingManager:
         Returns:
             Dict: Result dictionary with 'success' and 'message' keys.
         """
-        if not player_name:
-            return {'success': False, 'message': 'Cannot send welcome message for empty player name'}
-        
-        if not self.welcome_enabled:
-            return {'success': True, 'message': 'Welcome messages are disabled'}
-        
-        message = self.welcome_message_template.replace('<playername>', player_name)
-        return self.send_global_message(message, message_type='welcome')
+        # SAFETY: Always return disabled to prevent duplicate messages from PlayerStatusMod
+        logger.warning(f"🚫 Blocked welcome message for {player_name} - handled by PlayerStatusMod")
+        return {'success': True, 'message': 'Welcome messages handled by PlayerStatusMod (prevented duplicate)'}
     
     def send_goodbye_message(self, player_name: str) -> Dict:
         """
         Send a goodbye message for a player.
+        
+        **IMPORTANT**: Welcome/goodbye messages are now handled by PlayerStatusMod.
+        This method is disabled to prevent duplicate messages.
 
         Args:
             player_name (str): Name of the player to say goodbye to.
@@ -593,14 +594,9 @@ class MessagingManager:
         Returns:
             Dict: Result dictionary with 'success' and 'message' keys.
         """
-        if not player_name:
-            return {'success': False, 'message': 'Cannot send goodbye message for empty player name'}
-        
-        if not self.goodbye_enabled:
-            return {'success': True, 'message': 'Goodbye messages are disabled'}
-        
-        message = self.goodbye_message_template.replace('<playername>', player_name)
-        return self.send_global_message(message, message_type='goodbye')
+        # SAFETY: Always return disabled to prevent duplicate messages from PlayerStatusMod
+        logger.warning(f"🚫 Blocked goodbye message for {player_name} - handled by PlayerStatusMod")
+        return {'success': True, 'message': 'Goodbye messages handled by PlayerStatusMod (prevented duplicate)'}
     
     # ============================================================================
     # SCHEDULED MESSAGES

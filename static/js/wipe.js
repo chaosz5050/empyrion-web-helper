@@ -12,17 +12,25 @@ window.WipeManager = {
     isOperationRunning: false,
     
     init() {
+        console.log('WipeManager.init() called');
         debugLog('Wipe manager initialized');
         this.setupWipeTypeHandlers();
+        console.log('WipeManager initialization complete');
     },
 
     setupWipeTypeHandlers() {
+        console.log('setupWipeTypeHandlers() called');
         // Handle mutual exclusivity of "All" option with others
         const wipeAll = document.getElementById('wipeAll');
         const otherCheckboxes = ['wipePOI', 'wipeDeposit', 'wipeTerrain'];
         
+        console.log('wipeAll element:', wipeAll);
+        console.log('other checkbox elements:', otherCheckboxes.map(id => document.getElementById(id)));
+        
         if (wipeAll) {
+            console.log('Adding event listener to wipeAll');
             wipeAll.addEventListener('change', (e) => {
+                console.log('wipeAll changed:', e.target.checked);
                 if (e.target.checked) {
                     // If "All" is checked, uncheck others
                     otherCheckboxes.forEach(id => {
@@ -32,20 +40,52 @@ window.WipeManager = {
                 }
                 this.updateDeployButton();
             });
+        } else {
+            console.log('wipeAll element not found!');
         }
         
         // Handle other checkboxes unchecking "All"
         otherCheckboxes.forEach(id => {
             const checkbox = document.getElementById(id);
+            console.log(`Checkbox ${id}:`, checkbox);
             if (checkbox) {
+                console.log(`Adding event listener to ${id}`);
                 checkbox.addEventListener('change', (e) => {
+                    console.log(`${id} changed:`, e.target.checked);
                     if (e.target.checked && wipeAll) {
                         wipeAll.checked = false;
                     }
                     this.updateDeployButton();
                 });
+            } else {
+                console.log(`Checkbox ${id} not found!`);
             }
         });
+        console.log('setupWipeTypeHandlers() complete');
+    },
+
+    handleWipeTypeChange() {
+        console.log('handleWipeTypeChange() called');
+        
+        const wipeAll = document.getElementById('wipeAll');
+        const wipePOI = document.getElementById('wipePOI');
+        const wipeDeposit = document.getElementById('wipeDeposit');
+        const wipeTerrain = document.getElementById('wipeTerrain');
+        
+        // Handle mutual exclusivity: if "All" is checked, uncheck others
+        if (wipeAll && wipeAll.checked) {
+            console.log('All selected - unchecking others');
+            if (wipePOI) wipePOI.checked = false;
+            if (wipeDeposit) wipeDeposit.checked = false;
+            if (wipeTerrain) wipeTerrain.checked = false;
+        } 
+        // If any other is checked, uncheck "All"
+        else if ((wipePOI && wipePOI.checked) || (wipeDeposit && wipeDeposit.checked) || (wipeTerrain && wipeTerrain.checked)) {
+            console.log('Individual option selected - unchecking All');
+            if (wipeAll) wipeAll.checked = false;
+        }
+        
+        this.updateDeployButton();
     },
 
     async loadActivePlayfields() {
