@@ -5,6 +5,34 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-08-06
+
+### Security
+- **Critical Security Fixes** - Addressed multiple security vulnerabilities identified in security audit
+  - **SQL Injection Prevention** - Added column name whitelist validation for database filter queries
+  - **Input Validation Enhancement** - Added 500 character limit for message inputs to prevent abuse
+  - **Directory Traversal Protection** - Fixed static file serving to prevent access to sensitive files
+- **Enhanced Security Posture** - Proactive security hardening for safer hobby project deployment
+  - Database queries now validate allowed column names before execution
+  - Message inputs properly validated and length-limited
+  - Static file serving restricted to proper directory scope
+
+### Fixed  
+- **Security Vulnerabilities** - Three critical issues resolved:
+  - SQL injection via unvalidated column names in player filters
+  - Directory traversal via unrestricted static file serving  
+  - Insufficient input validation on message endpoints
+
+### Technical Details
+- **Database Security** - Filter queries now use allowed column whitelist: `steam_id`, `name`, `status`, `faction`, `ip_address`, `country`, `playfield`
+- **Input Validation** - Message endpoints validate content length and reject empty/oversized inputs
+- **Static File Security** - File serving restricted to `static/` directory, preventing access to sensitive project files
+
+### Developer Notes
+- Security fixes maintain full backward compatibility with existing functionality
+- No changes to user interface or API behavior
+- Recommended update for all deployments, especially public-facing instances
+
 ## [0.6.0] - 2025-07-30
 
 ### Added

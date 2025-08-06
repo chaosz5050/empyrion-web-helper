@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.6.0
+# 🚀 Empyrion Web Helper v0.6.1
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.6.0-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.6.1-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -72,6 +72,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **Secure Web Interface** - Professional credential management via Settings tab
 - **Environment Variable Support** - For automated deployments and CI/CD
 - **Automatic Secret Key Management** - Flask session security handled automatically
+- **Security Hardened (v0.6.1)** - SQL injection protection, input validation, directory traversal prevention
 
 ### 📊 **Professional Operations**
 - **Background Service Architecture** - True headless operation independent of web UI
@@ -413,4 +414,4 @@ For more details, see the [full license text](https://creativecommons.org/licens
 
 **Built with ❤️ for the Empyrion Galactic Survival community by Chaosz Software**
 
-*Empyrion Web Helper v0.5.4 - Professional server management with advanced messaging sync, universal compatibility, and enterprise-grade security*
+*Empyrion Web Helper v0.6.1 - Professional server management with advanced messaging sync, universal compatibility, and security-hardened enterprise-grade features*

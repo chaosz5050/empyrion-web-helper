@@ -60,100 +60,11 @@ console.error = function(...args) {
 // Application initialization
 document.addEventListener('DOMContentLoaded', function() {
     debugLog('Empyrion Web Helper v0.5.0 - Background Service Architecture');
-    checkAndShowCredentialConfigModal();
     // Initialize all managers
     initializeApplication();
     // Auto-connect is now handled by the server-side background service
     // No manual connection needed from frontend
 });
-
-function checkAndShowCredentialConfigModal() {
-    fetch('/api/credentials/status').then(r => r.json()).then(status => {
-        // Also check monitoring setting (update_interval)
-        fetch('/api/settings/monitoring').then(r2 => r2.json()).then(settings => {
-            let needsModal = false;
-            if (!status.rcon || !status.ftp) needsModal = true;
-            if (!settings.update_interval || settings.update_interval < 10) needsModal = true;
-            if (needsModal) showCredentialConfigModal(settings);
-        }).catch(() => showCredentialConfigModal({update_interval: 20}));
-    }).catch(() => showCredentialConfigModal({update_interval: 20}));
-}
-
-function showCredentialConfigModal(settings) {
-    const modal = document.getElementById('credentialConfigModal');
-    const form = document.getElementById('credentialConfigForm');
-    const errorsDiv = document.getElementById('credentialConfigErrors');
-    // Pre-fill update interval if available
-    if (settings && settings.update_interval) {
-        form.update_interval.value = settings.update_interval;
-    }
-    modal.style.display = 'block';
-    document.body.style.overflow = 'hidden';
-    form.onsubmit = function(e) {
-        e.preventDefault();
-        errorsDiv.style.display = 'none';
-        errorsDiv.innerHTML = '';
-        const rcon_password = form.rcon_password.value.trim();
-        const ftp_user = form.ftp_user.value.trim();
-        const ftp_password = form.ftp_password.value.trim();
-        const ftp_host = form.ftp_host.value.trim();
-        const ftp_remote_log_path = form.ftp_remote_log_path.value.trim();
-        const ftp_mod_path = form.ftp_mod_path.value.trim();
-        const server_host = form.server_host.value.trim();
-        const server_port = form.server_port.value.trim();
-        const update_interval = form.update_interval.value.trim();
-        let errors = [];
-        if (rcon_password.length < 4) errors.push('RCON password must be at least 4 characters.');
-        if (ftp_user.length < 3) errors.push('FTP username must be at least 3 characters.');
-        if (ftp_password.length < 4) errors.push('FTP password must be at least 4 characters.');
-        if (!ftp_host) errors.push('FTP host is required.');
-        if (!ftp_remote_log_path) errors.push('FTP remote log path is required.');
-        if (!server_host) errors.push('Server host is required.');
-        if (!server_port || isNaN(server_port)) errors.push('Server port must be a valid number.');
-        if (isNaN(update_interval) || parseInt(update_interval) < 10) errors.push('Update interval must be at least 10 seconds.');
-        if (errors.length) {
-            errorsDiv.innerHTML = errors.join('<br>');
-            errorsDiv.style.display = 'block';
-            return;
-        }
-        // Save credentials
-        fetch('/api/credentials/set', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                rcon_password,
-                ftp_user,
-                ftp_password,
-                ftp_host,
-                ftp_remote_log_path,
-                ftp_mod_path,
-                server_host,
-                server_port
-            })
-        }).then(r => {
-            if (!r.ok) return r.json().then(j => {throw j;});
-            // Save monitoring setting
-            return fetch('/api/settings/monitoring', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({update_interval})
-            });
-        }).then(() => {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
-            showToast('Settings saved successfully', 'success');
-            window.location.reload();
-        }).catch(err => {
-            let msg = err && err.errors ? Object.values(err.errors).join('<br>') : 'Failed to save settings.';
-            errorsDiv.innerHTML = msg;
-            errorsDiv.style.display = 'block';
-        });
-    };
-    // Prevent closing modal by clicking outside
-    modal.onclick = function(e) {
-        if (e.target === modal) e.stopPropagation();
-    };
-}
 
 function initializeApplication() {
     // Initialize connection manager

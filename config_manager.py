@@ -198,36 +198,23 @@ class ConfigManager:
         if key == 'telnet_password':
             if self.player_db:
                 creds = self.player_db.get_rcon_credentials()
-                if creds:
+                if creds and creds.get('password'):
                     return creds['password']
-                else:
-                    logger.error("No RCON credentials available")
-                    return None
-            else:
-                logger.error("Database not available for credential lookup")
-                return None
+            return os.environ.get('EMPYRION_RCON_PASSWORD', default)
         
         elif key == 'ftp_password':
             if self.player_db:
                 creds = self.player_db.get_ftp_credentials()
-                if creds:
+                if creds and creds.get('password'):
                     return creds['password']
-                else:
-                    logger.warning("No FTP credentials available")
-                    return ''
-            else:
-                logger.error("Database not available for credential lookup")
-                return ''
+            return os.environ.get('EMPYRION_FTP_PASSWORD', default)
         
         elif key == 'ftp_user':
             if self.player_db:
                 creds = self.player_db.get_ftp_credentials()
-                if creds:
+                if creds and creds.get('username'):
                     return creds['username']
-                else:
-                    return ''
-            else:
-                return ''
+            return os.environ.get('EMPYRION_FTP_USER', default)
         
         # Regular config values
         return self.config.get(key, default)
