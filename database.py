@@ -624,6 +624,38 @@ class PlayerDatabase:
             logger.error(f"Error getting players from database: {e}", exc_info=True)
             return []
 
+    def get_player_count(self) -> Dict[str, int]:
+        """
+        Get player statistics including online/offline counts.
+        
+        Returns:
+            Dict containing player count statistics
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Count online players
+                cursor.execute("SELECT COUNT(*) FROM players WHERE status = 'Online'")
+                online_count = cursor.fetchone()[0]
+                
+                # Count offline players  
+                cursor.execute("SELECT COUNT(*) FROM players WHERE status != 'Online'")
+                offline_count = cursor.fetchone()[0]
+                
+                # Total count
+                total_count = online_count + offline_count
+                
+                return {
+                    'online': online_count,
+                    'offline': offline_count, 
+                    'total': total_count
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting player count: {e}", exc_info=True)
+            return {'online': 0, 'offline': 0, 'total': 0}
+
     # ============================================================================
     # APP SETTINGS METHODS
     # ============================================================================
