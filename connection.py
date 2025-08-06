@@ -529,13 +529,11 @@ class EmpyrionConnection:
                 merged[steam_id] = player.copy()
         
         # Third pass: determine final online status based on sections
+        # FIXED: Only trust "connected" section for Online status to avoid stale data
         for steam_id, player in merged.items():
             if steam_id in connected_steam_ids:
                 player['status'] = 'Online'
                 logger.debug(f"Setting {player['name']} to Online (connected)")
-            elif steam_id in online_steam_ids:
-                player['status'] = 'Online'
-                logger.debug(f"Setting {player['name']} to Online (online list)")
             else:
                 player['status'] = 'Offline'
                 logger.debug(f"Setting {player['name']} to Offline")

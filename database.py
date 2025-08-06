@@ -505,22 +505,37 @@ class PlayerDatabase:
                     country = self._lookup_country(current_ip) if current_ip else "Unknown location"
                 
                 if existing_player:
-                    # Player exists
+                    # Player exists - update their information
                     new_status = player_data.get('status', 'Offline')
                     old_status = existing_player.get('status', 'Offline')
                     
-                    # Update logic here...
-                    # (Keeping the existing detailed update logic)
+                    # Update player information including last_seen for online players
+                    update_last_seen = current_time if new_status == 'Online' else existing_player.get('last_seen')
+                    
+                    cursor.execute("""
+                        UPDATE players 
+                        SET name = ?, status = ?, faction = ?, role = ?, ip_address = ?, 
+                            country = ?, playfield = ?, last_seen = ?, updated_at = ?
+                        WHERE steam_id = ?
+                    """, (
+                        player_data.get('name', ''), new_status, player_data.get('faction', ''),
+                        player_data.get('role', ''), player_data.get('ip_address', ''),
+                        country, player_data.get('playfield', ''), update_last_seen, current_time, steam_id
+                    ))
                     
                 else:
                     # New player
+                    # Set last_seen for new players if they're online
+                    new_status = player_data.get('status', 'Offline')
+                    initial_last_seen = current_time if new_status == 'Online' else None
+                    
                     cursor.execute("""
                         INSERT INTO players (steam_id, name, status, faction, role, ip_address, country, playfield, last_seen, first_seen, updated_at) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        steam_id, player_data.get('name', ''), player_data.get('status', 'Offline'),
+                        steam_id, player_data.get('name', ''), new_status,
                         player_data.get('faction', ''), player_data.get('role', ''), player_data.get('ip_address', ''),
-                        country, player_data.get('playfield', ''), None, current_time, current_time
+                        country, player_data.get('playfield', ''), initial_last_seen, current_time, current_time
                     ))
                 
                 conn.commit()
