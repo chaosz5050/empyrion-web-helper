@@ -4,23 +4,62 @@
  * Copyright (c) 2025 Chaosz Software
  */
 
-// Toast notification system
+// Toast notification system with queue management
+let toastQueue = [];
+const MAX_TOASTS = 3;
+
 function showToast(message, type = 'info') {
+    // Remove oldest toast if at max limit
+    if (toastQueue.length >= MAX_TOASTS) {
+        const oldestToast = toastQueue.shift();
+        removeToast(oldestToast);
+    }
+    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
+    
+    // Add to queue and DOM
+    toastQueue.push(toast);
     document.body.appendChild(toast);
     
+    // Position toast based on queue position
+    updateToastPositions();
+    
+    // Show with animation
     setTimeout(() => toast.classList.add('show'), 100);
     
+    // Auto-remove after 4 seconds
     setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-            }
-        }, 300);
-    }, 3000);
+        removeToast(toast);
+    }, 4000);
+}
+
+function removeToast(toast) {
+    if (!toast || !document.body.contains(toast)) return;
+    
+    // Remove from queue
+    const index = toastQueue.indexOf(toast);
+    if (index > -1) {
+        toastQueue.splice(index, 1);
+    }
+    
+    // Hide with animation
+    toast.classList.remove('show');
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+        }
+        // Update positions of remaining toasts
+        updateToastPositions();
+    }, 300);
+}
+
+function updateToastPositions() {
+    toastQueue.forEach((toast, index) => {
+        const topOffset = 20 + (index * 80); // 20px base + 80px per toast
+        toast.style.top = `${topOffset}px`;
+    });
 }
 
 // Loading indicator control
