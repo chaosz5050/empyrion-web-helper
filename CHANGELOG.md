@@ -5,6 +5,35 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-08-06
+
+### Added
+- **FTP Browser Integration** - Added "Browse" buttons to all FTP path fields in Settings
+  - **Reusable Modal Component** - New FtpBrowserModal with popup directory navigation
+  - **Streamlined Path Configuration** - Eliminates manual Filezilla copy/paste workflow  
+  - **4 Browse Buttons** - Available for ItemsConfig, Playfields, Mod Config, and GameOptions paths
+  - **Loading Indicators** - Progress feedback during FTP operations with loading spinners
+  - **Mobile Responsive** - Full responsive design with konsole theme styling
+
+### Fixed
+- **Toast Notification System** - Completely overhauled notification display
+  - **No More Overlapping** - Toasts now stack vertically instead of overlapping  
+  - **Queue Management** - Limited to maximum 3 toasts, oldest auto-removed
+  - **Text Wrapping** - Improved word-wrap and line-height prevents text cutoff
+  - **Better Animation** - Smooth slide-in from right with 4-second display time
+- **Player Offline Detection** - Fixed major bug where players showed as online after disconnecting
+  - **Connection Logic Fix** - Only trust "connected players" section for online status
+  - **Background Monitoring** - 40-second intervals now properly detect disconnections
+- **FTP Status Methods** - Added missing database methods for FTP connection testing
+  - **set_ftp_test_success()** and **get_ftp_test_status()** methods added
+  - **Resolves AttributeError** when testing FTP connections
+
+### Technical Details  
+- **FTP Browser Architecture** - Modal popup using existing `/api/ftp/browse` endpoint
+- **Toast Queue System** - JavaScript queue with automatic positioning and cleanup
+- **Database Methods** - FTP status tracking via app_settings table
+- **Player Status Logic** - Modified connection.py merge logic to prevent stale online status
+
 ## [0.6.1] - 2025-08-06
 
 ### Security
