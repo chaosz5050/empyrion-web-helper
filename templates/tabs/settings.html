@@ -126,25 +126,37 @@
                 <div class="konsole-form-section">
                     <div class="konsole-form-group">
                         <label for="itemsConfigPath">ItemsConfig Path:</label>
-                        <input type="text" id="itemsConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Configuration">
+                        <div class="konsole-input-group">
+                            <input type="text" id="itemsConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Configuration">
+                            <button type="button" class="konsole-btn konsole-btn-secondary konsole-btn-sm" onclick="browseForPath('itemsConfigPath')">📁 Browse</button>
+                        </div>
                         <small class="konsole-help-text">Path to your scenario's Configuration directory containing ItemsConfig.ecf</small>
                     </div>
                     
                     <div class="konsole-form-group">
                         <label for="playfieldsPath">Playfields Path:</label>
-                        <input type="text" id="playfieldsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Playfields">
+                        <div class="konsole-input-group">
+                            <input type="text" id="playfieldsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Playfields">
+                            <button type="button" class="konsole-btn konsole-btn-secondary konsole-btn-sm" onclick="browseForPath('playfieldsPath')">📁 Browse</button>
+                        </div>
                         <small class="konsole-help-text">Path to your scenario's Playfields directory for wipe automation</small>
                     </div>
                     
                     <div class="konsole-form-group">
                         <label for="modConfigPath">Mod Config Path:</label>
-                        <input type="text" id="modConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Mods/PlayerStatusMod">
+                        <div class="konsole-input-group">
+                            <input type="text" id="modConfigPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)/Content/Mods/PlayerStatusMod">
+                            <button type="button" class="konsole-btn konsole-btn-secondary konsole-btn-sm" onclick="browseForPath('modConfigPath')">📁 Browse</button>
+                        </div>
                         <small class="konsole-help-text">Path to your mod directory for automated configuration updates</small>
                     </div>
                     
                     <div class="konsole-form-group">
                         <label for="gameoptionsPath">GameOptions Path:</label>
-                        <input type="text" id="gameoptionsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)">
+                        <div class="konsole-input-group">
+                            <input type="text" id="gameoptionsPath" class="konsole-input" placeholder="/empyrion/Content/Scenarios/Star Salvage - Reborn (v1.12)">
+                            <button type="button" class="konsole-btn konsole-btn-secondary konsole-btn-sm" onclick="browseForPath('gameoptionsPath')">📁 Browse</button>
+                        </div>
                         <small class="konsole-help-text">Path to your scenario directory or full path to gameoptions.yaml file (file will be auto-appended if directory path provided)</small>
                     </div>
                     

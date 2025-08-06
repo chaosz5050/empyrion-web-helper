@@ -1012,6 +1012,45 @@ window.ThemeManager = {
     }
 };
 
+// FTP Path Browser Function
+function browseForPath(inputId) {
+    if (!window.ftpBrowserModal) {
+        showToast('FTP browser not available', 'error');
+        return;
+    }
+    
+    // Show loading state on button
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '🔄 Loading...';
+    button.disabled = true;
+    
+    // Open FTP browser modal
+    window.ftpBrowserModal.open((selectedPath) => {
+        // Path selected callback
+        const inputElement = document.getElementById(inputId);
+        if (inputElement) {
+            inputElement.value = selectedPath;
+            showToast(`Path selected: ${selectedPath}`, 'success');
+            
+            // Trigger change event to update any validation
+            inputElement.dispatchEvent(new Event('change'));
+        }
+        
+        // Reset button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+    
+    // Reset button state in case modal fails to open
+    setTimeout(() => {
+        if (button.disabled) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }, 3000);
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     if (window.SettingsManager) {

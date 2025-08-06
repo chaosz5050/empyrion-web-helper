@@ -157,6 +157,24 @@
     box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
 }
 
+/* INPUT GROUP FOR BROWSE BUTTONS */
+.konsole-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.konsole-input-group .konsole-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.konsole-btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
 /* KONSOLE PASSWORD FIELD WITH TOGGLE */
 .konsole-password-container {
     position: relative;
