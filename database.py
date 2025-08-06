@@ -716,6 +716,23 @@ class PlayerDatabase:
         return self.get_app_setting(key, default)
 
     # ============================================================================
+    # FTP TEST STATUS METHODS
+    # ============================================================================
+
+    def set_ftp_test_success(self):
+        """
+        Record successful FTP test in the app_settings table.
+        """
+        return self.set_app_setting('ftp_test_status', 'success')
+
+    def get_ftp_test_status(self):
+        """
+        Get FTP test status from the app_settings table.
+        Returns 'success' if test passed, None otherwise.
+        """
+        return self.get_app_setting('ftp_test_status')
+
+    # ============================================================================
     # HIGH-VALUE & DATA INTEGRITY METHODS
     # ============================================================================
 
