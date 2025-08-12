@@ -260,12 +260,31 @@
                                 </div>
                                 <input type="radio" name="theme" value="accessible" id="theme-accessible">
                             </div>
+                            
+                            <div class="theme-option" data-theme="blue">
+                                <div class="theme-preview theme-preview-blue">
+                                    <div class="theme-preview-header"></div>
+                                    <div class="theme-preview-content">
+                                        <div class="theme-preview-sidebar"></div>
+                                        <div class="theme-preview-main">
+                                            <div class="theme-preview-text"></div>
+                                            <div class="theme-preview-text short"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <div class="theme-name">🌊 Blue Theme</div>
+                                    <div class="theme-description">Professional navy-blue aesthetic</div>
+                                </div>
+                                <input type="radio" name="theme" value="blue" id="theme-blue">
+                            </div>
                         </div>
                         <small class="konsole-help-text">Choose a color theme that suits your preference and environment</small>
                     </div>
                     
                     <div class="konsole-form-actions">
                         <button onclick="ThemeManager.resetToDefault()" class="konsole-btn konsole-btn-secondary">Reset to Default</button>
+                        <button onclick="ThemeManager.cancelThemeChanges()" class="konsole-btn konsole-btn-secondary">Cancel Changes</button>
                         <button onclick="ThemeManager.saveThemePreference()" class="konsole-btn konsole-btn-primary">Save Theme Preference</button>
                     </div>
                 </div>

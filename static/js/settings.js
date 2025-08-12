@@ -870,6 +870,7 @@ function validateFtpPaths() {
 // Theme Manager
 window.ThemeManager = {
     currentTheme: 'dark',
+    savedTheme: 'dark', // Track the actually saved theme
     
     init() {
         debugLog('Theme manager initialized');
@@ -880,12 +881,15 @@ window.ThemeManager = {
     async loadSavedTheme() {
         // Check localStorage first for instant loading
         const localTheme = localStorage.getItem('empyrion-theme');
-        if (localTheme && ['dark', 'light', 'accessible'].includes(localTheme)) {
+        if (localTheme && ['dark', 'light', 'accessible', 'blue'].includes(localTheme)) {
             this.currentTheme = localTheme;
+            this.savedTheme = localTheme; // Mark as saved
             this.applyTheme(localTheme);
             this.updateThemeSelector(localTheme);
         } else {
             // Default to dark theme initially
+            this.currentTheme = 'dark';
+            this.savedTheme = 'dark';
             this.applyTheme('dark');
             this.updateThemeSelector('dark');
         }
@@ -893,13 +897,15 @@ window.ThemeManager = {
         // Then check database for saved preference
         try {
             const response = await apiCall('/api/settings/theme');
-            if (response.success && response.theme !== this.currentTheme) {
-                debugLog(`Loading theme from database: ${response.theme}`);
-                this.currentTheme = response.theme;
-                this.applyTheme(response.theme);
-                this.updateThemeSelector(response.theme);
+            if (response.success) {
+                const dbTheme = response.theme;
+                debugLog(`Loading theme from database: ${dbTheme}`);
+                this.currentTheme = dbTheme;
+                this.savedTheme = dbTheme; // This is the actually saved theme
+                this.applyTheme(dbTheme);
+                this.updateThemeSelector(dbTheme);
                 // Update localStorage to match database
-                localStorage.setItem('empyrion-theme', response.theme);
+                localStorage.setItem('empyrion-theme', dbTheme);
             }
         } catch (error) {
             console.error('Error loading theme from database:', error);
@@ -927,27 +933,26 @@ window.ThemeManager = {
     },
     
     selectTheme(theme) {
-        debugLog(`Theme selected: ${theme}`);
+        debugLog(`Theme selected for preview: ${theme}`);
         
-        // Update current theme
+        // Update current theme (for preview)
         this.currentTheme = theme;
         
-        // Apply theme immediately
+        // Apply theme immediately (preview)
         this.applyTheme(theme);
         
         // Update UI selector
         this.updateThemeSelector(theme);
         
-        // Save to localStorage for instant loading
-        localStorage.setItem('empyrion-theme', theme);
-        
-        // Show feedback
-        showToast(`Theme changed to ${this.getThemeName(theme)}`, 'success');
+        // Show preview feedback with indication that it's not saved yet
+        if (theme !== this.savedTheme) {
+            showToast(`Previewing ${this.getThemeName(theme)} - Click Save to keep changes`, 'info');
+        }
     },
     
     applyTheme(theme) {
         // Remove existing theme classes
-        document.documentElement.classList.remove('theme-dark', 'theme-light', 'theme-accessible');
+        document.documentElement.classList.remove('theme-dark', 'theme-light', 'theme-accessible', 'theme-blue');
         
         // Apply new theme class
         document.documentElement.classList.add(`theme-${theme}`);
@@ -977,7 +982,8 @@ window.ThemeManager = {
         const names = {
             'dark': 'Dark Theme',
             'light': 'Light Theme',
-            'accessible': 'Accessible Theme'
+            'accessible': 'Accessible Theme',
+            'blue': 'Blue Theme'
         };
         return names[theme] || theme;
     },
@@ -994,6 +1000,10 @@ window.ThemeManager = {
             });
             
             if (response.success) {
+                // Mark as saved
+                this.savedTheme = this.currentTheme;
+                // Update localStorage to match
+                localStorage.setItem('empyrion-theme', this.currentTheme);
                 showToast('Theme preference saved successfully!', 'success');
             } else {
                 showToast('Failed to save theme preference to database', 'warning');
@@ -1003,6 +1013,17 @@ window.ThemeManager = {
             console.error('Error saving theme preference:', error);
             showToast('Theme will be remembered locally', 'info');
         }
+    },
+    
+    cancelThemeChanges() {
+        debugLog(`Canceling theme changes, reverting to saved theme: ${this.savedTheme}`);
+        
+        // Revert to saved theme
+        this.currentTheme = this.savedTheme;
+        this.applyTheme(this.savedTheme);
+        this.updateThemeSelector(this.savedTheme);
+        
+        showToast(`Reverted to ${this.getThemeName(this.savedTheme)}`, 'info');
     },
     
     resetToDefault() {

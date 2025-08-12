@@ -535,6 +535,27 @@
     background-color: #00aaff;
 }
 
+/* Blue Theme Preview */
+.theme-preview-blue {
+    background-color: #0f1419;
+}
+
+.theme-preview-blue .theme-preview-header {
+    background-color: #1a2332;
+}
+
+.theme-preview-blue .theme-preview-sidebar {
+    background-color: #1a2332;
+}
+
+.theme-preview-blue .theme-preview-main {
+    background-color: #0f1419;
+}
+
+.theme-preview-blue .theme-preview-text {
+    background-color: #4a9eff;
+}
+
 .theme-info {
     text-align: center;
 }

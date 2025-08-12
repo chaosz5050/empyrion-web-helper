@@ -411,10 +411,10 @@ def save_theme_preference():
         theme = data.get('theme', 'dark')
         
         # Validate theme
-        if theme not in ['dark', 'light', 'accessible']:
+        if theme not in ['dark', 'light', 'accessible', 'blue']:
             return jsonify({
                 'success': False,
-                'message': 'Invalid theme. Must be dark, light, or accessible.'
+                'message': 'Invalid theme. Must be dark, light, accessible, or blue.'
             })
         
         # Save to database

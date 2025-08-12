@@ -5,6 +5,46 @@ All notable changes to Empyrion Web Helper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2025-08-12
+
+### Added
+- **Help Commands Management** - Complete web-based help commands configuration system
+  - **Web Interface Integration** - New help commands section in messaging tab 
+  - **Bidirectional Sync** - Automatic sync with PlayerStatusMod configuration files
+  - **Add/Edit/Delete Commands** - Full CRUD operations via intuitive web UI
+  - **Live Upload/Download** - Real-time sync between web interface and game server
+  - **Default Command Set** - Pre-configured with teleport commands (/sethome, /home, /home uses)
+- **Blue Theme** - Professional navy-blue theme option
+  - **🌊 Sophisticated Aesthetic** - Deep navy background with tasteful blue accents
+  - **Excellent Readability** - Light blue-white text with high contrast ratios
+  - **Professional Design** - Perfect for extended use with calming blue atmosphere
+  - **Theme Preview** - Visual preview box showing blue theme colors
+- **Theme System Enhancements** - Improved theme selection workflow
+  - **Instant Preview** - Themes apply immediately when selected for live preview
+  - **Save/Cancel Workflow** - Preview changes with option to save or revert
+  - **Visual Feedback** - Clear indication of unsaved vs saved theme changes
+
+### Fixed
+- **Theme Preferences Saving** - Fixed "error saving template preferences to database" issue
+  - **Method Name Fix** - Changed incorrect `set_setting()` call to `set_app_setting()`
+  - **Database Integration** - Theme selection now properly saves to database
+  - **Persistence Fix** - Theme preferences persist correctly across server restarts
+- **CSS Theme Selectors** - Fixed theme switching not applying visual changes
+  - **Selector Consistency** - Fixed `.theme-light` and `.theme-accessible` selectors to `html.theme-*`
+  - **Immediate Visual Changes** - Theme selection now immediately changes application appearance
+  - **Cross-theme Support** - All four themes (Dark, Light, Accessible, Blue) work correctly
+
+### Technical Details
+- **Help Commands Architecture** - Full-stack feature with frontend, API, and backend integration
+  - `/api/messaging/help-commands` GET/POST endpoints for command management
+  - Enhanced MessagingManager with help commands array support
+  - Automatic FTP upload/download with PlayerStatusMod config integration
+- **Theme System Improvements** - Separated preview state from saved state
+  - `savedTheme` vs `currentTheme` tracking for proper save/cancel functionality  
+  - Enhanced ThemeManager with `selectTheme()` and `cancelThemeChanges()` methods
+- **CSS Fixes** - Corrected theme selector specificity for proper DOM targeting
+- **Database Methods** - Fixed missing `set_setting()` method call to use existing `set_app_setting()`
+
 ## [0.6.2] - 2025-08-06
 
 ### Added
