@@ -418,7 +418,7 @@ def save_theme_preference():
             })
         
         # Save to database
-        player_db.set_setting('user_theme', theme)
+        player_db.set_app_setting('user_theme', theme)
         
         logger.info(f"Theme preference saved: {theme}")
         
