@@ -79,6 +79,26 @@
         </div>
     </div>
 
+    <!-- Help Commands Section -->
+    <div class="message-section">
+        <h3>Help Commands</h3>
+        <div class="help-commands-panel">
+            <div class="message-help">
+                <p>Configure the commands shown when players type <code>/help</code> in-game. These are informational commands that help players understand available features.</p>
+            </div>
+            
+            <div class="help-commands-list" id="helpCommandsList">
+                <!-- Help commands will be dynamically generated here -->
+            </div>
+            
+            <div class="help-command-controls">
+                <button onclick="saveHelpCommands()" class="btn-primary">Save Help Commands</button>
+                <button onclick="loadHelpCommands()" class="btn-secondary">Load Help Commands</button>
+                <button onclick="addHelpCommand()" class="btn-add">Add New Command</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Message History Section -->
     <div class="message-section">
         <h3>Message History</h3>

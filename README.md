@@ -1,8 +1,8 @@
-# 🚀 Empyrion Web Helper v0.6.1
+# 🚀 Empyrion Web Helper v0.6.2
 
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue?style=for-the-badge&logo=linux)](https://www.linux.org/)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-0.6.1-orange?style=for-the-badge)](https://github.com/your-username/empyrion-web-helper)
+[![Version](https://img.shields.io/badge/Version-0.6.2-orange?style=for-the-badge)](https://github.com/chaosz5050/empyrion-web-helper)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-red?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > **A professional web-based administration tool for Empyrion Galactic Survival dedicated servers with universal RCON compatibility**
@@ -59,6 +59,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 - **24/7 Operation** - Messages work without web browser open (background service)
 - **Smart Welcome/Goodbye** - Personalized messages with `<playername>` placeholders
 - **Scheduled Announcements** - Automated recurring messages (10 minutes to 24 hours, up to 10 messages)
+- **Help Commands Management** - Configure in-game `/help` commands via web interface (NEW v0.6.2)
 - **Global Messaging** - Send immediate messages to all online players
 - **Message History** - Complete logging with delivery tracking and statistics
 - **Real-time Triggers** - Welcome/goodbye sent on actual server events, not polling
@@ -93,7 +94,7 @@ Empyrion Web Helper is a comprehensive server management solution that provides 
 
 1. **Clone and setup**
    ```bash
-   git clone https://github.com/your-username/empyrion-web-helper.git
+   git clone https://github.com/chaosz5050/empyrion-web-helper.git
    cd empyrion-web-helper
    python3 -m venv venv
    source venv/bin/activate
@@ -181,7 +182,7 @@ Empyrion Web Helper features a revolutionary **dual-architecture design**:
 - **👥 Players** - Real-time player list, actions, filtering, geolocation
 - **🌌 Entities** - Galaxy-wide entity browser, search, admin tools
 - **🛠️ ItemsConfig** - Live ECF file management, item editing, template resolution
-- **💬 Messaging** - Message history, templates, scheduled announcements
+- **💬 Messaging** - Message history, templates, scheduled announcements, help commands management
 - **📋 Logs** - Real-time log viewer, rotation management, statistics
 - **⚙️ Settings** - Secure credential management, service configuration, appearance themes
 
@@ -414,4 +415,4 @@ For more details, see the [full license text](https://creativecommons.org/licens
 
 **Built with ❤️ for the Empyrion Galactic Survival community by Chaosz Software**
 
-*Empyrion Web Helper v0.6.1 - Professional server management with advanced messaging sync, universal compatibility, and security-hardened enterprise-grade features*
+*Empyrion Web Helper v0.6.2 - Professional server management with help commands management, advanced messaging sync, universal compatibility, and security-hardened enterprise-grade features*

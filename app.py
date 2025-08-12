@@ -1274,6 +1274,42 @@ def save_scheduled_messages():
         logger.error(f"Error saving scheduled messages: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
 
+@app.route('/messaging/help-commands', methods=['GET'])
+def get_help_commands():
+    """Get help commands."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        commands = messaging_manager.load_help_commands()
+        logger.info(f"API: Returning {len(commands)} help commands to frontend")
+        if commands:
+            logger.info(f"API: First command: {commands[0]}")
+        return jsonify({'success': True, 'commands': commands})
+    except Exception as e:
+        logger.error(f"Error getting help commands: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
+@app.route('/messaging/help-commands', methods=['POST'])
+def save_help_commands():
+    """Save help commands."""
+    if not messaging_manager:
+        return jsonify({'success': False, 'message': 'Messaging manager not initialized'})
+    
+    try:
+        data = request.get_json()
+        commands = data.get('commands', [])
+        
+        success = messaging_manager.save_help_commands(commands)
+        if success:
+            return jsonify({'success': True, 'message': 'Help commands saved successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to save help commands'})
+        
+    except Exception as e:
+        logger.error(f"Error saving help commands: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'An internal error occurred. Please try again later.'})
+
 @app.route('/messaging/test-upload', methods=['POST'])
 def test_mod_config_upload():
     """Test endpoint to manually trigger mod config upload."""

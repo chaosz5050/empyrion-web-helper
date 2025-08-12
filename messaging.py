@@ -55,8 +55,11 @@ class MessagingManager:
         self.last_message_check = {}
         self.message_timer = None
         
-        # Path to mod configuration file
-        self.mod_config_path = "temp/StarSalvage/Content/Mods/PlayerStatusMod/PlayerStatusConfig.json"
+        # Help commands state
+        self.help_commands = []
+        
+        # Path to local copy of mod configuration file (in current directory)
+        self.mod_config_path = "PlayerStatusConfig.json"
         
         # Initialize database (only for message history)
         self._init_message_database()
@@ -169,7 +172,8 @@ class MessagingManager:
                 "welcome_message": self.welcome_message_template.replace('<playername>', '{playername}'),
                 "goodbye_enabled": self.goodbye_enabled,
                 "goodbye_message": self.goodbye_message_template.replace('<playername>', '{playername}'),
-                "scheduled_messages": []
+                "scheduled_messages": [],
+                "help_commands": self.help_commands if hasattr(self, 'help_commands') else []
             }
             
             # Convert scheduled messages to mod format
@@ -194,8 +198,10 @@ class MessagingManager:
                         "last_sent": "1970-01-01T00:00:00"  # Reset timing
                     })
             
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(self.mod_config_path), exist_ok=True)
+            # Ensure directory exists (only if not in current directory)
+            directory = os.path.dirname(self.mod_config_path)
+            if directory:  # Only create directory if path contains a directory
+                os.makedirs(directory, exist_ok=True)
             
             # Write configuration
             with open(self.mod_config_path, 'w', encoding='utf-8') as f:
@@ -335,7 +341,8 @@ class MessagingManager:
                 "welcome_message": self.welcome_message_template.replace('<playername>', '{playername}'),
                 "goodbye_enabled": self.goodbye_enabled,
                 "goodbye_message": self.goodbye_message_template.replace('<playername>', '{playername}'),
-                "scheduled_messages": []
+                "scheduled_messages": [],
+                "help_commands": self.help_commands if hasattr(self, 'help_commands') else []
             }
             
             # Convert scheduled messages to mod format
@@ -896,4 +903,105 @@ class MessagingManager:
             
         except Exception as e:
             logger.error(f"Error clearing message history: {e}")
+            return False
+
+    # ============================================================================
+    # HELP COMMANDS
+    # ============================================================================
+    
+    def load_help_commands(self) -> List[Dict]:
+        """
+        Load help commands from the mod configuration file.
+        Returns:
+            List[Dict]: List of help command dictionaries with 'command' and 'description' keys.
+        """
+        try:
+            # First try to download latest config from server
+            try:
+                logger.info("Attempting to download latest config from server for help commands...")
+                self._download_mod_config_from_server()
+            except Exception as e:
+                logger.warning(f"Could not download latest config from server: {e}")
+            
+            # Try to load from downloaded mod config
+            logger.info(f"Looking for mod config at: {self.mod_config_path}")
+            if os.path.exists(self.mod_config_path):
+                try:
+                    with open(self.mod_config_path, 'r') as f:
+                        config = json.load(f)
+                    
+                    help_commands = config.get('help_commands', [])
+                    logger.info(f"Successfully loaded {len(help_commands)} help commands from mod config")
+                    if help_commands:
+                        logger.info(f"First command: {help_commands[0]}")
+                    return help_commands
+                    
+                except Exception as e:
+                    logger.error(f"Could not read mod config file: {e}")
+            else:
+                logger.warning(f"Mod config file does not exist at: {self.mod_config_path}")
+            
+            # Fallback to default help commands
+            logger.info("Using default help commands")
+            return [
+                {"command": "/vb1", "description": "Open virtual backpack 1"},
+                {"command": "/vb2", "description": "Open virtual backpack 2"},
+                {"command": "/vb3", "description": "Open virtual backpack 3"},
+                {"command": "/vb4", "description": "Open virtual backpack 4"},
+                {"command": "/vb5", "description": "Open virtual backpack 5"},
+                {"command": "/afk [reason]", "description": "Mark yourself as AFK with optional reason"},
+                {"command": "/back", "description": "Return from AFK status"},
+                {"command": "/afklist", "description": "View currently AFK players"},
+                {"command": "/sethome", "description": "Set emergency teleport location"},
+                {"command": "/home", "description": "Emergency teleport with confirmation dialog"},
+                {"command": "/home uses", "description": "Check remaining daily teleport uses"}
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error loading help commands: {e}")
+            return []
+    
+    def save_help_commands(self, commands_data: List[Dict]) -> bool:
+        """
+        Save help commands to the configuration file and upload to server.
+        Args:
+            commands_data (List[Dict]): List of help command dictionaries to save.
+        Returns:
+            bool: True if saved successfully, False otherwise.
+        """
+        try:
+            logger.info(f"Saving {len(commands_data)} help commands to config")
+            
+            # Validate and clean the data
+            cleaned_commands = []
+            for cmd in commands_data:
+                if cmd.get('command') and cmd.get('description'):
+                    cleaned_cmd = {
+                        'command': str(cmd.get('command', '')).strip(),
+                        'description': str(cmd.get('description', '')).strip()
+                    }
+                    cleaned_commands.append(cleaned_cmd)
+                    logger.info(f"Command: '{cleaned_cmd['command']}' -> '{cleaned_cmd['description']}'")
+            
+            # Store in memory (we'll write this during mod config generation)
+            self.help_commands = cleaned_commands
+            
+            logger.info(f"Prepared {len(cleaned_commands)} help commands for mod config")
+            
+            # Write to mod config and upload to server
+            success = self._write_mod_config()
+            if success:
+                success = self._upload_mod_config_to_server()
+            
+            if success:
+                logger.info(f"SUCCESS: Saved {len(cleaned_commands)} help commands to mod config")
+            else:
+                logger.error("FAILED: Could not save help commands to mod config")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error saving help commands: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return False

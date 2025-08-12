@@ -7,6 +7,7 @@
 // Messaging Manager
 window.MessagingManager = {
     scheduledMessagesData: [],
+    helpCommandsData: [],
     messageHistoryData: [],
 
     init() {
@@ -17,6 +18,9 @@ window.MessagingManager = {
         
         // Load scheduled messages on page load
         this.loadScheduledMessages();
+        
+        // Load help commands on page load
+        this.loadHelpCommands();
         
         // Load message history
         this.loadMessageHistory();
@@ -409,6 +413,190 @@ window.MessagingManager = {
         }
     },
 
+    // Help Commands
+    async loadHelpCommands() {
+        const loadButton = document.querySelector('button[onclick="loadHelpCommands()"]');
+        const originalText = loadButton ? loadButton.textContent : 'Load Help Commands';
+        
+        // Update button state to show loading
+        if (loadButton) {
+            loadButton.textContent = 'Loading...';
+            loadButton.disabled = true;
+        }
+
+        try {
+            // First try to download from server to get latest config
+            try {
+                const downloadResult = await apiCall('/messaging/download-from-server', { method: 'POST' });
+                if (downloadResult.success) {
+                    showToast('Downloaded latest configuration from server', 'success');
+                } else {
+                    console.warn('Could not download from server, using local config:', downloadResult.message);
+                }
+            } catch (downloadError) {
+                console.warn('Could not download from server, using local config:', downloadError);
+            }
+            
+            // Load the configuration (now updated from server if successful)
+            const data = await apiCall('/messaging/help-commands');
+            
+            console.log('[Help Commands Debug] API response:', data);
+            
+            if (data.success && data.commands) {
+                console.log('[Help Commands Debug] Received commands:', data.commands);
+                this.helpCommandsData = data.commands;
+                this.renderHelpCommands();
+                debugLog('Help commands loaded:', this.helpCommandsData.length);
+                showToast('Help commands loaded successfully', 'success');
+            } else {
+                // Initialize with default help commands if none exist
+                this.helpCommandsData = [
+                    { command: '/vb1', description: 'Open virtual backpack 1' },
+                    { command: '/vb2', description: 'Open virtual backpack 2' },
+                    { command: '/vb3', description: 'Open virtual backpack 3' },
+                    { command: '/vb4', description: 'Open virtual backpack 4' },
+                    { command: '/vb5', description: 'Open virtual backpack 5' },
+                    { command: '/afk [reason]', description: 'Mark yourself as AFK with optional reason' },
+                    { command: '/back', description: 'Return from AFK status' },
+                    { command: '/afklist', description: 'View currently AFK players' },
+                    { command: '/sethome', description: 'Set emergency teleport location' },
+                    { command: '/home', description: 'Emergency teleport with confirmation dialog' },
+                    { command: '/home uses', description: 'Check remaining daily teleport uses' }
+                ];
+                this.renderHelpCommands();
+                showToast('Initialized with default help commands', 'info');
+            }
+        } catch (error) {
+            console.error('Error loading help commands:', error);
+            showToast('Error loading help commands: ' + error, 'error');
+            // Initialize with defaults on error
+            this.helpCommandsData = [];
+            this.renderHelpCommands();
+        } finally {
+            // Restore button state
+            if (loadButton) {
+                loadButton.textContent = originalText;
+                loadButton.disabled = false;
+            }
+        }
+    },
+
+    async saveHelpCommands() {
+        // Collect data from UI
+        const commands = [];
+        const commandItems = document.querySelectorAll('.help-command-item');
+        
+        commandItems.forEach((item, index) => {
+            const commandInput = item.querySelector('.help-command-text');
+            const descriptionInput = item.querySelector('.help-description-text');
+            
+            const command = commandInput ? commandInput.value.trim() : '';
+            const description = descriptionInput ? descriptionInput.value.trim() : '';
+            
+            // Save all commands, even empty ones (for editing in progress)
+            // Only exclude completely empty commands when both fields are empty
+            if (command || description) {
+                commands.push({
+                    command: command,
+                    description: description
+                });
+            }
+        });
+        
+        // Update button state to show uploading
+        const saveButton = document.querySelector('button[onclick="saveHelpCommands()"]');
+        const originalText = saveButton ? saveButton.textContent : 'Save Help Commands';
+        if (saveButton) {
+            saveButton.textContent = 'Uploading...';
+            saveButton.disabled = true;
+        }
+
+        try {
+            const data = await apiCall('/messaging/help-commands', {
+                method: 'POST',
+                body: JSON.stringify({ commands: commands })
+            });
+            
+            if (data.success) {
+                showToast('Help commands saved and uploaded successfully', 'success');
+                this.helpCommandsData = commands;
+            } else {
+                showToast(data.message || 'Failed to save help commands', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving help commands:', error);
+            showToast('Error saving help commands: ' + error, 'error');
+        } finally {
+            // Restore button state
+            if (saveButton) {
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
+            }
+        }
+    },
+
+    renderHelpCommands() {
+        const container = document.getElementById('helpCommandsList');
+        if (!container) return;
+        
+        // Create display array: use configured commands as-is
+        const displayCommands = [...this.helpCommandsData];
+        
+        // Only add 1 empty command if there are NO configured commands at all
+        if (displayCommands.length === 0) {
+            displayCommands.push({
+                command: '',
+                description: ''
+            });
+        }
+        
+        container.innerHTML = '';
+        
+        displayCommands.forEach((command, index) => {
+            const commandDiv = document.createElement('div');
+            commandDiv.className = 'help-command-item';
+            
+            commandDiv.innerHTML = `
+                <div class="help-command-header">
+                    <label>Command ${index + 1}</label>
+                    <button onclick="MessagingManager.removeHelpCommand(${index})" class="btn-danger" style="padding: 4px 8px; font-size: 12px;">Remove</button>
+                </div>
+                <div class="help-command-body">
+                    <div class="message-input-container">
+                        <input type="text" class="help-command-text message-input" 
+                               value="${escapeHtml(command.command)}" 
+                               placeholder="e.g. /vb1" maxlength="50" style="width: 30%;">
+                        <input type="text" class="help-description-text message-input" 
+                               value="${escapeHtml(command.description)}" 
+                               placeholder="Command description..." maxlength="200" style="width: 65%;">
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(commandDiv);
+        });
+    },
+
+    addHelpCommand() {
+        if (this.helpCommandsData.length >= 20) {
+            showToast('Maximum of 20 help commands allowed', 'error');
+            return;
+        }
+        
+        this.helpCommandsData.push({
+            command: '',
+            description: ''
+        });
+        this.renderHelpCommands();
+    },
+
+    removeHelpCommand(index) {
+        if (index >= 0 && index < this.helpCommandsData.length) {
+            this.helpCommandsData.splice(index, 1);
+            this.renderHelpCommands();
+        }
+    },
+
     // Message History
     async loadMessageHistory() {
         try {
@@ -546,4 +734,16 @@ function loadMessageHistory() {
 
 function clearMessageHistory() {
     window.MessagingManager.clearMessageHistory();
+}
+
+function saveHelpCommands() {
+    window.MessagingManager.saveHelpCommands();
+}
+
+function loadHelpCommands() {
+    window.MessagingManager.loadHelpCommands();
+}
+
+function addHelpCommand() {
+    window.MessagingManager.addHelpCommand();
 }
